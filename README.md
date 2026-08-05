@@ -1,6 +1,9 @@
 ### The fear of the LORD is the beginning of wisdom, and knowledge of the Holy One is understanding.
 
 ## ComfyUI nodes:
+
+Design only for ComfyUI Node 2.0.
+
 1. LikeJ Load 10 Loras
    
    <img width="361" height="374" alt="image" src="https://github.com/user-attachments/assets/19843495-f177-4805-84ec-8db875ed2c03" />
