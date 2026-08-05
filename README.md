@@ -5,8 +5,8 @@
 > Designed specifically for ComfyUI Node 2.0
 
 LikeJ Loras nodes ideas from:
-   https://github.com/mrgebien/TooManyLoras  
-   https://github.com/orion4d/Orion4D_ModelOnlyLoRA  
+   * https://github.com/mrgebien/TooManyLoras  
+   * https://github.com/orion4d/Orion4D_ModelOnlyLoRA  
 
 1. LikeJ Load 10 Loras
    
