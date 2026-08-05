@@ -1,3 +1,4 @@
+# The fear of the LORD is the beginning of wisdom, and knowledge of the Holy One is understanding.
 
 ComfyUI nodes:
 1. LikeJ Load 10 Loras
