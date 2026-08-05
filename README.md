@@ -14,7 +14,7 @@ LikeJ Loras nodes ideas from:
 
 2. LikeJ Load 20 Loras
    
-   <img width="368" height="624" alt="image" src="https://github.com/user-attachments/assets/e4221798-bd0a-4364-93b3-083cb4bf4110" />
+   <img width="624" height="585" alt="image" src="https://github.com/user-attachments/assets/c18b7511-be39-41a7-b4b8-966f86a1f78e" />
 
 3. LikeJ Load 10 Loras(Prompt)
    
