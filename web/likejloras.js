@@ -9,13 +9,59 @@ style.textContent = `
         transition: opacity 0.2s ease, filter 0.2s ease !important;
     }
 
+    /* === 移動按鈕容器與樣式 === */
+    .likej-row-controls {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 1px !important;        
+        margin-right: 4px !important; 
+        flex-shrink: 0 !important;
+        vertical-align: middle !important;
+    }
+
+    .likej-move-btn {
+        background: rgba(255, 255, 255, 0.12) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        color: #fff !important;
+        cursor: pointer !important;
+        font-size: 11px !important;
+        width: 18px !important;
+        height: 18px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+    }
+
+    .likej-move-btn:first-child {
+        border-top-left-radius: 3px !important;
+        border-bottom-left-radius: 3px !important;
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+
+    .likej-move-btn:last-child {
+        border-top-right-radius: 3px !important;
+        border-bottom-right-radius: 3px !important;
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        border-left: none !important;
+    }
+
+    .likej-move-btn:hover {
+        background: rgba(255, 255, 255, 0.3) !important;
+        z-index: 2;
+    }
+
     /* === 1. 基礎版 Layout (3個 Widget 為一組: Enable, LoRA, Strength) === */
     .likej-loras-container {
         display: grid !important;
         grid-template-columns: auto minmax(0, 1fr) 110px !important;
         grid-template-rows: none !important;
         grid-auto-rows: max-content !important;
-        gap: 4px 6px !important;
+        gap: 4px 3px !important;
         align-items: center !important;
         height: auto !important;
     }
@@ -35,14 +81,29 @@ style.textContent = `
         margin: 0 !important;
     }
 
-    /* 第 3n+1 個：Enable 開關 (第 1 欄) */
+    /* 第 3n+1 個：Enable 開關 (第 1 欄) - 修正跨欄與空白問題 */
     .likej-loras-container > [data-testid="node-widget"]:nth-child(3n+1) {
         grid-column: 1 !important;
         width: auto !important;
+        justify-content: flex-start !important;
+    }
+
+    .likej-loras-container > [data-testid="node-widget"]:nth-child(3n+1) [class*="grid-cols-subgrid"] {
+        grid-column: 1 !important;
+        justify-content: flex-start !important;
+        gap: 4px !important;
+    }
+
+    .likej-loras-container > [data-testid="node-widget"]:nth-child(3n+1) [class*="col-span-2"] {
+        grid-column: 1 !important;
     }
 
     .likej-loras-container > [data-testid="node-widget"]:nth-child(3n+1) [data-testid="widget-layout-field-label"] {
         display: none !important;
+    }
+
+    .likej-loras-container > [data-testid="node-widget"]:nth-child(3n+1) [class*="ml-auto"] {
+        margin-left: 0 !important;
     }
 
     /* 第 3n+2 個：LoRA 選單 (第 2 欄) */
@@ -53,7 +114,7 @@ style.textContent = `
     .likej-loras-container > [data-testid="node-widget"]:nth-child(3n+2) > [node-id] {
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 4px !important;
         flex: 1 !important;
         min-width: 0 !important;
         width: 100% !important;
@@ -94,7 +155,7 @@ style.textContent = `
         grid-template-columns: auto minmax(0, 1fr) 90px !important;
         grid-template-rows: none !important;
         grid-auto-rows: max-content !important;
-        gap: 4px 6px !important;
+        gap: 4px 3px !important;
         align-items: center !important;
         height: auto !important;
     }
@@ -114,14 +175,29 @@ style.textContent = `
         margin: 0 !important;
     }
 
-    /* 第 4n+1 個：Enable 開關 (第 1 欄) */
+    /* 第 4n+1 個：Enable 開關 (第 1 欄) - 修正跨欄與空白問題 */
     .likej-loras-prompt-container > [data-testid="node-widget"]:nth-child(4n+1) {
         grid-column: 1 !important;
         width: auto !important;
+        justify-content: flex-start !important;
+    }
+
+    .likej-loras-prompt-container > [data-testid="node-widget"]:nth-child(4n+1) [class*="grid-cols-subgrid"] {
+        grid-column: 1 !important;
+        justify-content: flex-start !important;
+        gap: 4px !important;
+    }
+
+    .likej-loras-prompt-container > [data-testid="node-widget"]:nth-child(4n+1) [class*="col-span-2"] {
+        grid-column: 1 !important;
     }
 
     .likej-loras-prompt-container > [data-testid="node-widget"]:nth-child(4n+1) [data-testid="widget-layout-field-label"] {
         display: none !important;
+    }
+
+    .likej-loras-prompt-container > [data-testid="node-widget"]:nth-child(4n+1) [class*="ml-auto"] {
+        margin-left: 0 !important;
     }
 
     /* 第 4n+2 個：LoRA 選單 (第 2 欄) */
@@ -132,7 +208,7 @@ style.textContent = `
     .likej-loras-prompt-container > [data-testid="node-widget"]:nth-child(4n+2) > [node-id] {
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 4px !important;
         flex: 1 !important;
         min-width: 0 !important;
         width: 100% !important;
@@ -176,7 +252,7 @@ style.textContent = `
     .likej-loras-prompt-container > [data-testid="node-widget"]:nth-child(4n) > [node-id] {
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 4px !important;
         flex: 1 !important;
         min-width: 0 !important;
         width: 100% !important;
@@ -221,7 +297,6 @@ function setupLikeJLorasNode(node) {
 
     node.computeSize = () => [Math.max(minWidth, node.size ? node.size[0] : minWidth), targetHeight];
 
-    // 雙擊 Strength 歸位 1.0 的事件綁定
     const bindDblClickEvents = (container) => {
         const selector = hasPrompt 
             ? ":scope > [data-testid='node-widget']:nth-child(4n+3)" 
@@ -251,27 +326,101 @@ function setupLikeJLorasNode(node) {
         });
     };
 
-    // 根據 widget.name 精確導航 DOM，避免因 DOM 順序不符導致亂套用
+    const injectMoveButtons = (container) => {
+        const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
+        
+        for (let i = 1; i <= count; i++) {
+            const numStr = String(i).padStart(2, "0");
+            const targetName = `lora_${numStr}`;
+
+            domWidgets.forEach(domEl => {
+                const label = domEl.querySelector("[data-testid='widget-layout-field-label']");
+                if (label && label.textContent.includes(targetName)) {
+                    if (label.querySelector(".likej-row-controls")) return;
+
+                    const controls = document.createElement("span");
+                    controls.className = "likej-row-controls";
+
+                    const upBtn = document.createElement("button");
+                    upBtn.className = "likej-move-btn";
+                    upBtn.textContent = "▲";
+                    upBtn.title = "往上一行";
+                    upBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        swapRows(i, i - 1);
+                    };
+
+                    const downBtn = document.createElement("button");
+                    downBtn.className = "likej-move-btn";
+                    downBtn.textContent = "▼";
+                    downBtn.title = "往下一行";
+                    downBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        swapRows(i, i + 1);
+                    };
+
+                    controls.appendChild(upBtn);
+                    controls.appendChild(downBtn);
+                    label.prepend(controls);
+                }
+            });
+        }
+    };
+
+    const swapRows = (a, b) => {
+        if (a < 1 || a > count || b < 1 || b > count) return;
+        if (!node.widgets) return;
+
+        const getWidgetsOfIndex = (idx) => {
+            const s = String(idx).padStart(2, "0");
+            return {
+                enable: node.widgets.find(w => w.name === `enable_${s}`),
+                lora: node.widgets.find(w => w.name === `lora_${s}`),
+                strength: node.widgets.find(w => w.name === `strength_${s}`),
+                prompt: hasPrompt ? node.widgets.find(w => w.name === `prompt_${s}`) : null
+            };
+        };
+
+        const rowA = getWidgetsOfIndex(a);
+        const rowB = getWidgetsOfIndex(b);
+
+        if (!rowA.enable || !rowB.enable) return;
+
+        ['enable', 'lora', 'strength', 'prompt'].forEach(key => {
+            if (rowA[key] && rowB[key]) {
+                const temp = rowA[key].value;
+                rowA[key].value = rowB[key].value;
+                rowB[key].value = temp;
+            }
+        });
+
+        node.widgets.forEach(w => {
+            if (w.callback) w.callback(w.value, app.canvas, node, null, null);
+        });
+
+        if (app.canvas) app.canvas.setDirty(true, true);
+        
+        setTimeout(() => {
+            const container = document.querySelector(`[data-widgets-grid-node-id="${node.id}"]`);
+            if (container) updateDisabledStates(container);
+        }, 30);
+    };
+
     const updateDisabledStates = (container) => {
         if (!node.widgets) return;
 
         for (let i = 1; i <= count; i++) {
             const numStr = String(i).padStart(2, "0");
-            
-            // 找出對應組別的 widget 數值
             const enableWidget = node.widgets.find(w => w.name === `enable_${numStr}`);
             const isEnabled = enableWidget ? Boolean(enableWidget.value) : true;
 
-            // 尋找包含此編號的相關欄位名稱
             const targetNames = [`lora_${numStr}`, `strength_${numStr}`];
             if (hasPrompt) targetNames.push(`prompt_${numStr}`);
 
-            // 在 DOM 中精確尋找包含該名稱 Label 的 [data-testid='node-widget'] 元素
             const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
             
             domWidgets.forEach(domEl => {
                 const labelText = domEl.textContent || "";
-                // 檢查此 DOM 是否屬於目前這組 (lora_XX, strength_XX, prompt_XX)
                 const matchesTarget = targetNames.some(name => labelText.includes(name));
                 if (matchesTarget) {
                     if (isEnabled) {
@@ -291,6 +440,7 @@ function setupLikeJLorasNode(node) {
             container.classList.add(containerClass);
             container.style.gridTemplateRows = "none";
             bindDblClickEvents(container);
+            injectMoveButtons(container);
 
             if (!container.dataset.clickBound) {
                 container.dataset.clickBound = "true";

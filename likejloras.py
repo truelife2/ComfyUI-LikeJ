@@ -2,6 +2,14 @@ import folder_paths
 from nodes import LoraLoader
 
 # ==========================================
+# 0. 共用函式：取得排序後的 Lora 清單[cite: 1]
+# ==========================================
+def get_lora_list():
+    raw_loras = folder_paths.get_filename_list("loras")
+    return ['None'] + sorted(raw_loras, key=str.lower)
+
+
+# ==========================================
 # 1. 無 Prompt 版本
 # ==========================================
 class LikeJLoras:
@@ -21,8 +29,8 @@ class LikeJLoras:
             }
         }
 
-        raw_loras = folder_paths.get_filename_list("loras")
-        lora_list = ['None'] + sorted(raw_loras, key=str.lower)
+        # 這裡直接呼叫共用函式[cite: 1]
+        lora_list = get_lora_list()
 
         for i in range(1, cls.COUNT + 1):
             inputs["required"][f"enable_{i:02d}"] = ("BOOLEAN", {"default": True})
@@ -42,12 +50,10 @@ class LikeJLoras:
             lora_name = kwargs.get(f"lora_{i:02d}")
             strength = kwargs.get(f"strength_{i:02d}", 1.0)
 
-            # 必須同時滿足：開關開啟 + 非 None + 權重不為 0
             if enable and lora_name and lora_name != "None" and strength != 0:
                 if clip is not None:
                     model, clip = LoraLoader().load_lora(model, clip, lora_name, strength, strength)
                 else:
-                    # 未傳入 CLIP 時，只載入 MODEL (clip_strength 給 0)
                     model, _ = LoraLoader().load_lora(model, None, lora_name, strength, 0.0)
 
         return (model, clip)
@@ -79,8 +85,8 @@ class LikeJLorasWithPrompt(LikeJLoras):
             }
         }
 
-        raw_loras = folder_paths.get_filename_list("loras")
-        lora_list = ['None'] + sorted(raw_loras, key=str.lower)
+        # 同樣在這裡直接呼叫共用函式[cite: 1]
+        lora_list = get_lora_list()
 
         for i in range(1, cls.COUNT + 1):
             inputs["required"][f"enable_{i:02d}"] = ("BOOLEAN", {"default": True})
