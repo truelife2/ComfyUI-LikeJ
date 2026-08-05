@@ -2,7 +2,7 @@
 
 ## ComfyUI nodes:
 
-Design only for ComfyUI Node 2.0.
+> Designed specifically for ComfyUI V2.0
 
 1. LikeJ Load 10 Loras
    
