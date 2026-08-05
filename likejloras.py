@@ -15,6 +15,8 @@ class LikeJLoras:
         inputs = {
             "required": {
                 "model": ("MODEL",),
+            },
+            "optional": {
                 "clip": ("CLIP",),
             }
         }
@@ -34,7 +36,7 @@ class LikeJLoras:
 
         return inputs
 
-    def load_loras(self, model, clip, **kwargs):
+    def load_loras(self, model, clip=None, **kwargs):
         for i in range(1, self.COUNT + 1):
             enable = kwargs.get(f"enable_{i:02d}", True)
             lora_name = kwargs.get(f"lora_{i:02d}")
@@ -42,7 +44,11 @@ class LikeJLoras:
 
             # 必須同時滿足：開關開啟 + 非 None + 權重不為 0
             if enable and lora_name and lora_name != "None" and strength != 0:
-                model, clip = LoraLoader().load_lora(model, clip, lora_name, strength, strength)
+                if clip is not None:
+                    model, clip = LoraLoader().load_lora(model, clip, lora_name, strength, strength)
+                else:
+                    # 未傳入 CLIP 時，只載入 MODEL (clip_strength 給 0)
+                    model, _ = LoraLoader().load_lora(model, None, lora_name, strength, 0.0)
 
         return (model, clip)
 
@@ -67,6 +73,8 @@ class LikeJLorasWithPrompt(LikeJLoras):
         inputs = {
             "required": {
                 "model": ("MODEL",),
+            },
+            "optional": {
                 "clip": ("CLIP",),
             }
         }
@@ -91,7 +99,7 @@ class LikeJLorasWithPrompt(LikeJLoras):
 
         return inputs
 
-    def load_loras(self, model, clip, **kwargs):
+    def load_loras(self, model, clip=None, **kwargs):
         active_prompts = []
         for i in range(1, self.COUNT + 1):
             enable = kwargs.get(f"enable_{i:02d}", True)
@@ -100,7 +108,11 @@ class LikeJLorasWithPrompt(LikeJLoras):
             prompt = kwargs.get(f"prompt_{i:02d}", "").strip()
 
             if enable and lora_name and lora_name != "None" and strength != 0:
-                model, clip = LoraLoader().load_lora(model, clip, lora_name, strength, strength)
+                if clip is not None:
+                    model, clip = LoraLoader().load_lora(model, clip, lora_name, strength, strength)
+                else:
+                    model, _ = LoraLoader().load_lora(model, None, lora_name, strength, 0.0)
+                
                 if prompt:
                     active_prompts.append(prompt)
 
@@ -114,4 +126,3 @@ class LikeJ10LorasWithPrompt(LikeJLorasWithPrompt):
 
 class LikeJ5LorasWithPrompt(LikeJLorasWithPrompt):
     COUNT = 5
-

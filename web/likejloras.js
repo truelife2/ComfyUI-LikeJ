@@ -251,27 +251,36 @@ function setupLikeJLorasNode(node) {
         });
     };
 
-    // 根據 node.widgets 的內部 Boolean 值更新 DOM 變暗狀態
+    // 根據 widget.name 精確導航 DOM，避免因 DOM 順序不符導致亂套用
     const updateDisabledStates = (container) => {
         if (!node.widgets) return;
-        const step = hasPrompt ? 4 : 3;
-        const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
 
-        for (let i = 0; i < count; i++) {
-            const enableWidgetIndex = i * step;
-            const enableWidget = node.widgets[enableWidgetIndex];
+        for (let i = 1; i <= count; i++) {
+            const numStr = String(i).padStart(2, "0");
+            
+            // 找出對應組別的 widget 數值
+            const enableWidget = node.widgets.find(w => w.name === `enable_${numStr}`);
             const isEnabled = enableWidget ? Boolean(enableWidget.value) : true;
 
-            for (let j = 1; j < step; j++) {
-                const targetDom = domWidgets[i * step + j];
-                if (targetDom) {
+            // 尋找包含此編號的相關欄位名稱
+            const targetNames = [`lora_${numStr}`, `strength_${numStr}`];
+            if (hasPrompt) targetNames.push(`prompt_${numStr}`);
+
+            // 在 DOM 中精確尋找包含該名稱 Label 的 [data-testid='node-widget'] 元素
+            const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
+            
+            domWidgets.forEach(domEl => {
+                const labelText = domEl.textContent || "";
+                // 檢查此 DOM 是否屬於目前這組 (lora_XX, strength_XX, prompt_XX)
+                const matchesTarget = targetNames.some(name => labelText.includes(name));
+                if (matchesTarget) {
                     if (isEnabled) {
-                        targetDom.classList.remove("likej-widget-disabled");
+                        domEl.classList.remove("likej-widget-disabled");
                     } else {
-                        targetDom.classList.add("likej-widget-disabled");
+                        domEl.classList.add("likej-widget-disabled");
                     }
                 }
-            }
+            });
         }
     };
 
