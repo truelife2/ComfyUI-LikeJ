@@ -10,17 +10,18 @@ LikeJ Loras nodes ideas from:
 
 1. LikeJ Load 10 Loras
    
-   <img width="361" height="374" alt="image" src="https://github.com/user-attachments/assets/19843495-f177-4805-84ec-8db875ed2c03" />
+   <img width="569" height="388" alt="image" src="https://github.com/user-attachments/assets/ca65be54-2746-4af1-ac7c-4b787761fcb3" />
 
 2. LikeJ Load 20 Loras
    
-   <img width="624" height="585" alt="image" src="https://github.com/user-attachments/assets/c18b7511-be39-41a7-b4b8-966f86a1f78e" />
+   <img width="689" height="662" alt="image" src="https://github.com/user-attachments/assets/23e87860-8631-4e05-ba84-855a7573a4cd" />
 
 3. LikeJ Load 10 Loras(Prompt)
    
-   <img width="458" height="699" alt="image" src="https://github.com/user-attachments/assets/5c95011f-3973-415a-901b-865391a66033" />
+  <img width="506" height="758" alt="image" src="https://github.com/user-attachments/assets/c754e315-3e36-4a55-aaa3-442185874c4d" />
 
 4. LikeJ Load 5 Loras(Prompt)
    
-   <img width="387" height="415" alt="image" src="https://github.com/user-attachments/assets/7f40aea7-15ad-4b6d-876d-1d3a18a1c325" />
+   <img width="376" height="440" alt="image" src="https://github.com/user-attachments/assets/4f99fab5-56bc-491f-9dd6-b18803d37aca" />
+
 
