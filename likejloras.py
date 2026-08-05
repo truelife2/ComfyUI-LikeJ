@@ -113,7 +113,7 @@ class LikeJLorasWithPrompt(LikeJLoras):
             strength = kwargs.get(f"strength_{i:02d}", 1.0)
             prompt = kwargs.get(f"prompt_{i:02d}", "").strip()
 
-            if enable and lora_name and lora_name != "None" and strength != 0:
+            if enable and lora_name and lora_name != "None":
                 if clip is not None:
                     model, clip = LoraLoader().load_lora(model, clip, lora_name, strength, strength)
                 else:
