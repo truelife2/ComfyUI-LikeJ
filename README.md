@@ -32,6 +32,10 @@ LikeJ Whisper
 
   <img width="946" height="546" alt="image" src="https://github.com/user-attachments/assets/8c90bfe2-dd96-4df8-b61b-92ff16a76b6d" />
 
+  * OpenAI-whisper model list from audio_encoders folder.
+
+    <img width="623" height="246" alt="image" src="https://github.com/user-attachments/assets/159245dc-4332-4a92-894c-8dc59396ae56" />
+
 
 
 LikeJ Chinese Converter (繁簡轉換)
