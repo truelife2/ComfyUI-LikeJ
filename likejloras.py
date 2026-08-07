@@ -14,7 +14,7 @@ def get_lora_list():
 # ==========================================
 class LikeJLoras:
     COUNT = 10
-    CATEGORY = "loaders"
+    CATEGORY = "LikeJ"
     RETURN_TYPES = ("MODEL", "CLIP")
     FUNCTION = "load_loras"
 
