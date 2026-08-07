@@ -42,6 +42,11 @@ LikeJ Chinese Converter (繁簡轉換)
 
   <img width="1376" height="394" alt="image" src="https://github.com/user-attachments/assets/b531f5c5-0ceb-4d55-a2ad-24d894c5a0d7" />
 
+  * use opencc to convert
+
+    <img width="375" height="295" alt="image" src="https://github.com/user-attachments/assets/d8ce9ae5-a2ba-4976-a818-e5f51dcb36dc" />
+
+
 
 
 
