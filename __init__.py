@@ -1,9 +1,10 @@
 # 敬畏耶和華是智慧的開端；認識至聖者變是聰明。
 # The fear of the LORD is the beginning of wisdom, and knowledge of the Holy One is understanding.
 
-from . import likejloras
+from . import likejloras, likejmgpsbypass
 from . import likejwhisper
 from . import likejchconv
+from . import likejgpsbypass
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -11,7 +12,9 @@ NODE_CLASS_MAPPINGS = {
     "LikeJ10LorasWithPrompt": likejloras.LikeJ10LorasWithPrompt,
     "LikeJ5LorasWithPrompt": likejloras.LikeJ5LorasWithPrompt,
     "LikeJWhisper": likejwhisper.LikeJWhisper,
-    "LikeJChineseConverter": likejchconv.LikeJChineseConverter
+    "LikeJChineseConverter": likejchconv.LikeJChineseConverter,
+    "LikeJGroupsBypasser": likejgpsbypass.LikeJGroupsBypasser,
+    "LikeJMultiGroupsBypasser": likejmgpsbypass.LikeJMultiGroupsBypasser,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -20,7 +23,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJ10LorasWithPrompt": "LikeJ Load 10 Loras(Prompt)",
     "LikeJ5LorasWithPrompt": "LikeJ Load 5 Loras(Prompt)",
     "LikeJWhisper": "LikeJ Whisper",
-    "LikeJChineseConverter": "LikeJ Chinese Converter(繁簡轉換)"
+    "LikeJChineseConverter": "LikeJ Chinese Converter(繁簡轉換)",
+    "LikeJGroupsBypasser": "LikeJ Groups Bypasser",
+    "LikeJMultiGroupsBypasser": "LikeJ Multi-Groups Bypasser",
 }
 
 WEB_DIRECTORY = "./web"
