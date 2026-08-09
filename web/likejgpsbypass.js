@@ -28,13 +28,10 @@ app.registerExtension({
                 return btn;
             };
 
-            // 定義狀態圖示（取代啟用／停用文字）
             const iconCheck = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="#38bdf8"><polygon points="6 3 20 12 6 21 6 3"/></svg>`;
             const iconBan = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
 
-            // 按鈕一：Pos 啟用 (Check) / Neg 停用 (Ban)
             const btnEnable = createBtn("Pos", 0, `${iconCheck} &nbsp;|&nbsp; Neg ${iconBan}`);
-            // 按鈕二：Pos 停用 (Ban) / Neg 啟用 (Check)
             const btnBypass = createBtn("Pos", 4, `${iconBan} &nbsp;|&nbsp; Neg ${iconCheck}`);
 
             container.appendChild(btnEnable);
@@ -89,7 +86,7 @@ app.registerExtension({
 
                 if (canvasGroups.length === 0) {
                     const emptyMsg = document.createElement("div");
-                    emptyMsg.textContent = "(畫布上尚無 Group)";
+                    emptyMsg.textContent = "(No Group)";
                     emptyMsg.style.cssText = "color: #71717a; padding: 12px 0; text-align: center;";
                     popup.appendChild(emptyMsg);
                 } else {
@@ -171,7 +168,7 @@ app.registerExtension({
                         const attrName = input.getAttribute('aria-label');
                         if (attrName === 'pos_groups' || attrName === 'neg_groups') {
                             const widgetObj = (attrName === 'pos_groups') ? targetWidget : invertWidget;
-                            const menuTitle = (attrName === 'pos_groups') ? "☑ 勾選 pos_groups" : "☑ 勾選 neg_groups";
+                            const menuTitle = (attrName === 'pos_groups') ? "☑ Select pos_groups" : "☑ Select neg_groups";
 
                             const parent = input.parentElement;
                             if (parent && widgetObj && !parent.querySelector(`.likej-btn-${attrName}`)) {
@@ -179,7 +176,7 @@ app.registerExtension({
 
                                 const btn = document.createElement("button");
                                 btn.className = `likej-inline-btn likej-btn-${attrName}`;
-                                btn.title = "選擇 Group";
+                                btn.title = "Select Group";
                                 btn.type = "button";
                                 btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 2 2 4-4"/><path d="m3 8 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>`;
 
