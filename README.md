@@ -25,3 +25,29 @@ LikeJ Loras nodes ideas from:
    <img width="376" height="440" alt="image" src="https://github.com/user-attachments/assets/4f99fab5-56bc-491f-9dd6-b18803d37aca" />
 
 
+LikeJ whisper node ideas from:
+  * https://github.com/Saganaki22/Dots-TTS-ComfyUI
+
+LikeJ Whisper
+
+  <img width="946" height="546" alt="image" src="https://github.com/user-attachments/assets/8c90bfe2-dd96-4df8-b61b-92ff16a76b6d" />
+
+  * OpenAI-whisper model list from audio_encoders folder.
+
+    <img width="623" height="246" alt="image" src="https://github.com/user-attachments/assets/159245dc-4332-4a92-894c-8dc59396ae56" />
+
+
+
+LikeJ Chinese Converter (繁簡轉換)
+
+  <img width="1376" height="394" alt="image" src="https://github.com/user-attachments/assets/b531f5c5-0ceb-4d55-a2ad-24d894c5a0d7" />
+
+  * use opencc to convert
+
+    <img width="375" height="295" alt="image" src="https://github.com/user-attachments/assets/d8ce9ae5-a2ba-4976-a818-e5f51dcb36dc" />
+
+
+
+
+
+  
