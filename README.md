@@ -48,6 +48,17 @@ LikeJ Chinese Converter (繁簡轉換)
 
 
 
+LikeJ Groups Bypasser
 
+  <img width="361" height="241" alt="image" src="https://github.com/user-attachments/assets/b8345978-5192-4f5f-91e2-1e45c9c85185" />
+<img width="358" height="279" alt="image" src="https://github.com/user-attachments/assets/a49fd801-9e20-466a-8b50-31eabd73c1a4" />
+
+LikeJ Multi-Groups Bypasser
+
+  <img width="704" height="238" alt="image" src="https://github.com/user-attachments/assets/0bab1638-d426-4746-be50-ac1811b18ca8" />
+
+  <img width="673" height="223" alt="image" src="https://github.com/user-attachments/assets/6bc9cd08-89cc-4e6a-a708-21df062a8a22" />
+
+  <img width="673" height="299" alt="image" src="https://github.com/user-attachments/assets/c056ad58-25b8-4092-8b8b-64b10edcbae7" />
 
   
