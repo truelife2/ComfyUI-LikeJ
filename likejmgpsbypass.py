@@ -13,5 +13,5 @@ class LikeJMultiGroupsBypasser:
     CATEGORY = "LikeJ"
     OUTPUT_NODE = True
 
-    def switch_groups(self, groups_data):
+    def switch_groups(self, **kwargs):
         return {}
