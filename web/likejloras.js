@@ -283,6 +283,7 @@ function setupLikeJLorasNode(node) {
 
     const count = parseInt(match[1], 10);
     const hasPrompt = !!match[2];
+    const groupSize = hasPrompt ? 4 : 3;
 
     const targetHeight = hasPrompt 
         ? 620 + (count - 10) * 56 
@@ -367,6 +368,21 @@ function setupLikeJLorasNode(node) {
         }
     };
 
+    // 將數值精確同步回 HTML Form 輸入框
+    const setDomInputValue = (domEl, val) => {
+        if (!domEl || val === undefined) return;
+        const input = domEl.querySelector("input, select, textarea");
+        if (input) {
+            if (input.type === "checkbox") {
+                input.checked = Boolean(val);
+            } else {
+                input.value = val;
+            }
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+    };
+
     const swapRows = (a, b) => {
         if (a < 1 || a > count || b < 1 || b > count) return;
         if (!node.widgets) return;
@@ -386,7 +402,7 @@ function setupLikeJLorasNode(node) {
 
         if (!rowA.enable || !rowB.enable) return;
 
-        // 交換內部資料值
+        // 1. 交換內部資料值
         ['enable', 'lora', 'strength', 'prompt'].forEach(key => {
             if (rowA[key] && rowB[key]) {
                 const temp = rowA[key].value;
@@ -395,7 +411,7 @@ function setupLikeJLorasNode(node) {
             }
         });
 
-        // 觸發節點本身的 callback 讓 Nodes 2.0 狀態更新
+        // 2. 觸發 callback 讓節點內部狀態更新
         node.widgets.forEach(w => {
             if (w.callback) {
                 try {
@@ -404,17 +420,24 @@ function setupLikeJLorasNode(node) {
             }
         });
 
-        // 強制重新整理 Nodes 2.0 DOM 裡各個 input/select 欄位的顯示與綁定
+        // 3. 將新數值同步回 DOM HTML 元素
         const container = document.querySelector(`[data-widgets-grid-node-id="${node.id}"]`);
         if (container) {
             const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
-            domWidgets.forEach(domEl => {
-                const input = domEl.querySelector("input, select, textarea");
-                if (input) {
-                    input.dispatchEvent(new Event("input", { bubbles: true }));
-                    input.dispatchEvent(new Event("change", { bubbles: true }));
+            
+            const syncRowToDom = (rowIdx, rowWidgets) => {
+                const baseIdx = (rowIdx - 1) * groupSize;
+                setDomInputValue(domWidgets[baseIdx], rowWidgets.enable?.value);
+                setDomInputValue(domWidgets[baseIdx + 1], rowWidgets.lora?.value);
+                setDomInputValue(domWidgets[baseIdx + 2], rowWidgets.strength?.value);
+                if (hasPrompt) {
+                    setDomInputValue(domWidgets[baseIdx + 3], rowWidgets.prompt?.value);
                 }
-            });
+            };
+
+            syncRowToDom(a, rowA);
+            syncRowToDom(b, rowB);
+
             updateDisabledStates(container);
         }
 
@@ -424,23 +447,29 @@ function setupLikeJLorasNode(node) {
         if (app.canvas) app.canvas.setDirty(true, true);
     };
 
+    // 依據嚴格索引（Index Positioning）直接控制 Disable 變暗樣式
     const updateDisabledStates = (container) => {
         if (!node.widgets) return;
+
+        const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
 
         for (let i = 1; i <= count; i++) {
             const numStr = String(i).padStart(2, "0");
             const enableWidget = node.widgets.find(w => w.name === `enable_${numStr}`);
             const isEnabled = enableWidget ? Boolean(enableWidget.value) : true;
 
-            const targetNames = [`lora_${numStr}`, `strength_${numStr}`];
-            if (hasPrompt) targetNames.push(`prompt_${numStr}`);
+            const baseIdx = (i - 1) * groupSize;
 
-            const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
-            
-            domWidgets.forEach(domEl => {
-                const labelText = domEl.textContent || "";
-                const matchesTarget = targetNames.some(name => labelText.includes(name));
-                if (matchesTarget) {
+            const targets = [
+                domWidgets[baseIdx + 1], // LoRA
+                domWidgets[baseIdx + 2]  // Strength
+            ];
+            if (hasPrompt) {
+                targets.push(domWidgets[baseIdx + 3]); // Prompt
+            }
+
+            targets.forEach(domEl => {
+                if (domEl) {
                     if (isEnabled) {
                         domEl.classList.remove("likej-widget-disabled");
                     } else {
