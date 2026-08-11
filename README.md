@@ -53,6 +53,7 @@
 
   <img width="361" height="241" alt="image" src="https://github.com/user-attachments/assets/b8345978-5192-4f5f-91e2-1e45c9c85185" />
 <img width="358" height="279" alt="image" src="https://github.com/user-attachments/assets/a49fd801-9e20-466a-8b50-31eabd73c1a4" />
+<img width="1091" height="238" alt="image" src="https://github.com/user-attachments/assets/aa7e041a-4b34-4a93-94af-c4a1b4306201" />
 
 ### LikeJ Multi-Groups Bypasser
 
