@@ -369,7 +369,6 @@ function setupLikeJLorasNode(node) {
         return true;
     };
 
-    // 精確限制搜尋範圍於 Value 區塊，絕對不更新 Label 標籤文字
     const setDomInputValue = (domEl, val) => {
         if (!domEl || val === undefined) return;
 
@@ -469,7 +468,6 @@ function setupLikeJLorasNode(node) {
         if (app.canvas) app.canvas.setDirty(true, true);
     };
 
-    // 依據嚴格索引（Index Positioning）直接控制 Disable 變暗樣式
     const updateDisabledStates = (container) => {
         if (!node.widgets) return;
 
