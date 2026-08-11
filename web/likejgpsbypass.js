@@ -154,6 +154,8 @@ app.registerExtension({
                 setTimeout(() => document.addEventListener("pointerdown", onPointerDown, true), 50);
             };
 
+            let observer = null;
+
             // 3. 輸入框按鈕注入
             const setupDOM = () => {
                 const currentId = this.id;
@@ -218,17 +220,17 @@ app.registerExtension({
                     }
                 });
 
+                if (observer) {
+                    observer.disconnect();
+                    observer = null;
+                }
                 return true;
             };
-
-            const timer = setInterval(() => {
-                if (setupDOM()) clearInterval(timer);
-            }, 100);
-
-            const observer = new MutationObserver(() => setupDOM());
+            
+            observer = new MutationObserver(() => setupDOM());
             observer.observe(document.body, { childList: true, subtree: true });
 
-            this.setGroupsMode = function(primaryMode) {
+            this.setGroupsMode = function (primaryMode) {
                 const invertMode = (primaryMode === 0) ? 4 : 0;
                 const targetNames = (targetWidget && targetWidget.value) ? targetWidget.value.split(',').map(s => s.trim()).filter(Boolean) : [];
                 const invertNames = (invertWidget && invertWidget.value) ? invertWidget.value.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -240,7 +242,7 @@ app.registerExtension({
                     else if (invertNames.includes(group.title)) targetMode = invertMode;
 
                     if (targetMode !== null) {
-                        group.recomputeInsideNodes(); 
+                        group.recomputeInsideNodes();
                         for (let node of group._nodes) {
                             if (node.mode !== targetMode) {
                                 node.mode = targetMode;

@@ -471,7 +471,6 @@ function setupLikeJLorasNode(node) {
 
     // 依據嚴格索引（Index Positioning）直接控制 Disable 變暗樣式
     const updateDisabledStates = (container) => {
-        console.log(node.widgets);
         if (!node.widgets) return;
 
         const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
