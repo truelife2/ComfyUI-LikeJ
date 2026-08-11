@@ -285,8 +285,8 @@ function setupLikeJLorasNode(node) {
     const hasPrompt = !!match[2];
     const groupSize = hasPrompt ? 4 : 3;
 
-    const targetHeight = hasPrompt 
-        ? 620 + (count - 10) * 56 
+    const targetHeight = hasPrompt
+        ? 620 + (count - 10) * 56
         : 345 + (count - 10) * 28;
     const minWidth = hasPrompt ? 400 : 380;
 
@@ -299,8 +299,8 @@ function setupLikeJLorasNode(node) {
     node.computeSize = () => [Math.max(minWidth, node.size ? node.size[0] : minWidth), targetHeight];
 
     const bindDblClickEvents = (container) => {
-        const selector = hasPrompt 
-            ? ":scope > [data-testid='node-widget']:nth-child(4n+3)" 
+        const selector = hasPrompt
+            ? ":scope > [data-testid='node-widget']:nth-child(4n+3)"
             : ":scope > [data-testid='node-widget']:nth-child(3n)";
 
         const strengthElements = container.querySelectorAll(selector);
@@ -329,49 +329,66 @@ function setupLikeJLorasNode(node) {
 
     const injectMoveButtons = (container) => {
         const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
-        
+
         for (let i = 1; i <= count; i++) {
-            const numStr = String(i).padStart(2, "0");
-            const targetName = `lora_${numStr}`;
+            const loraWidgetIdx = (i - 1) * groupSize + 1;
+            const domEl = domWidgets[loraWidgetIdx];
+            if (!domEl) return false;
 
-            domWidgets.forEach(domEl => {
-                const label = domEl.querySelector("[data-testid='widget-layout-field-label']");
-                if (label && label.textContent.includes(targetName)) {
-                    if (label.querySelector(".likej-row-controls")) return;
+            const label = domEl.querySelector("[data-testid='widget-layout-field-label']");
+            if (!label) return false;
 
-                    const controls = document.createElement("span");
-                    controls.className = "likej-row-controls";
+            if (label.querySelector(".likej-row-controls")) continue;
 
-                    const upBtn = document.createElement("button");
-                    upBtn.className = "likej-move-btn";
-                    upBtn.textContent = "▲";
-                    upBtn.title = "Move up";
-                    upBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        swapRows(i, i - 1);
-                    };
+            const controls = document.createElement("span");
+            controls.className = "likej-row-controls";
 
-                    const downBtn = document.createElement("button");
-                    downBtn.className = "likej-move-btn";
-                    downBtn.textContent = "▼";
-                    downBtn.title = "Move down";
-                    downBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        swapRows(i, i + 1);
-                    };
+            const upBtn = document.createElement("button");
+            upBtn.className = "likej-move-btn";
+            upBtn.textContent = "▲";
+            upBtn.title = "Move up";
+            upBtn.onclick = (e) => {
+                e.stopPropagation();
+                swapRows(i, i - 1);
+            };
 
-                    controls.appendChild(upBtn);
-                    controls.appendChild(downBtn);
-                    label.prepend(controls);
-                }
-            });
+            const downBtn = document.createElement("button");
+            downBtn.className = "likej-move-btn";
+            downBtn.textContent = "▼";
+            downBtn.title = "Move down";
+            downBtn.onclick = (e) => {
+                e.stopPropagation();
+                swapRows(i, i + 1);
+            };
+
+            controls.appendChild(upBtn);
+            controls.appendChild(downBtn);
+            label.prepend(controls);
         }
+
+        return true;
     };
 
-    // 將數值精確同步回 HTML Form 輸入框
+    // 精確限制搜尋範圍於 Value 區塊，絕對不更新 Label 標籤文字
     const setDomInputValue = (domEl, val) => {
         if (!domEl || val === undefined) return;
-        const input = domEl.querySelector("input, select, textarea");
+
+        const labelEl = domEl.querySelector('[data-testid="widget-layout-field-label"]');
+        const valueContainer = labelEl ? labelEl.nextElementSibling : domEl;
+        if (!valueContainer) return;
+
+        // 1. 處理開關按鈕 (Switch / Boolean)
+        const switchBtn = valueContainer.querySelector('button[role="switch"]');
+        if (switchBtn) {
+            const isChecked = switchBtn.getAttribute("aria-checked") === "true";
+            if (isChecked !== Boolean(val)) {
+                switchBtn.click();
+            }
+            return;
+        }
+
+        // 2. 處理標準輸入框 (Input / Textarea)
+        const input = valueContainer.querySelector("input, textarea");
         if (input) {
             if (input.type === "checkbox") {
                 input.checked = Boolean(val);
@@ -380,6 +397,13 @@ function setupLikeJLorasNode(node) {
             }
             input.dispatchEvent(new Event("input", { bubbles: true }));
             input.dispatchEvent(new Event("change", { bubbles: true }));
+            return;
+        }
+
+        // 3. 處理下拉選單顯示文字 (LoRA Combo 區塊)
+        const textDisplay = valueContainer.querySelector(".truncate, span");
+        if (textDisplay) {
+            textDisplay.textContent = val;
         }
     };
 
@@ -400,8 +424,6 @@ function setupLikeJLorasNode(node) {
         const rowA = getWidgetsOfIndex(a);
         const rowB = getWidgetsOfIndex(b);
 
-        if (!rowA.enable || !rowB.enable) return;
-
         // 1. 交換內部資料值
         ['enable', 'lora', 'strength', 'prompt'].forEach(key => {
             if (rowA[key] && rowB[key]) {
@@ -416,7 +438,7 @@ function setupLikeJLorasNode(node) {
             if (w.callback) {
                 try {
                     w.callback(w.value, app.canvas, node, null, null);
-                } catch (err) {}
+                } catch (err) { }
             }
         });
 
@@ -424,7 +446,7 @@ function setupLikeJLorasNode(node) {
         const container = document.querySelector(`[data-widgets-grid-node-id="${node.id}"]`);
         if (container) {
             const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
-            
+
             const syncRowToDom = (rowIdx, rowWidgets) => {
                 const baseIdx = (rowIdx - 1) * groupSize;
                 setDomInputValue(domWidgets[baseIdx], rowWidgets.enable?.value);
@@ -449,6 +471,7 @@ function setupLikeJLorasNode(node) {
 
     // 依據嚴格索引（Index Positioning）直接控制 Disable 變暗樣式
     const updateDisabledStates = (container) => {
+        console.log(node.widgets);
         if (!node.widgets) return;
 
         const domWidgets = Array.from(container.querySelectorAll(":scope > [data-testid='node-widget']"));
@@ -480,33 +503,43 @@ function setupLikeJLorasNode(node) {
         }
     };
 
+    let observer = null;
+
     const fixDom = () => {
         const container = document.querySelector(`[data-widgets-grid-node-id="${node.id}"]`);
-        if (container) {
-            const containerClass = hasPrompt ? "likej-loras-prompt-container" : "likej-loras-container";
-            container.classList.add(containerClass);
-            container.style.gridTemplateRows = "none";
-            bindDblClickEvents(container);
-            injectMoveButtons(container);
+        if (!container) return false;
 
-            if (!container.dataset.clickBound) {
-                container.dataset.clickBound = "true";
-                container.addEventListener("click", () => {
-                    setTimeout(() => updateDisabledStates(container), 20);
-                });
-            }
+        const domWidgets = container.querySelectorAll(":scope > [data-testid='node-widget']");
+        if (domWidgets.length < count * groupSize) return false;
 
-            updateDisabledStates(container);
+        const isInjected = injectMoveButtons(container);
+        if (!isInjected) return false;
+
+        const containerClass = hasPrompt ? "likej-loras-prompt-container" : "likej-loras-container";
+        container.classList.add(containerClass);
+        container.style.gridTemplateRows = "none";
+
+        bindDblClickEvents(container);
+
+        if (!container.dataset.clickBound) {
+            container.dataset.clickBound = "true";
+            container.addEventListener("click", () => {
+                setTimeout(() => updateDisabledStates(container), 20);
+            });
         }
+
+        updateDisabledStates(container);
         enforceSize();
+
+        if (observer) {
+            observer.disconnect();
+            observer = null;
+        }
+        return true;
     };
 
-    const observer = new MutationObserver(() => fixDom());
+    observer = new MutationObserver(() => fixDom());
     observer.observe(document.body, { childList: true, subtree: true });
-
-    fixDom();
-    setTimeout(fixDom, 100);
-    setTimeout(fixDom, 400);
 }
 
 app.registerExtension({
