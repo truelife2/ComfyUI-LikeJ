@@ -8,27 +8,26 @@ LikeJ Loras nodes ideas from:
    * https://github.com/mrgebien/TooManyLoras  
    * https://github.com/orion4d/Orion4D_ModelOnlyLoRA  
 
-1. LikeJ Load 10 Loras
+### LikeJ Load 10 Loras
    
    <img width="569" height="388" alt="image" src="https://github.com/user-attachments/assets/ca65be54-2746-4af1-ac7c-4b787761fcb3" />
 
-2. LikeJ Load 20 Loras
+### LikeJ Load 20 Loras
    
    <img width="689" height="662" alt="image" src="https://github.com/user-attachments/assets/23e87860-8631-4e05-ba84-855a7573a4cd" />
 
-3. LikeJ Load 10 Loras(Prompt)
+### LikeJ Load 10 Loras(Prompt)
    
   <img width="506" height="758" alt="image" src="https://github.com/user-attachments/assets/c754e315-3e36-4a55-aaa3-442185874c4d" />
 
-4. LikeJ Load 5 Loras(Prompt)
+### LikeJ Load 5 Loras(Prompt)
    
    <img width="376" height="440" alt="image" src="https://github.com/user-attachments/assets/4f99fab5-56bc-491f-9dd6-b18803d37aca" />
 
+### LikeJ Whisper
 
-LikeJ whisper node ideas from:
-  * https://github.com/Saganaki22/Dots-TTS-ComfyUI
-
-LikeJ Whisper
+> LikeJ whisper node ideas from:
+>  * https://github.com/Saganaki22/Dots-TTS-ComfyUI
 
   Use transformers, torchaudio to process.
 
@@ -40,7 +39,7 @@ LikeJ Whisper
 
 
 
-LikeJ Chinese Converter (繁簡轉換)
+### LikeJ Chinese Converter (繁簡轉換)
 
   <img width="1376" height="394" alt="image" src="https://github.com/user-attachments/assets/b531f5c5-0ceb-4d55-a2ad-24d894c5a0d7" />
 
@@ -50,12 +49,12 @@ LikeJ Chinese Converter (繁簡轉換)
 
 
 
-LikeJ Groups Bypasser
+### LikeJ Groups Bypasser
 
   <img width="361" height="241" alt="image" src="https://github.com/user-attachments/assets/b8345978-5192-4f5f-91e2-1e45c9c85185" />
 <img width="358" height="279" alt="image" src="https://github.com/user-attachments/assets/a49fd801-9e20-466a-8b50-31eabd73c1a4" />
 
-LikeJ Multi-Groups Bypasser
+### LikeJ Multi-Groups Bypasser
 
   <img width="704" height="238" alt="image" src="https://github.com/user-attachments/assets/0bab1638-d426-4746-be50-ac1811b18ca8" />
 
@@ -64,7 +63,7 @@ LikeJ Multi-Groups Bypasser
   <img width="673" height="299" alt="image" src="https://github.com/user-attachments/assets/c056ad58-25b8-4092-8b8b-64b10edcbae7" />
 
 
-LikeJ Previewer
+### LikeJ Previewer
 
   <img width="340" height="219" alt="image" src="https://github.com/user-attachments/assets/12c72714-c0d8-415a-ad28-2dea216cd1bf" />
   <img width="364" height="82" alt="image" src="https://github.com/user-attachments/assets/4fa337d1-4a1f-4069-a409-0d447b07a768" />
