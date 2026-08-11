@@ -68,6 +68,8 @@ LikeJ Previewer
 
   <img width="340" height="219" alt="image" src="https://github.com/user-attachments/assets/12c72714-c0d8-415a-ad28-2dea216cd1bf" />
   <img width="364" height="82" alt="image" src="https://github.com/user-attachments/assets/4fa337d1-4a1f-4069-a409-0d447b07a768" />
+  <img width="670" height="93" alt="image" src="https://github.com/user-attachments/assets/a3361c85-82cf-44e5-b4c1-3e696f152afa" />
+
 
 
   
