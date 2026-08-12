@@ -7,6 +7,7 @@ from . import likejchconv
 from . import likejgpsbypass
 from . import likejpreviewer
 from . import likejpathparse
+from . import likejallpinyin
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -19,6 +20,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJMultiGroupsBypasser": likejmgpsbypass.LikeJMultiGroupsBypasser,
     "LikeJPreviewer": likejpreviewer.LikeJPreviewer,
     "LikeJPathParse": likejpathparse.LikeJPathParse,
+    "LikeJAllPinyin": likejallpinyin.LikeJAllPinyin,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -32,6 +34,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJMultiGroupsBypasser": "LikeJ Multi-Groups Bypasser",
     "LikeJPreviewer": "LikeJ Previewer",
     "LikeJPathParse": "LikeJ Path Parse",
+    "LikeJAllPinyin": "LikeJ All Pinyin",
 }
 
 WEB_DIRECTORY = "./web"
