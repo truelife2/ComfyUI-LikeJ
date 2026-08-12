@@ -1,6 +1,7 @@
 import opencc
 
 CONVERT_MODES = {
+    "None": "none",
     "簡體 -> 台灣繁體 (s2tw)": "s2tw",
     "台灣繁體 -> 簡體 (tw2s)": "tw2s",
     "簡體 -> 標準繁體 (s2t)": "s2t",
@@ -31,6 +32,9 @@ class LikeJChineseConverter:
             return ("", )
 
         config_name = CONVERT_MODES.get(mode, "tw2s")
+
+        if config_name == "none":
+            return (str(text), )
 
         if config_name not in self.converters:
             self.converters[config_name] = opencc.OpenCC(config_name)
