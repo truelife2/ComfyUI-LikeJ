@@ -6,6 +6,7 @@ from . import likejwhisper
 from . import likejchconv
 from . import likejgpsbypass
 from . import likejpreviewer
+from . import likejpathparse
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -17,6 +18,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJGroupsBypasser": likejgpsbypass.LikeJGroupsBypasser,
     "LikeJMultiGroupsBypasser": likejmgpsbypass.LikeJMultiGroupsBypasser,
     "LikeJPreviewer": likejpreviewer.LikeJPreviewer,
+    "LikeJPathParse": likejpathparse.LikeJPathParse,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -29,6 +31,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJGroupsBypasser": "LikeJ Groups Bypasser",
     "LikeJMultiGroupsBypasser": "LikeJ Multi-Groups Bypasser",
     "LikeJPreviewer": "LikeJ Previewer",
+    "LikeJPathParse": "LikeJ Path Parse",
 }
 
 WEB_DIRECTORY = "./web"
