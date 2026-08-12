@@ -43,7 +43,7 @@
 
   <img width="1376" height="394" alt="image" src="https://github.com/user-attachments/assets/b531f5c5-0ceb-4d55-a2ad-24d894c5a0d7" />
 
-  * use opencc to convert
+  > use opencc to convert
 
 <img width="370" height="322" alt="image" src="https://github.com/user-attachments/assets/0ad8ff7b-e2e7-4b4c-a228-b3b20e25afe0" />
 
@@ -79,7 +79,7 @@
    <img width="378" height="316" alt="image" src="https://github.com/user-attachments/assets/4bb7845a-8b8c-44ac-ae87-cd49238fb2b8" />
 
 ## LikeJ All Pinyin
-
+   > use pypinyin to convert.
    <img width="891" height="361" alt="image" src="https://github.com/user-attachments/assets/8b600801-8283-45d9-b418-2927fddc4eb1" />
 <img width="524" height="283" alt="image" src="https://github.com/user-attachments/assets/58ba2367-1e7a-4836-95e9-46ffe5980d19" />
 <img width="475" height="220" alt="image" src="https://github.com/user-attachments/assets/7bb48fcb-5e6c-4ed6-a51b-eb4901040457" />
