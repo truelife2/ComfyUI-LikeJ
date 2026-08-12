@@ -23,7 +23,7 @@ class LikeJAllPinyin:
     RETURN_NAMES = ("pinyin_text",)
     OUTPUT_NODE = True
     FUNCTION = "process_pinyin"
-    CATEGORY = "LikeJ/Text"
+    CATEGORY = "LikeJ"
 
     def process_pinyin(self, text, style):
         style_map = {
