@@ -2,7 +2,7 @@ import { app } from "../../scripts/app.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 
 const nodeCache = new WeakMap();
-const PREVIEW_PREFIX = "🔣";
+const PREVIEW_PREFIX = "✅";
 
 function setNodeCache(node, slotIdx, val) {
     if (!node) return;
