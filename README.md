@@ -45,7 +45,7 @@
 
   * use opencc to convert
 
-    <img width="375" height="295" alt="image" src="https://github.com/user-attachments/assets/d8ce9ae5-a2ba-4976-a818-e5f51dcb36dc" />
+<img width="370" height="322" alt="image" src="https://github.com/user-attachments/assets/0ad8ff7b-e2e7-4b4c-a228-b3b20e25afe0" />
 
 
 
