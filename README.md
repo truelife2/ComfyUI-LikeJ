@@ -78,5 +78,11 @@
    <img width="363" height="308" alt="image" src="https://github.com/user-attachments/assets/95f117b5-6079-4b11-a9b4-f6ce3a33f71d" />
    <img width="378" height="316" alt="image" src="https://github.com/user-attachments/assets/4bb7845a-8b8c-44ac-ae87-cd49238fb2b8" />
 
+## LikeJ All Pinyin
+
+   <img width="891" height="361" alt="image" src="https://github.com/user-attachments/assets/8b600801-8283-45d9-b418-2927fddc4eb1" />
+<img width="524" height="283" alt="image" src="https://github.com/user-attachments/assets/58ba2367-1e7a-4836-95e9-46ffe5980d19" />
+<img width="475" height="220" alt="image" src="https://github.com/user-attachments/assets/7bb48fcb-5e6c-4ed6-a51b-eb4901040457" />
+
 
   
