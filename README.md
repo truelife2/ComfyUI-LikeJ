@@ -70,6 +70,13 @@
   <img width="364" height="82" alt="image" src="https://github.com/user-attachments/assets/4fa337d1-4a1f-4069-a409-0d447b07a768" />
   <img width="670" height="93" alt="image" src="https://github.com/user-attachments/assets/a3361c85-82cf-44e5-b4c1-3e696f152afa" />
 
+### LikeJ Path Parse
+
+   > Path parse idea from:
+   > https://github.com/StableLlama/ComfyUI-basic_data_handling
+
+   <img width="363" height="308" alt="image" src="https://github.com/user-attachments/assets/95f117b5-6079-4b11-a9b4-f6ce3a33f71d" />
+   <img width="378" height="316" alt="image" src="https://github.com/user-attachments/assets/4bb7845a-8b8c-44ac-ae87-cd49238fb2b8" />
 
 
   
