@@ -84,5 +84,13 @@
 <img width="524" height="283" alt="image" src="https://github.com/user-attachments/assets/58ba2367-1e7a-4836-95e9-46ffe5980d19" />
 <img width="475" height="220" alt="image" src="https://github.com/user-attachments/assets/7bb48fcb-5e6c-4ed6-a51b-eb4901040457" />
 
+## LikeJ Load Text File
+   ### upload file
+   <img width="515" height="414" alt="image" src="https://github.com/user-attachments/assets/3e2d7aff-6ef7-46bf-a890-5579e074dfd4" />
+
+   ### paste path
+   <img width="524" height="412" alt="image" src="https://github.com/user-attachments/assets/d9e89a0a-5c6f-4449-a6da-9e92ff769c69" />
+<img width="504" height="400" alt="image" src="https://github.com/user-attachments/assets/b2f728cb-45ed-4a6d-a914-33cf06d73a51" />
+
 
   
