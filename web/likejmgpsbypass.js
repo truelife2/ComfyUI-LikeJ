@@ -420,8 +420,34 @@ app.registerExtension({
                     renderRows();
                 };
 
+                // 新增：全部啟用按鈕
+                const btnAllEnable = document.createElement("button");
+                btnAllEnable.type = "button";
+                btnAllEnable.title = "Enable all group lists";
+                btnAllEnable.innerHTML = iconCheck;
+                btnAllEnable.style.cssText = "height: 26px; min-width: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--component-node-widget-background, #27272a); border-radius: 4px; border: 1px solid var(--border-color, #3f3f46);";
+                btnAllEnable.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    groupLists.forEach(item => setGroupsModeByString(item.groups, 0));
+                };
+
+                // 新增：全部停用/Bypass按鈕
+                const btnAllDisable = document.createElement("button");
+                btnAllDisable.type = "button";
+                btnAllDisable.title = "Bypass all group lists";
+                btnAllDisable.innerHTML = iconBan;
+                btnAllDisable.style.cssText = "height: 26px; min-width: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--component-node-widget-background, #27272a); border-radius: 4px; border: 1px solid var(--border-color, #3f3f46);";
+                btnAllDisable.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    groupLists.forEach(item => setGroupsModeByString(item.groups, 4));
+                };
+
                 bottomBar.appendChild(toggleWrapper);
                 bottomBar.appendChild(btnAdd);
+                bottomBar.appendChild(btnAllEnable);
+                bottomBar.appendChild(btnAllDisable);
                 rowsContainer.appendChild(bottomBar);
 
                 if (typeof this.setDirtyCanvas === "function") {
