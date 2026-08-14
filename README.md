@@ -57,9 +57,9 @@
 
 ### LikeJ Multi-Groups Bypasser
 
-  <img width="704" height="238" alt="image" src="https://github.com/user-attachments/assets/0bab1638-d426-4746-be50-ac1811b18ca8" />
+  <img width="517" height="263" alt="image" src="https://github.com/user-attachments/assets/dcbbd51f-6bab-4e8f-a80a-41d0f42f675c" />
 
-  <img width="673" height="223" alt="image" src="https://github.com/user-attachments/assets/6bc9cd08-89cc-4e6a-a708-21df062a8a22" />
+  <img width="485" height="257" alt="image" src="https://github.com/user-attachments/assets/dd6f54cb-5582-473d-bc80-740d2abaf54c" />
 
   <img width="673" height="299" alt="image" src="https://github.com/user-attachments/assets/c056ad58-25b8-4092-8b8b-64b10edcbae7" />
 
