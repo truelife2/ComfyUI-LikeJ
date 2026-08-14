@@ -96,6 +96,7 @@
    > Load images idea from:
    > https://github.com/ltdrdata/ComfyUI-Inspire-Pack
 <img width="436" height="745" alt="image" src="https://github.com/user-attachments/assets/7d8ad422-7a29-4c31-b5d8-f49c68d9dc76" />
+<img width="397" height="231" alt="image" src="https://github.com/user-attachments/assets/1219811b-c158-4a3a-ba2c-6277ddca520a" />
 
 
   
