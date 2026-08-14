@@ -22,10 +22,10 @@ class LikeJLoadImages:
                 }),
             },
             "optional": {
-                "filename_filter": ("STRING", {
+                "regex": ("STRING", {
                     "default": "", 
                     "multiline": False,
-                    "placeholder": "Regex pattern (e.g., ^img_.*)"
+                    "placeholder": "(e.g., ^img_.*)"
                 }),
                 "skip_first": ("INT", {"default": 0, "min": 0, "max": 10000, "step": 1}),
                 "load_cap": ("INT", {
@@ -44,26 +44,22 @@ class LikeJLoadImages:
     FUNCTION = "load_images"
     CATEGORY = "LikeJ"
 
-    def load_images(self, directory: str, files_output_mode: str, filename_filter: str = "", skip_first: int = 0, load_cap: int = 0):
+    def load_images(self, directory: str, files_output_mode: str, regex: str = "", skip_first: int = 0, load_cap: int = 0):
         if not os.path.isdir(directory):
             raise ValueError(f"[LikeJLoadImages] Directory not found: {directory}")
 
-        # Supported image extensions
         valid_extensions = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".tif"}
-        
-        # Find all valid image files in directory
         all_files = sorted(os.listdir(directory))
         image_files = [f for f in all_files if os.path.splitext(f)[1].lower() in valid_extensions]
 
-        # Apply Regex filtering if pattern is provided
-        if filename_filter.strip():
+        # 套用不區分大小寫的 Regex 篩選
+        if regex.strip():
             try:
-                pattern = re.compile(filename_filter)
+                pattern = re.compile(regex, re.IGNORECASE)
                 image_files = [f for f in image_files if pattern.search(f)]
             except re.error as e:
-                raise ValueError(f"[LikeJLoadImages] Invalid Regex pattern '{filename_filter}': {str(e)}")
+                raise ValueError(f"[LikeJLoadImages] Invalid Regex pattern '{regex}': {str(e)}")
 
-        # Apply skip_first and load_cap
         if skip_first > 0:
             image_files = image_files[skip_first:]
         if load_cap > 0:
@@ -81,7 +77,6 @@ class LikeJLoadImages:
         for filename in image_files:
             full_path = os.path.join(directory, filename)
 
-            # Process files output mode
             if files_output_mode == "filename":
                 file_info = os.path.splitext(filename)[0]
             elif files_output_mode == "filename.ext":
@@ -93,17 +88,14 @@ class LikeJLoadImages:
 
             files.append(file_info)
 
-            # Load image and fix EXIF orientation
             img = Image.open(full_path)
             img = ImageOps.exif_transpose(img)
 
-            # Process RGB Image Tensor
             image_rgb = img.convert("RGB")
             image_np = np.array(image_rgb).astype(np.float32) / 255.0
             image_tensor = torch.from_numpy(image_np).unsqueeze(0)
             images.append(image_tensor)
 
-            # Process Mask Tensor
             if "A" in img.getbands():
                 alpha = img.getchannel("A")
                 mask_np = np.array(alpha).astype(np.float32) / 255.0
@@ -116,3 +108,11 @@ class LikeJLoadImages:
 
         return (images, masks, files, count)
 
+
+NODE_CLASS_MAPPINGS = {
+    "LikeJLoadImages": LikeJLoadImages
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "LikeJLoadImages": "LikeJ Load Images From Directory"
+}
