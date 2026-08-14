@@ -92,5 +92,10 @@
    <img width="524" height="412" alt="image" src="https://github.com/user-attachments/assets/d9e89a0a-5c6f-4449-a6da-9e92ff769c69" />
 <img width="504" height="400" alt="image" src="https://github.com/user-attachments/assets/b2f728cb-45ed-4a6d-a914-33cf06d73a51" />
 
+## LikeJ Load Images
+   > Load images idea from:
+   > https://github.com/ltdrdata/ComfyUI-Inspire-Pack
+<img width="436" height="745" alt="image" src="https://github.com/user-attachments/assets/7d8ad422-7a29-4c31-b5d8-f49c68d9dc76" />
+
 
   
