@@ -102,7 +102,8 @@
 ## LikeJ Switch To FlowIn (Any)
    > idea from:
    > https://github.com/rgthree/rgthree-comfy
-<img width="284" height="165" alt="image" src="https://github.com/user-attachments/assets/86a69285-71c2-417e-ab5e-107ac5af4802" />
+<img width="287" height="154" alt="image" src="https://github.com/user-attachments/assets/acc614d6-dd33-4788-9f86-5d6e7b853c8f" />
+
 <img width="690" height="196" alt="image" src="https://github.com/user-attachments/assets/929b911d-42be-4ea1-9174-efc370de9ef3" />
 
 
