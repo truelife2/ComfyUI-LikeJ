@@ -103,8 +103,10 @@
    > idea from:
    > https://github.com/rgthree/rgthree-comfy
 <img width="287" height="154" alt="image" src="https://github.com/user-attachments/assets/acc614d6-dd33-4788-9f86-5d6e7b853c8f" />
+<img width="711" height="252" alt="image" src="https://github.com/user-attachments/assets/d0e541d8-e520-42a5-9fe0-89543b579e34" />
+<img width="696" height="204" alt="image" src="https://github.com/user-attachments/assets/2d687a26-feb0-47ac-bf37-83ced2a30845" />
 
-<img width="690" height="196" alt="image" src="https://github.com/user-attachments/assets/929b911d-42be-4ea1-9174-efc370de9ef3" />
+
 
 
   
