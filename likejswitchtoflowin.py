@@ -30,6 +30,6 @@ class LikeJSwitchToFlowIn:
         for key in input_keys:
             val = kwargs[key]
             if val is not None:
-                return {"ui": {"text": [f"Active: {key}"]}, "result": (val,)}
+                return {"ui": {"text": [f"{key}"]}, "result": (val,)}
 
-        return {"ui": {"text": ["Active: None"]}, "result": (None,)}
+        return {"ui": {"text": ["None"]}, "result": (None,)}
