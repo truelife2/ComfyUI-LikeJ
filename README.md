@@ -1,4 +1,5 @@
 ### The fear of the LORD is the beginning of wisdom, and knowledge of the Holy One is understanding.
+### 敬畏耶和華是智慧的開端；認識至聖者便是聰明
 
 ## ComfyUI nodes:
 
@@ -97,6 +98,15 @@
    > https://github.com/ltdrdata/ComfyUI-Inspire-Pack
 <img width="436" height="745" alt="image" src="https://github.com/user-attachments/assets/7d8ad422-7a29-4c31-b5d8-f49c68d9dc76" />
 <img width="397" height="231" alt="image" src="https://github.com/user-attachments/assets/1219811b-c158-4a3a-ba2c-6277ddca520a" />
+
+## LikeJ Switch To FlowIn (Any)
+   > idea from:
+   > https://github.com/rgthree/rgthree-comfy
+<img width="287" height="154" alt="image" src="https://github.com/user-attachments/assets/acc614d6-dd33-4788-9f86-5d6e7b853c8f" />
+<img width="711" height="252" alt="image" src="https://github.com/user-attachments/assets/d0e541d8-e520-42a5-9fe0-89543b579e34" />
+<img width="696" height="204" alt="image" src="https://github.com/user-attachments/assets/2d687a26-feb0-47ac-bf37-83ced2a30845" />
+
+
 
 
   
