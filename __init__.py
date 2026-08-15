@@ -10,6 +10,7 @@ from . import likejpathparse
 from . import likejallpinyin
 from . import likejloadtextfile
 from . import likejloadimages
+from . import likejswitchtoflowin
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -25,6 +26,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJAllPinyin": likejallpinyin.LikeJAllPinyin,
     "LikeJLoadTextFile": likejloadtextfile.LikeJLoadTextFile,
     "LikeJLoadImages": likejloadimages.LikeJLoadImages,
+    "LikeJSwitchToFlowIn": likejswitchtoflowin.LikeJSwitchToFlowIn,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -41,6 +43,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJAllPinyin": "LikeJ All Pinyin",
     "LikeJLoadTextFile": "LikeJ Load Text File",
     "LikeJLoadImages": "LikeJ Load Images",
+    "LikeJSwitchToFlowIn": "Likej Switch To FlowIn (Any)"
 }
 
 WEB_DIRECTORY = "./web"
