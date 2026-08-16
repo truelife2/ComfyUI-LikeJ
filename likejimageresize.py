@@ -32,6 +32,9 @@ class LikeJImageResize:
                 "pad_left": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 1}),
                 "pad_right": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 1}),
                 "pad_color": ("STRING", {"default": "#000000"}),
+                "mask_grow": ("INT", {"default": 0, "min": 0, "max": 256, "step": 1}),
+                "feather_radius": ("INT", {"default": 0, "min": 0, "max": 256, "step": 1}),
+                "invert_mask": ("BOOLEAN", {"default": False}),
             },
             "optional": {
                 "mask": ("MASK",),
@@ -67,8 +70,6 @@ class LikeJImageResize:
         return off_x, off_y
 
     def _interpolate_tensor(self, tensor, target_h, target_w, mode):
-        """改用 ComfyUI 內建 common_upscale 處理，支援包含 Lanczos 在內的所有模式"""
-        # tensor 格式為 [B, C, H, W]
         return comfy.utils.common_upscale(tensor, target_w, target_h, upscale_method=mode, crop="disabled")
 
     def _pad_tensor(self, tensor, p_left, p_right, p_top, p_bottom, pad_type, color_tensor=None, is_mask=False):
@@ -132,7 +133,8 @@ class LikeJImageResize:
         return tensor
 
     def execute(self, image, width, height, interpolation, resize_mode, position,
-                pad_top, pad_bottom, pad_left, pad_right, pad_color="#000000", mask=None):
+                pad_top, pad_bottom, pad_left, pad_right, pad_color="#000000",
+                mask_grow=8, feather_radius=16, invert_mask=False, mask=None):
 
         B, H, W, C = image.shape
 
@@ -154,32 +156,42 @@ class LikeJImageResize:
         else:
             pre_pad_type = "color"
 
+        # 1. 預先 Pad 補邊處理
         if pad_top > 0 or pad_bottom > 0 or pad_left > 0 or pad_right > 0:
             img_tensor = self._pad_tensor(img_tensor, pad_left, pad_right, pad_top, pad_bottom, pre_pad_type, color_tensor, is_mask=False)
             mask_tensor = self._pad_tensor(mask_tensor, pad_left, pad_right, pad_top, pad_bottom, pre_pad_type, color_tensor, is_mask=True)
 
+        # 2. Resize & Crop/Pad 處理
         out_img = self._apply_crop_and_resize(
-            tensor=img_tensor,
-            target_w=width,
-            target_h=height,
-            resize_mode=resize_mode,
-            position=position,
-            interpolation=interpolation,
-            color_tensor=color_tensor,
-            is_mask=False
+            tensor=img_tensor, target_w=width, target_h=height,
+            resize_mode=resize_mode, position=position,
+            interpolation=interpolation, color_tensor=color_tensor, is_mask=False
         )
         out_mask = self._apply_crop_and_resize(
-            tensor=mask_tensor,
-            target_w=width,
-            target_h=height,
-            resize_mode=resize_mode,
-            position=position,
-            interpolation=interpolation,
-            color_tensor=color_tensor,
-            is_mask=True
+            tensor=mask_tensor, target_w=width, target_h=height,
+            resize_mode=resize_mode, position=position,
+            interpolation=interpolation, color_tensor=color_tensor, is_mask=True
         )
 
+        # 3. 遮罩咬邊 (Inpaint 擴充處理)
+        if mask_grow > 0:
+            kernel_size = mask_grow * 2 + 1
+            out_mask = F.max_pool2d(out_mask, kernel_size, stride=1, padding=mask_grow)
+
+        # 4. 根據 feather_radius 自動開關羽化或二值化
+        if feather_radius > 0:
+            kernel_size = feather_radius * 2 + 1
+            out_mask = F.avg_pool2d(out_mask, kernel_size, stride=1, padding=feather_radius)
+            out_mask = torch.clamp(out_mask, 0.0, 1.0)
+        else:
+            out_mask = (out_mask >= 0.5).float()
+
+        # 5. 轉回 ComfyUI 標準格式與反轉處理
         out_img = out_img.permute(0, 2, 3, 1)
         out_mask = out_mask.squeeze(1)
 
+        if invert_mask:
+            out_mask = 1.0 - out_mask
+
         return (out_img, out_mask)
+
