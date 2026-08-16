@@ -107,6 +107,13 @@
 <img width="711" height="252" alt="image" src="https://github.com/user-attachments/assets/d0e541d8-e520-42a5-9fe0-89543b579e34" />
 <img width="696" height="204" alt="image" src="https://github.com/user-attachments/assets/2d687a26-feb0-47ac-bf37-83ced2a30845" />
 
+## LikeJ Image Resize (Outpaint)
+   > idea from
+   > https://github.com/kijai/ComfyUI-KJNodes
+   <img width="979" height="736" alt="image" src="https://github.com/user-attachments/assets/8f28d5d7-0411-4d52-8722-64ecb4ff4b5e" />
+   <img width="324" height="269" alt="image" src="https://github.com/user-attachments/assets/cfd138c5-5e34-44aa-a035-830a7f5e9bcd" />
+   <img width="308" height="240" alt="image" src="https://github.com/user-attachments/assets/e90b3675-b6ea-45dc-9cd9-f2c11a0d76c0" />
+
 
 
 
