@@ -7,16 +7,30 @@ class LikeJImageResize:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "image": ("IMAGE",),
-                "width": ("INT", {"default": 512, "min": 1, "max": 16384, "step": 1}),
-                "height": ("INT", {"default": 512, "min": 1, "max": 16384, "step": 1}),
+                "image": ("IMAGE", {
+                    "tooltip": "Input image to resize, pad, or outpaint."
+                }),
+                "width": ("INT", {
+                    "default": 512, "min": 1, "max": 16384, "step": 1,
+                    "tooltip": "Target output image width in pixels."
+                }),
+                "height": ("INT", {
+                    "default": 512, "min": 1, "max": 16384, "step": 1,
+                    "tooltip": "Target output image height in pixels."
+                }),
                 "interpolation": (
                     ["bicubic", "bilinear", "nearest-exact", "area", "lanczos"],
-                    {"default": "bicubic"}
+                    {
+                        "default": "bicubic",
+                        "tooltip": "Resampling algorithm for image scaling."
+                    }
                 ),
                 "resize_mode": (
-                    ["disabled", "crop", "pad (color)", "pad (edge)", "pad (reflect)"],
-                    {"default": "disabled"}
+                    ["stretch", "crop", "pad (color)", "pad (edge)", "pad (reflect)"],
+                    {
+                        "default": "stretch",
+                        "tooltip": "Fitting strategy: stretch to exact target size, crop to fill, or pad edges."
+                    }
                 ),
                 "position": (
                     [
@@ -25,19 +39,48 @@ class LikeJImageResize:
                         "center-left", "center-right",
                         "bottom-left", "bottom-center", "bottom-right"
                     ],
-                    {"default": "center"}
+                    {
+                        "default": "center",
+                        "tooltip": "Alignment anchor when cropping or padding the image."
+                    }
                 ),
-                "pad_top": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 1}),
-                "pad_bottom": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 1}),
-                "pad_left": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 1}),
-                "pad_right": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 1}),
-                "pad_color": ("STRING", {"default": "#000000"}),
-                "mask_grow": ("INT", {"default": 0, "min": 0, "max": 256, "step": 1}),
-                "feather_radius": ("INT", {"default": 0, "min": 0, "max": 256, "step": 1}),
-                "invert_mask": ("BOOLEAN", {"default": False}),
+                "pad_top": ("INT", {
+                    "default": 0, "min": 0, "max": 8192, "step": 1,
+                    "tooltip": "Pixels to expand at the top boundary for outpainting."
+                }),
+                "pad_bottom": ("INT", {
+                    "default": 0, "min": 0, "max": 8192, "step": 1,
+                    "tooltip": "Pixels to expand at the bottom boundary for outpainting."
+                }),
+                "pad_left": ("INT", {
+                    "default": 0, "min": 0, "max": 8192, "step": 1,
+                    "tooltip": "Pixels to expand at the left boundary for outpainting."
+                }),
+                "pad_right": ("INT", {
+                    "default": 0, "min": 0, "max": 8192, "step": 1,
+                    "tooltip": "Pixels to expand at the right boundary for outpainting."
+                }),
+                "pad_color": ("STRING", {
+                    "default": "#000000",
+                    "tooltip": "HEX color code used when resize_mode or padding is set to color."
+                }),
+                "mask_grow": ("INT", {
+                    "default": 8, "min": 0, "max": 256, "step": 1,
+                    "tooltip": "Expands mask into original image edges (8px covers 1 VAE latent block to avoid seams)."
+                }),
+                "feather_radius": ("INT", {
+                    "default": 16, "min": 0, "max": 256, "step": 1,
+                    "tooltip": "Blurs mask edges for smooth inpaint blending. Set to 0 for exact binary mask."
+                }),
+                "invert_mask": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Inverts output mask values (1 becomes 0, 0 becomes 1)."
+                }),
             },
             "optional": {
-                "mask": ("MASK",),
+                "mask": ("MASK", {
+                    "tooltip": "Optional existing mask to transform in sync with the image."
+                }),
             }
         }
 
@@ -72,12 +115,12 @@ class LikeJImageResize:
     def _interpolate_tensor(self, tensor, target_h, target_w, mode):
         return comfy.utils.common_upscale(tensor, target_w, target_h, upscale_method=mode, crop="disabled")
 
-    def _pad_tensor(self, tensor, p_left, p_right, p_top, p_bottom, pad_type, color_tensor=None, is_mask=False):
+    def _pad_tensor(self, tensor, p_left, p_right, p_top, p_bottom, pad_type, color_tensor=None, is_mask=False, mask_pad_val=1.0):
         if p_left == 0 and p_right == 0 and p_top == 0 and p_bottom == 0:
             return tensor
 
         if is_mask:
-            return F.pad(tensor, (p_left, p_right, p_top, p_bottom), mode="constant", value=1.0)
+            return F.pad(tensor, (p_left, p_right, p_top, p_bottom), mode="constant", value=mask_pad_val)
 
         if pad_type == "edge":
             return F.pad(tensor, (p_left, p_right, p_top, p_bottom), mode="replicate")
@@ -99,7 +142,7 @@ class LikeJImageResize:
         if is_mask and interp_mode not in ["nearest-exact", "bilinear"]:
             interp_mode = "bilinear"
 
-        if resize_mode == "disabled":
+        if resize_mode == "stretch":
             return self._interpolate_tensor(tensor, target_h, target_w, interp_mode)
 
         elif resize_mode == "crop":
@@ -128,7 +171,9 @@ class LikeJImageResize:
             else:
                 pad_type = "color"
 
-            return self._pad_tensor(resized, p_left, p_right, p_top, p_bottom, pad_type, color_tensor, is_mask)
+            # 縮放引起的 letterbox 補邊，遮罩補邊使用邊界模式避免全白覆蓋
+            mask_val = 1.0 if pad_type == "color" else 0.0
+            return self._pad_tensor(resized, p_left, p_right, p_top, p_bottom, pad_type, color_tensor, is_mask, mask_pad_val=mask_val)
 
         return tensor
 
@@ -140,8 +185,25 @@ class LikeJImageResize:
 
         if mask is None:
             mask = torch.zeros((B, H, W), dtype=image.dtype, device=image.device)
-        elif mask.dim() == 2:
-            mask = mask.unsqueeze(0).repeat(B, 1, 1)
+        else:
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0)
+            elif mask.dim() == 4:
+                mask = mask.squeeze(1)
+
+            if mask.shape[1] != H or mask.shape[2] != W:
+                mask = F.interpolate(
+                    mask.unsqueeze(1),
+                    size=(H, W),
+                    mode="bilinear",
+                    align_corners=False
+                ).squeeze(1)
+
+            if mask.shape[0] != B:
+                if mask.shape[0] == 1:
+                    mask = mask.repeat(B, 1, 1)
+                else:
+                    mask = mask[:B]
 
         img_tensor = image.permute(0, 3, 1, 2)
         mask_tensor = mask.unsqueeze(1)
@@ -156,10 +218,10 @@ class LikeJImageResize:
         else:
             pre_pad_type = "color"
 
-        # 1. 預先 Pad 補邊處理
+        # 1. 顯式 Outpaint Padding (主動擴展區為白色 1.0)
         if pad_top > 0 or pad_bottom > 0 or pad_left > 0 or pad_right > 0:
             img_tensor = self._pad_tensor(img_tensor, pad_left, pad_right, pad_top, pad_bottom, pre_pad_type, color_tensor, is_mask=False)
-            mask_tensor = self._pad_tensor(mask_tensor, pad_left, pad_right, pad_top, pad_bottom, pre_pad_type, color_tensor, is_mask=True)
+            mask_tensor = self._pad_tensor(mask_tensor, pad_left, pad_right, pad_top, pad_bottom, pre_pad_type, color_tensor, is_mask=True, mask_pad_val=1.0)
 
         # 2. Resize & Crop/Pad 處理
         out_img = self._apply_crop_and_resize(
@@ -173,12 +235,12 @@ class LikeJImageResize:
             interpolation=interpolation, color_tensor=color_tensor, is_mask=True
         )
 
-        # 3. 遮罩咬邊 (Inpaint 擴充處理)
+        # 3. 遮罩咬邊處理
         if mask_grow > 0:
             kernel_size = mask_grow * 2 + 1
             out_mask = F.max_pool2d(out_mask, kernel_size, stride=1, padding=mask_grow)
 
-        # 4. 根據 feather_radius 自動開關羽化或二值化
+        # 4. 羽化或二值化切換
         if feather_radius > 0:
             kernel_size = feather_radius * 2 + 1
             out_mask = F.avg_pool2d(out_mask, kernel_size, stride=1, padding=feather_radius)
