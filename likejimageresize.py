@@ -81,6 +81,9 @@ class LikeJImageResize:
                 "mask": ("MASK", {
                     "tooltip": "Optional existing mask to transform in sync with the image."
                 }),
+                "combine_mask": ("MASK", {
+                    "tooltip": "Additional mask to combine (add) with the main mask."
+                }),
             }
         }
 
@@ -171,7 +174,6 @@ class LikeJImageResize:
             else:
                 pad_type = "color"
 
-            # 縮放引起的 letterbox 補邊，遮罩補邊使用邊界模式避免全白覆蓋
             mask_val = 1.0 if pad_type == "color" else 0.0
             return self._pad_tensor(resized, p_left, p_right, p_top, p_bottom, pad_type, color_tensor, is_mask, mask_pad_val=mask_val)
 
@@ -179,7 +181,7 @@ class LikeJImageResize:
 
     def execute(self, image, width, height, interpolation, resize_mode, position,
                 pad_top, pad_bottom, pad_left, pad_right, pad_color="#000000",
-                mask_grow=8, feather_radius=16, invert_mask=False, mask=None):
+                mask_grow=8, feather_radius=16, invert_mask=False, mask=None, combine_mask=None):
 
         B, H, W, C = image.shape
 
@@ -205,6 +207,29 @@ class LikeJImageResize:
                 else:
                     mask = mask[:B]
 
+        # 處理與合併 combine_mask
+        if combine_mask is not None:
+            if combine_mask.dim() == 2:
+                combine_mask = combine_mask.unsqueeze(0)
+            elif combine_mask.dim() == 4:
+                combine_mask = combine_mask.squeeze(1)
+
+            if combine_mask.shape[1] != H or combine_mask.shape[2] != W:
+                combine_mask = F.interpolate(
+                    combine_mask.unsqueeze(1),
+                    size=(H, W),
+                    mode="bilinear",
+                    align_corners=False
+                ).squeeze(1)
+
+            if combine_mask.shape[0] != B:
+                if combine_mask.shape[0] == 1:
+                    combine_mask = combine_mask.repeat(B, 1, 1)
+                else:
+                    combine_mask = combine_mask[:B]
+
+            mask = torch.clamp(mask + combine_mask, 0.0, 1.0)
+
         img_tensor = image.permute(0, 3, 1, 2)
         mask_tensor = mask.unsqueeze(1)
 
@@ -218,12 +243,10 @@ class LikeJImageResize:
         else:
             pre_pad_type = "color"
 
-        # 1. 顯式 Outpaint Padding (主動擴展區為白色 1.0)
         if pad_top > 0 or pad_bottom > 0 or pad_left > 0 or pad_right > 0:
             img_tensor = self._pad_tensor(img_tensor, pad_left, pad_right, pad_top, pad_bottom, pre_pad_type, color_tensor, is_mask=False)
             mask_tensor = self._pad_tensor(mask_tensor, pad_left, pad_right, pad_top, pad_bottom, pre_pad_type, color_tensor, is_mask=True, mask_pad_val=1.0)
 
-        # 2. Resize & Crop/Pad 處理
         out_img = self._apply_crop_and_resize(
             tensor=img_tensor, target_w=width, target_h=height,
             resize_mode=resize_mode, position=position,
@@ -235,12 +258,10 @@ class LikeJImageResize:
             interpolation=interpolation, color_tensor=color_tensor, is_mask=True
         )
 
-        # 3. 遮罩咬邊處理
         if mask_grow > 0:
             kernel_size = mask_grow * 2 + 1
             out_mask = F.max_pool2d(out_mask, kernel_size, stride=1, padding=mask_grow)
 
-        # 4. 羽化或二值化切換
         if feather_radius > 0:
             kernel_size = feather_radius * 2 + 1
             out_mask = F.avg_pool2d(out_mask, kernel_size, stride=1, padding=feather_radius)
@@ -248,7 +269,6 @@ class LikeJImageResize:
         else:
             out_mask = (out_mask >= 0.5).float()
 
-        # 5. 轉回 ComfyUI 標準格式與反轉處理
         out_img = out_img.permute(0, 2, 3, 1)
         out_mask = out_mask.squeeze(1)
 
@@ -256,4 +276,3 @@ class LikeJImageResize:
             out_mask = 1.0 - out_mask
 
         return (out_img, out_mask)
-
