@@ -46,7 +46,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJLoadTextFile": "LikeJ Load Text File",
     "LikeJLoadImages": "LikeJ Load Images",
     "LikeJSwitchToFlowIn": "Likej Switch To FlowIn (Any)",
-    "LikeJImageResize": "LikeJ Image Resize (Outpaint)"
+    "LikeJImageResize": "LikeJ Image Resize (Outpaint)",
 }
 
 WEB_DIRECTORY = "./web"
