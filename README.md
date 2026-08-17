@@ -110,8 +110,7 @@
 ## LikeJ Image Resize (Outpaint)
    > idea from
    > https://github.com/kijai/ComfyUI-KJNodes
-  <img width="1088" height="616" alt="image" src="https://github.com/user-attachments/assets/8c9e4461-5a89-4f30-acb8-b879a0759f47" />
-
+ <img width="1102" height="594" alt="image" src="https://github.com/user-attachments/assets/df2713b4-127c-42ad-aa42-bd1e342c762b" />
 
    <img width="324" height="269" alt="image" src="https://github.com/user-attachments/assets/cfd138c5-5e34-44aa-a035-830a7f5e9bcd" />
    <img width="407" height="275" alt="image" src="https://github.com/user-attachments/assets/fd3ed553-73e6-4b15-93e0-19596ea4fa99" />
