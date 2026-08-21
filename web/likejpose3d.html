@@ -4,49 +4,214 @@
     <meta charset="UTF-8">
     <title>LikeJ Pose 3D</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f0f0f0; }
-        canvas { display: block; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; background-color: #f0f0f0; }
+        
+        /* 💡 左右分欄 Flexbox 佈局 */
+        #app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 💡 左側固定面板 (設定過多時自動出滾動條) */
+        #ui-panel {
+            width: 190px;
+            min-width: 190px;
+            height: 100%;
+            background: #ffffff;
+            border-right: 1px solid #e0e0e0;
+            padding: 12px;
+            overflow-y: auto;
+            user-select: none;
+            box-shadow: 2px 0 6px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        /* 💡 右側獨立 3D 畫布區域 */
+        #canvas-container {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            background-color: #f8f8f8;
+        }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
         #loading {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-family: sans-serif;
             font-size: 14px;
             color: #555;
             pointer-events: none;
             user-select: none;
         }
+
+        .panel-title {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #4A90E2;
+            padding-bottom: 6px;
+            color: #222;
+        }
+        .control-group {
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            color: #555;
+            font-size: 12px;
+        }
+        .control-group input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            margin: 0;
+        }
+        .control-group input[type=color] {
+            width: 100%;
+            height: 28px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+            padding: 2px;
+        }
     </style>
 </head>
 <body>
-    <div id="loading">載入 3D 模型中...</div>
+    <div id="app-container">
+        <!-- 左側獨立控制面板 -->
+        <div id="ui-panel">
+            <div class="panel-title">⚙️ 姿態與燈光設定</div>
+            <div class="control-group">
+                <label>環境光強度 <span id="val-ambient">0.4</span></label>
+                <input type="range" id="opt-ambient" min="0" max="2" step="0.05" value="0.4">
+            </div>
+            <div class="control-group">
+                <label>主光強度 <span id="val-direct">0.6</span></label>
+                <input type="range" id="opt-direct" min="0" max="2" step="0.05" value="0.6">
+            </div>
+            <div class="control-group">
+                <label>模型明亮度 <span id="val-model">0.5</span></label>
+                <input type="range" id="opt-model" min="0.1" max="1" step="0.05" value="0.5">
+            </div>
+            <div class="control-group">
+                <label>背景顏色</label>
+                <input type="color" id="opt-bgcolor" value="#f8f8f8">
+            </div>
+        </div>
+
+        <!-- 右側 3D 渲染區域 -->
+        <div id="canvas-container">
+            <div id="loading">載入 3D 模型中...</div>
+        </div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <script>
+        const container = document.getElementById('canvas-container');
+
         let targetWidth = 512;
         let targetHeight = 512;
+        let isModelLoaded = false;
+        let currentModel = null;
+
+        let config = {
+            ambient: 0.4,
+            direct: 0.6,
+            modelColor: 0.5,
+            bgColor: '#f8f8f8'
+        };
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf8f8f8);
+        scene.background = new THREE.Color(config.bgColor);
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
         
         const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.body.appendChild(renderer.domElement);
+        container.appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        const ambientLight = new THREE.AmbientLight(0xffffff, config.ambient);
         scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, config.direct);
         directionalLight.position.set(5, 10, 7);
         scene.add(directionalLight);
+
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        backLight.position.set(-5, 5, -5);
+        scene.add(backLight);
+
+        function notifyConfigChange() {
+            window.parent.postMessage({
+                type: "LIKEJ_POSE3D_SAVE_CONFIG",
+                config: config
+            }, "*");
+        }
+
+        function updateUIFromConfig() {
+            document.getElementById('opt-ambient').value = config.ambient;
+            document.getElementById('val-ambient').innerText = config.ambient;
+            document.getElementById('opt-direct').value = config.direct;
+            document.getElementById('val-direct').innerText = config.direct;
+            document.getElementById('opt-model').value = config.modelColor;
+            document.getElementById('val-model').innerText = config.modelColor;
+            document.getElementById('opt-bgcolor').value = config.bgColor;
+
+            ambientLight.intensity = config.ambient;
+            directionalLight.intensity = config.direct;
+            scene.background.set(config.bgColor);
+
+            if (currentModel) {
+                const v = config.modelColor;
+                currentModel.traverse((child) => {
+                    if (child.isMesh) child.material.color.setRGB(v, v, v);
+                });
+            }
+        }
+
+        document.getElementById('opt-ambient').addEventListener('input', (e) => {
+            config.ambient = parseFloat(e.target.value);
+            updateUIFromConfig();
+            notifyConfigChange();
+            sendPoseToComfyUI();
+        });
+
+        document.getElementById('opt-direct').addEventListener('input', (e) => {
+            config.direct = parseFloat(e.target.value);
+            updateUIFromConfig();
+            notifyConfigChange();
+            sendPoseToComfyUI();
+        });
+
+        document.getElementById('opt-model').addEventListener('input', (e) => {
+            config.modelColor = parseFloat(e.target.value);
+            updateUIFromConfig();
+            notifyConfigChange();
+            sendPoseToComfyUI();
+        });
+
+        document.getElementById('opt-bgcolor').addEventListener('input', (e) => {
+            config.bgColor = e.target.value;
+            updateUIFromConfig();
+            notifyConfigChange();
+            sendPoseToComfyUI();
+        });
 
         const loader = new THREE.GLTFLoader();
         const modelUrl = '/extensions/ComfyUI-LikeJ/models/female_body_base.glb';
@@ -131,14 +296,14 @@
             return box;
         }
 
-        // 💡 核心修復：擷取 Base64 時，精準切換相機長寬比與渲染畫布解析度，避免拉伸 distortion
         function sendPoseToComfyUI() {
-            const currentW = window.innerWidth;
-            const currentH = window.innerHeight;
+            if (!isModelLoaded) return;
+
+            const currentW = container.clientWidth;
+            const currentH = container.clientHeight;
             const currentAspect = camera.aspect;
             const currentPixelRatio = renderer.getPixelRatio();
 
-            // 1. 設定為目標解析度與相機比例 (例如 1024 / 1024)
             renderer.setPixelRatio(1);
             camera.aspect = targetWidth / targetHeight;
             camera.updateProjectionMatrix();
@@ -146,10 +311,8 @@
             renderer.setSize(targetWidth, targetHeight, false);
             renderer.render(scene, camera);
 
-            // 2. 擷取絕不拉伸變形的 Base64
             const dataURL = renderer.domElement.toDataURL("image/png");
 
-            // 3. 恢復原本 UI 視窗的畫面與視角設定
             renderer.setPixelRatio(currentPixelRatio);
             camera.aspect = currentAspect;
             camera.updateProjectionMatrix();
@@ -160,34 +323,56 @@
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
         }
 
-        // 💡 監聽來自 ComfyUI JS 的寬高更新訊息
         window.addEventListener("message", (event) => {
-            if (event.data && event.data.type === "LIKEJ_POSE3D_SET_SIZE") {
+            if (!event.data) return;
+
+            if (event.data.type === "LIKEJ_POSE3D_SET_SIZE") {
                 targetWidth = parseInt(event.data.width) || 512;
                 targetHeight = parseInt(event.data.height) || 512;
 
-                if (event.data.triggerSend) {
-                    sendPoseToComfyUI();
+                if (event.data.triggerSend) sendPoseToComfyUI();
+            }
+
+            if (event.data.type === "LIKEJ_POSE3D_LOAD_CONFIG") {
+                try {
+                    const loadedConfig = JSON.parse(event.data.configStr);
+                    if (loadedConfig && Object.keys(loadedConfig).length > 0) {
+                        config = { ...config, ...loadedConfig };
+                        updateUIFromConfig();
+                    }
+                } catch(e) {
+                    console.warn("無法解析 Node 配置，使用預設設定");
                 }
             }
         });
 
         loader.load(modelUrl, (gltf) => {
-            const model = gltf.scene;
-            scene.add(model);
+            currentModel = gltf.scene;
+            
+            const cVal = config.modelColor;
+            currentModel.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color(cVal, cVal, cVal),
+                        roughness: 0.6,
+                        metalness: 0.1
+                    });
+                }
+            });
+
+            scene.add(currentModel);
 
             if (gltf.animations && gltf.animations.length > 0) {
-                const mixer = new THREE.AnimationMixer(model);
+                const mixer = new THREE.AnimationMixer(currentModel);
                 const action = mixer.clipAction(gltf.animations[0]);
                 action.play();
                 mixer.update(0.5); 
             }
 
-            const box = computeExactWorldBoundingBox(model);
+            const box = computeExactWorldBoundingBox(currentModel);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
 
-            // 💡 使用目標輸出的比例 (targetWidth / targetHeight) 計算相機鏡頭距離，避免上下或左右被切割
             const fov = camera.fov * (Math.PI / 180);
             const aspect = targetWidth / targetHeight;
 
@@ -209,6 +394,7 @@
             controls.update();
 
             document.getElementById('loading').style.display = 'none';
+            isModelLoaded = true;
 
             requestAnimationFrame(() => {
                 sendPoseToComfyUI();
@@ -220,8 +406,8 @@
         });
 
         window.addEventListener('resize', () => {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
             
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
