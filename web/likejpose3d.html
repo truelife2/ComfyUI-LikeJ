@@ -1,34 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>LikeJ Pose 3D</title>
     <style>
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; background-color: #f0f0f0; }
-        
-        /* 💡 左右分欄 Flexbox 佈局 */
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+        }
+
         #app-container {
             display: flex;
             width: 100vw;
             height: 100vh;
         }
 
-        /* 💡 左側固定面板 (設定過多時自動出滾動條) */
         #ui-panel {
-            width: 190px;
-            min-width: 190px;
+            width: 200px;
+            min-width: 200px;
             height: 100%;
             background: #ffffff;
             border-right: 1px solid #e0e0e0;
             padding: 12px;
             overflow-y: auto;
             user-select: none;
-            box-shadow: 2px 0 6px rgba(0,0,0,0.05);
+            box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
             z-index: 10;
         }
 
-        /* 💡 右側獨立 3D 畫布區域 */
         #canvas-container {
             flex: 1;
             height: 100%;
@@ -37,7 +47,11 @@
             background-color: #f8f8f8;
         }
 
-        canvas { display: block; width: 100%; height: 100%; }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
 
         #loading {
             position: absolute;
@@ -53,28 +67,33 @@
         .panel-title {
             font-weight: bold;
             font-size: 13px;
-            margin-bottom: 12px;
+            margin-top: 10px;
+            margin-bottom: 8px;
             border-bottom: 2px solid #4A90E2;
-            padding-bottom: 6px;
+            padding-bottom: 4px;
             color: #222;
         }
+
         .control-group {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
+
         .control-group label {
             display: flex;
             justify-content: space-between;
             color: #555;
             font-size: 12px;
         }
+
         .control-group input[type=range] {
             width: 100%;
             cursor: pointer;
             margin: 0;
         }
+
         .control-group input[type=color] {
             width: 100%;
             height: 28px;
@@ -84,13 +103,63 @@
             background: transparent;
             padding: 2px;
         }
+
+        .toggle-btn {
+            width: 100%;
+            padding: 6px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .toggle-btn:hover {
+            background: #e5e5e5;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-group .toggle-btn {
+            flex: 1;
+        }
     </style>
 </head>
+
 <body>
     <div id="app-container">
-        <!-- 左側獨立控制面板 -->
+        <!-- 左側控制面板 -->
         <div id="ui-panel">
+            <div class="panel-title" style="margin-top:0;">🔍 鏡頭對焦 (Focus)</div>
+            <div class="control-group">
+                <div class="btn-group">
+                    <button id="btn-focus-lhand" class="toggle-btn">🔍 左手</button>
+                    <button id="btn-focus-rhand" class="toggle-btn">🔍 右手</button>
+                </div>
+                <button id="btn-focus-reset" class="toggle-btn">🏠 復位全身</button>
+            </div>
+
             <div class="panel-title">⚙️ 姿態與燈光設定</div>
+
+            <div class="control-group">
+                <label>顯示關節點</label>
+                <button id="btn-toggle-joints" class="toggle-btn">顯示關節點</button>
+            </div>
+
+            <div class="control-group">
+                <label>關節點大小 <span id="val-jointsize">1.0</span></label>
+                <input type="range" id="opt-jointsize" min="0.2" max="2.5" step="0.1" value="1.0">
+            </div>
+
+            <div class="control-group">
+                <label>控制軸大小 <span id="val-gizmosize">1.0</span></label>
+                <input type="range" id="opt-gizmosize" min="0.5" max="2.5" step="0.1" value="1.0">
+            </div>
+
             <div class="control-group">
                 <label>環境光強度 <span id="val-ambient">0.4</span></label>
                 <input type="range" id="opt-ambient" min="0" max="2" step="0.05" value="0.4">
@@ -117,35 +186,209 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <script>
         const container = document.getElementById('canvas-container');
 
-        let targetWidth = 512;
-        let targetHeight = 512;
+        let targetWidth = 1024;
+        let targetHeight = 1024;
         let isModelLoaded = false;
         let currentModel = null;
+
+        let transformControls;
+        let jointSpheres = [];
+        let showJoints = false;
+        let baseJointRadius = 0.008;
+        let jointScale = 1.0;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
 
         let config = {
             ambient: 0.4,
             direct: 0.6,
-            modelColor: 0.5,
-            bgColor: '#f8f8f8'
+            modelColor: 0.85,
+            bgColor: '#f8f8f8',
+            pose: [],
+            camera: null
         };
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(config.bgColor);
 
         const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-        
+
         const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         container.appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        
+
+        transformControls = new THREE.TransformControls(camera, renderer.domElement);
+        transformControls.setMode('rotate');
+        transformControls.setSpace('local');
+        transformControls.setSize(1.0);
+        scene.add(transformControls);
+
+        function getCameraData() {
+            return {
+                pos: [camera.position.x, camera.position.y, camera.position.z],
+                target: [controls.target.x, controls.target.y, controls.target.z]
+            };
+        }
+
+        function applyCameraData(camData) {
+            if (!camData || !camData.pos || !camData.target) return;
+            camera.position.set(camData.pos[0], camData.pos[1], camData.pos[2]);
+            controls.target.set(camData.target[0], camData.target[1], camData.target[2]);
+            controls.update();
+        }
+
+        function focusOnPosition(targetPos, distance = 0.3) {
+            const startCamPos = camera.position.clone();
+            const startTarget = controls.target.clone();
+
+            const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+            if (dir.lengthSq() === 0) dir.set(0, 0, 1);
+
+            const newCamPos = new THREE.Vector3().copy(targetPos).addScaledVector(dir, distance);
+
+            let startTime = null;
+            const duration = 350;
+
+            function step(timestamp) {
+                if (!startTime) startTime = timestamp;
+                const elapsed = timestamp - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const ease = 1 - Math.pow(1 - progress, 3);
+
+                camera.position.lerpVectors(startCamPos, newCamPos, ease);
+                controls.target.lerpVectors(startTarget, targetPos, ease);
+                controls.update();
+
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    config.camera = getCameraData();
+                    notifyConfigChange();
+                    sendPoseToComfyUI();
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function focusHand(isLeft = true) {
+            if (!currentModel) return;
+            let handBone = null;
+
+            currentModel.traverse((child) => {
+                if (child.isBone && !handBone) {
+                    const name = child.name.toLowerCase();
+                    const isL = name.includes('left') || name.includes('l_') || name.includes('_l') || name.includes('lh');
+                    const isR = name.includes('right') || name.includes('r_') || name.includes('_r') || name.includes('rh');
+                    const isHand = name.includes('hand') || name.includes('wrist');
+
+                    if (isHand) {
+                        if (isLeft && isL) handBone = child;
+                        if (!isLeft && isR) handBone = child;
+                    }
+                }
+            });
+
+            if (handBone) {
+                const worldPos = new THREE.Vector3();
+                handBone.getWorldPosition(worldPos);
+                focusOnPosition(worldPos, 0.25);
+            }
+        }
+
+        function focusFullBody() {
+            if (!currentModel) return;
+            const box = computeExactWorldBoundingBox(currentModel);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+
+            const fov = camera.fov * (Math.PI / 180);
+            const aspect = targetWidth / targetHeight;
+
+            const distV = (size.y / 2) / Math.tan(fov / 2);
+            const fovH = 2 * Math.atan(Math.tan(fov / 2) * aspect);
+            const distH = (size.x / 2) / Math.tan(fovH / 2);
+
+            let cameraDist = Math.max(distV, distH) + (size.z / 2);
+            if (!isFinite(cameraDist) || cameraDist <= 0) cameraDist = 5;
+            else cameraDist *= 1.05;
+
+            focusOnPosition(center, cameraDist);
+        }
+
+        function getPoseData() {
+            if (!currentModel) return [];
+            const pose = [];
+            currentModel.traverse((child) => {
+                if (child.isBone) {
+                    pose.push({
+                        name: child.name,
+                        p: [child.position.x, child.position.y, child.position.z],
+                        q: [child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w]
+                    });
+                }
+            });
+            return pose;
+        }
+
+        function applyPoseData(poseArray) {
+            if (!currentModel || !poseArray || !Array.isArray(poseArray) || poseArray.length === 0) return;
+
+            const poseMap = new Map();
+            poseArray.forEach(item => {
+                if (item && item.name) poseMap.set(item.name, item);
+            });
+
+            currentModel.traverse((child) => {
+                if (child.isBone && poseMap.has(child.name)) {
+                    const data = poseMap.get(child.name);
+                    if (data.q) child.quaternion.set(data.q[0], data.q[1], data.q[2], data.q[3]);
+                    if (data.p) child.position.set(data.p[0], data.p[1], data.p[2]);
+                    child.updateMatrix();
+                }
+            });
+
+            currentModel.updateMatrixWorld(true);
+            currentModel.traverse((child) => {
+                if (child.isSkinnedMesh && child.skeleton) {
+                    child.skeleton.update();
+                }
+            });
+
+            updateJointSpheres();
+        }
+
+        transformControls.addEventListener('dragging-changed', function (event) {
+            controls.enabled = !event.value;
+            // 💡 只有當使用者放開控制軸時，才主動抓取姿態並回傳 ComfyUI 存檔
+            if (!event.value) {
+                config.pose = getPoseData();
+                config.camera = getCameraData();
+                notifyConfigChange();
+                sendPoseToComfyUI();
+            }
+        });
+
+        transformControls.addEventListener('change', () => {
+            if (currentModel) {
+                currentModel.updateMatrixWorld(true);
+                currentModel.traverse((child) => {
+                    if (child.isSkinnedMesh && child.skeleton) {
+                        child.skeleton.update();
+                    }
+                });
+            }
+        });
+
         const ambientLight = new THREE.AmbientLight(0xffffff, config.ambient);
         scene.add(ambientLight);
 
@@ -180,10 +423,183 @@
             if (currentModel) {
                 const v = config.modelColor;
                 currentModel.traverse((child) => {
-                    if (child.isMesh) child.material.color.setRGB(v, v, v);
+                    if (child.isMesh && child.material) child.material.color.setRGB(v, v, v);
                 });
             }
         }
+
+        function setupSkeleton(model) {
+            jointSpheres.forEach(s => scene.remove(s));
+            jointSpheres = [];
+
+            model.traverse((child) => {
+                if (child.isBone) {
+                    const sphereGeo = new THREE.SphereGeometry(1, 10, 10);
+                    const sphereMat = new THREE.MeshBasicMaterial({
+                        color: 0xff2222,
+                        wireframe: true,
+                        depthTest: false,
+                        transparent: true,
+                        opacity: 0.85
+                    });
+                    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+                    sphere.userData.bone = child;
+                    sphere.renderOrder = 999;
+
+                    const r = baseJointRadius * jointScale;
+                    sphere.scale.set(r, r, r);
+
+                    scene.add(sphere);
+                    jointSpheres.push(sphere);
+                }
+            });
+        }
+
+        function updateJointSpheres() {
+            jointSpheres.forEach(sphere => {
+                if (sphere.userData.bone) {
+                    const worldPos = new THREE.Vector3();
+                    sphere.userData.bone.getWorldPosition(worldPos);
+                    sphere.position.copy(worldPos);
+                    sphere.visible = showJoints;
+
+                    const r = baseJointRadius * jointScale;
+                    sphere.scale.set(r, r, r);
+                }
+            });
+        }
+
+        renderer.domElement.addEventListener('pointerdown', (event) => {
+            if (!showJoints) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // 1. 檢查是否點擊到關節球
+            const intersects = raycaster.intersectObjects(jointSpheres);
+
+            if (intersects.length > 0) {
+                const hitSphere = intersects[0].object;
+                const targetBone = hitSphere.userData.bone;
+                transformControls.attach(targetBone);
+                transformControls.visible = true;
+            } else {
+                // 2. 判斷是否點在旋轉環上
+                // TransformControls 只有在鼠標真正對準控制環時，axis 才會有值 ('X', 'Y', 'Z', 'E' 等)
+                // 點在空白處或隱形平面上時，axis 會是 null
+                const isClickingGizmo = transformControls.visible && transformControls.axis !== null;
+
+                // 3. 既沒點到關節球，也沒點到旋轉環 -> 取消選取並隱藏控制球
+                if (!isClickingGizmo) {
+                    transformControls.detach();
+                    transformControls.visible = false;
+                }
+            }
+        });
+
+        renderer.domElement.addEventListener('dblclick', (event) => {
+            if (!currentModel) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            let targetBone = null;
+            let hitPoint = null;
+
+            // 1. 若關節點目前為顯示狀態，優先檢查是否雙擊到「關節球」或「旋轉軸」
+            if (showJoints) {
+                const jointIntersects = raycaster.intersectObjects(jointSpheres);
+                if (jointIntersects.length > 0) {
+                    targetBone = jointIntersects[0].object.userData.bone;
+                } else if (transformControls.visible && transformControls.object) {
+                    const gizmoIntersects = raycaster.intersectObject(transformControls, true);
+                    if (gizmoIntersects.length > 0) {
+                        targetBone = transformControls.object;
+                    }
+                }
+            }
+
+            // 2. 若沒擊中關節球（或關節點處於隱藏狀態），則射線偵測模型本體
+            if (!targetBone) {
+                const modelIntersects = raycaster.intersectObject(currentModel, true);
+                if (modelIntersects.length > 0) {
+                    hitPoint = modelIntersects[0].point;
+
+                    // 計算離雙擊觸發點最近的骨骼關節
+                    let minDistance = Infinity;
+                    jointSpheres.forEach(sphere => {
+                        if (sphere.userData.bone) {
+                            const boneWorldPos = new THREE.Vector3();
+                            sphere.userData.bone.getWorldPosition(boneWorldPos);
+                            const dist = boneWorldPos.distanceTo(hitPoint);
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                targetBone = sphere.userData.bone;
+                            }
+                        }
+                    });
+                }
+            }
+
+            // 3. 成功找到目標骨骼時的處理
+            if (targetBone) {
+                // 紀錄雙擊前關節點是否為隱藏狀態
+                const wasJointsHidden = !showJoints;
+
+                // 💡 若關節點原本是隱藏的，開啟顯示並更新 UI 按鈕
+                if (wasJointsHidden) {
+                    showJoints = true;
+                    const toggleBtn = document.getElementById('btn-toggle-joints');
+                    if (toggleBtn) toggleBtn.innerText = "隱藏關節點";
+                    updateJointSpheres();
+                }
+
+                // 附著控制軸
+                transformControls.attach(targetBone);
+                transformControls.visible = true;
+
+                // 💡 只有在關節點原本「就已經是顯示狀態」時，雙擊才會觸發鏡頭縮放拉近
+                if (!wasJointsHidden) {
+                    const worldPos = new THREE.Vector3();
+                    targetBone.getWorldPosition(worldPos);
+
+                    const boneName = targetBone.name ? targetBone.name.toLowerCase() : '';
+                    const isFineDetail = boneName.includes('hand') || boneName.includes('finger') || boneName.includes('thumb') || boneName.includes('index') || boneName.includes('wrist');
+
+                    focusOnPosition(worldPos, isFineDetail ? 0.2 : 0.4);
+                }
+            }
+        });
+
+        document.getElementById('btn-focus-lhand').addEventListener('click', () => focusHand(true));
+        document.getElementById('btn-focus-rhand').addEventListener('click', () => focusHand(false));
+        document.getElementById('btn-focus-reset').addEventListener('click', () => focusFullBody());
+
+        document.getElementById('opt-jointsize').addEventListener('input', (e) => {
+            jointScale = parseFloat(e.target.value);
+            document.getElementById('val-jointsize').innerText = jointScale;
+        });
+
+        document.getElementById('opt-gizmosize').addEventListener('input', (e) => {
+            const sz = parseFloat(e.target.value);
+            transformControls.setSize(sz);
+            document.getElementById('val-gizmosize').innerText = sz;
+        });
+
+        document.getElementById('btn-toggle-joints').addEventListener('click', () => {
+            showJoints = !showJoints;
+            document.getElementById('btn-toggle-joints').innerText = showJoints ? "隱藏關節點" : "顯示關節點";
+            if (!showJoints) {
+                transformControls.detach();
+                transformControls.visible = false;
+            }
+        });
 
         document.getElementById('opt-ambient').addEventListener('input', (e) => {
             config.ambient = parseFloat(e.target.value);
@@ -258,7 +674,7 @@
                             const indices = [skinIndex.getX(i), skinIndex.getY(i), skinIndex.getZ(i), skinIndex.getW(i)];
                             const weights = [skinWeight.getX(i), skinWeight.getY(i), skinWeight.getZ(i), skinWeight.getW(i)];
 
-                            skinMatrix.set(0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0);
+                            skinMatrix.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
                             for (let j = 0; j < 4; j++) {
                                 const w = weights[j];
@@ -296,8 +712,23 @@
             return box;
         }
 
+        // 💡 純粹繪製截圖並傳給 ComfyUI，不覆蓋 config
         function sendPoseToComfyUI() {
             if (!isModelLoaded) return;
+
+            if (currentModel) {
+                currentModel.updateMatrixWorld(true);
+                currentModel.traverse((child) => {
+                    if (child.isSkinnedMesh && child.skeleton) {
+                        child.skeleton.update();
+                    }
+                });
+            }
+
+            const prevTCVis = transformControls.visible;
+
+            jointSpheres.forEach(s => s.visible = false);
+            transformControls.visible = false;
 
             const currentW = container.clientWidth;
             const currentH = container.clientHeight;
@@ -320,6 +751,9 @@
             renderer.setSize(currentW, currentH, false);
             renderer.render(scene, camera);
 
+            jointSpheres.forEach(s => s.visible = showJoints);
+            transformControls.visible = showJoints && prevTCVis && !!transformControls.object;
+
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
         }
 
@@ -335,70 +769,59 @@
 
             if (event.data.type === "LIKEJ_POSE3D_LOAD_CONFIG") {
                 try {
-                    const loadedConfig = JSON.parse(event.data.configStr);
+                    const loadedConfig = typeof event.data.configStr === "string"
+                        ? JSON.parse(event.data.configStr)
+                        : event.data.configStr;
+
                     if (loadedConfig && Object.keys(loadedConfig).length > 0) {
                         config = { ...config, ...loadedConfig };
                         updateUIFromConfig();
+
+                        if (isModelLoaded) {
+                            if (config.pose && config.pose.length > 0) applyPoseData(config.pose);
+                            if (config.camera) applyCameraData(config.camera);
+                            sendPoseToComfyUI();
+                        }
+                    } else {
+                        focusFullBody();
+                        sendPoseToComfyUI();
                     }
-                } catch(e) {
-                    console.warn("無法解析 Node 配置，使用預設設定");
+                } catch (e) {
+                    console.warn("無法解析 Node 配置，使用預設視角", e);
+                    focusFullBody();
+                    sendPoseToComfyUI();
                 }
             }
         });
 
         loader.load(modelUrl, (gltf) => {
             currentModel = gltf.scene;
-            
+
             const cVal = config.modelColor;
             currentModel.traverse((child) => {
                 if (child.isMesh) {
                     child.material = new THREE.MeshStandardMaterial({
                         color: new THREE.Color(cVal, cVal, cVal),
                         roughness: 0.6,
-                        metalness: 0.1
+                        metalness: 0.1,
+                        skinning: child.isSkinnedMesh || false
                     });
                 }
             });
 
             scene.add(currentModel);
 
-            if (gltf.animations && gltf.animations.length > 0) {
-                const mixer = new THREE.AnimationMixer(currentModel);
-                const action = mixer.clipAction(gltf.animations[0]);
-                action.play();
-                mixer.update(0.5); 
-            }
-
             const box = computeExactWorldBoundingBox(currentModel);
-            const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
+            baseJointRadius = Math.max(0.003, size.y * 0.004);
 
-            const fov = camera.fov * (Math.PI / 180);
-            const aspect = targetWidth / targetHeight;
-
-            const distV = (size.y / 2) / Math.tan(fov / 2);
-            const fovH = 2 * Math.atan(Math.tan(fov / 2) * aspect);
-            const distH = (size.x / 2) / Math.tan(fovH / 2);
-
-            let cameraDist = Math.max(distV, distH) + (size.z / 2);
-
-            if (!isFinite(cameraDist) || cameraDist <= 0) {
-                cameraDist = 5;
-            } else {
-                cameraDist *= 1.2;
-            }
-
-            camera.position.set(center.x, center.y, center.z + cameraDist);
-            controls.target.copy(center);
-            camera.lookAt(center);
-            controls.update();
+            setupSkeleton(currentModel);
 
             document.getElementById('loading').style.display = 'none';
             isModelLoaded = true;
 
-            requestAnimationFrame(() => {
-                sendPoseToComfyUI();
-            });
+            // 💡 模型載入完成，主動發送 READY 訊號向 ComfyUI 索取 saved pose
+            window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
 
         }, undefined, (error) => {
             console.error('模型載入失敗:', error);
@@ -408,22 +831,28 @@
         window.addEventListener('resize', () => {
             const width = container.clientWidth;
             const height = container.clientHeight;
-            
+
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
-            
+
             renderer.render(scene, camera);
         });
 
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
+            updateJointSpheres();
             renderer.render(scene, camera);
         }
         animate();
 
-        controls.addEventListener('end', () => sendPoseToComfyUI());
+        controls.addEventListener('end', () => {
+            config.camera = getCameraData();
+            notifyConfigChange();
+            sendPoseToComfyUI();
+        });
     </script>
 </body>
+
 </html>

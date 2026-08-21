@@ -5,32 +5,28 @@ app.registerExtension({
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.name === "LikeJPose3d") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
-            
+
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 const self = this;
 
-                // 1. 姿態影像隱藏欄位
-                const b64Widget = this.addWidget("text", "pose_b64", "", () => {}, { serialize: true });
-                b64Widget.type = "hidden";
+                // 1. 初始化屬性（完全不加任何 Widget，畫面 100% 乾淨）
+                this.properties = this.properties || {};
+                this.properties["pose_b64"] = this.properties["pose_b64"] || "";
+                this.properties["pose_config"] = this.properties["pose_config"] || "";
 
-                // 💡 2. 擴充設定隱藏欄位 (序列化儲存在工作流)
-                const configWidget = this.addWidget("text", "pose_config", "{}", () => {}, { serialize: true });
-                configWidget.type = "hidden";
-
-                // 3. 建立 3D 視窗 iframe
+                // 2. 建立原本的 iframe
                 const iframe = document.createElement("iframe");
-                iframe.src = "/extensions/ComfyUI-LikeJ/likejpose3d.html"; 
+                iframe.src = "/extensions/ComfyUI-LikeJ/likejpose3d.html?v=" + Date.now();
                 iframe.style.width = "100%";
                 iframe.style.height = "400px";
                 iframe.style.border = "none";
 
-                // 發送尺寸與存檔的 Config 給 iframe
-                const syncToIframe = (triggerSend = false) => {
-                    const wWidget = self.widgets ? self.widgets.find(w => w.name === "width") : null;
-                    const hWidget = self.widgets ? self.widgets.find(w => w.name === "height") : null;
-                    const wVal = wWidget ? parseInt(wWidget.value) : 512;
-                    const hVal = hWidget ? parseInt(hWidget.value) : 512;
+                const syncSizeToIframe = (triggerSend = false) => {
+                    const wWidget = self.widgets?.find(w => w.name === "width");
+                    const hWidget = self.widgets?.find(w => w.name === "height");
+                    const wVal = wWidget ? parseInt(wWidget.value) : 1024;
+                    const hVal = hWidget ? parseInt(hWidget.value) : 1024;
 
                     if (iframe.contentWindow) {
                         iframe.contentWindow.postMessage({
@@ -39,23 +35,17 @@ app.registerExtension({
                             height: hVal,
                             triggerSend: triggerSend
                         }, "*");
-
-                        // 將存儲在 Node 上的 config 發送至 HTML 載入
-                        iframe.contentWindow.postMessage({
-                            type: "LIKEJ_POSE3D_LOAD_CONFIG",
-                            configStr: configWidget ? configWidget.value : "{}"
-                        }, "*");
                     }
                 };
 
                 const bindWidgetCallback = (name) => {
-                    const w = self.widgets ? self.widgets.find(x => x.name === name) : null;
+                    const w = self.widgets?.find(x => x.name === name);
                     if (w && !w._likej_bound) {
                         w._likej_bound = true;
                         const origCallback = w.callback;
-                        w.callback = function (value) {
+                        w.callback = function () {
                             if (origCallback) origCallback.apply(this, arguments);
-                            syncToIframe(true);
+                            syncSizeToIframe(true);
                         };
                     }
                 };
@@ -63,34 +53,45 @@ app.registerExtension({
                 iframe.onload = () => {
                     bindWidgetCallback("width");
                     bindWidgetCallback("height");
-                    syncToIframe(true);
                 };
 
-                this.addDOMWidget("3d_editor", "HTML", iframe, {
-                    getValue() { return b64Widget ? b64Widget.value : ""; },
-                    setValue(v) { if (b64Widget) b64Widget.value = v; }
+                const editorWidget = self.addDOMWidget("3d_editor", "HTML", iframe, {
+                    getValue: () => self.properties["pose_b64"],
+                    setValue: (v) => { self.properties["pose_b64"] = v; }
                 });
 
-                this.size = [450, 500];
+                if (editorWidget) {
+                    editorWidget.computeSize = () => [450, 400];
+                }
 
-                // 💡 接收來自 iframe 的訊息
+                self.setSize([450, 480]);
+
                 window.addEventListener("message", (event) => {
-                    if (!event.data) return;
+                    if (!event.data || event.source !== iframe.contentWindow) return;
 
-                    // 更新姿態圖片
-                    if (event.data.type === "LIKEJ_POSE3D_UPDATE") {
-                        if (b64Widget) {
-                            b64Widget.value = event.data.image;
-                            app.graph.setDirtyCanvas(true);
-                        }
+                    // 💡 3D 視窗載入完成時，直接把 properties 裡的配置傳過去
+                    if (event.data.type === "LIKEJ_POSE3D_READY") {
+                        const savedConfig = self.properties["pose_config"] || "";
+                        iframe.contentWindow.postMessage({
+                            type: "LIKEJ_POSE3D_LOAD_CONFIG",
+                            configStr: savedConfig
+                        }, "*");
+                        syncSizeToIframe(false);
                     }
 
-                    // 💡 儲存 UI 配置至 Node 的 hidden widget 上
+                    if (event.data.type === "LIKEJ_POSE3D_UPDATE") {
+                        self.properties["pose_b64"] = event.data.image || "";
+                        app.graph.setDirtyCanvas(true);
+                    }
+
+                    // 💡 變更時直接存入 properties，會隨 ComfyUI 工作流 JSON 一起儲存
                     if (event.data.type === "LIKEJ_POSE3D_SAVE_CONFIG") {
-                        if (configWidget) {
-                            configWidget.value = JSON.stringify(event.data.config);
-                            app.graph.setDirtyCanvas(true);
-                        }
+                        const strData = typeof event.data.config === "string" 
+                            ? event.data.config 
+                            : JSON.stringify(event.data.config);
+                        
+                        self.properties["pose_config"] = strData;
+                        app.graph.setDirtyCanvas(true);
                     }
                 });
 
