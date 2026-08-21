@@ -1,20 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <title>LikeJ Pose 3D</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #f0f0f0;
-        }
-
-        canvas {
-            display: block;
-        }
-
+        body { margin: 0; overflow: hidden; background-color: #f0f0f0; }
+        canvas { display: block; }
         #loading {
             position: absolute;
             top: 50%;
@@ -28,7 +19,6 @@
         }
     </style>
 </head>
-
 <body>
     <div id="loading">載入 3D 模型中...</div>
 
@@ -37,19 +27,21 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <script>
+        let targetWidth = 512;
+        let targetHeight = 512;
+
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf8f8f8);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-        // preserveDrawingBuffer: true 必須保持開啟，確保 toDataURL 不會抓到空白 Canvas
+        
         const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.body.appendChild(renderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-
+        
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         scene.add(ambientLight);
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -59,7 +51,6 @@
         const loader = new THREE.GLTFLoader();
         const modelUrl = '/extensions/ComfyUI-LikeJ/models/female_body_base.glb';
 
-        // 💡 核心演算法：精準計算模型變形後的真實世界邊界
         function computeExactWorldBoundingBox(model) {
             const box = new THREE.Box3();
             const v = new THREE.Vector3();
@@ -102,7 +93,7 @@
                             const indices = [skinIndex.getX(i), skinIndex.getY(i), skinIndex.getZ(i), skinIndex.getW(i)];
                             const weights = [skinWeight.getX(i), skinWeight.getY(i), skinWeight.getZ(i), skinWeight.getW(i)];
 
-                            skinMatrix.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                            skinMatrix.set(0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0);
 
                             for (let j = 0; j < 4; j++) {
                                 const w = weights[j];
@@ -140,65 +131,65 @@
             return box;
         }
 
-        let targetWidth = 1024;
-        let targetHeight = 1024;
-
-        // 監聽來自前端 JS 的寬高設定數據
-        window.addEventListener("message", (event) => {
-            if (event.data && event.data.type === "LIKEJ_POSE3D_SET_SIZE") {
-                targetWidth = event.data.width || 1024;
-                targetHeight = event.data.height || 1024;
-            }
-        });
-
+        // 💡 核心修復：擷取 Base64 時，精準切換相機長寬比與渲染畫布解析度，避免拉伸 distortion
         function sendPoseToComfyUI() {
-            // 1. 紀錄目前 UI 視窗顯示尺寸與相機長寬比
             const currentW = window.innerWidth;
             const currentH = window.innerHeight;
             const currentAspect = camera.aspect;
+            const currentPixelRatio = renderer.getPixelRatio();
 
-            // 2. 暫時將渲染畫布與相機切換為目標解析度 (如 1024x1024)
+            // 1. 設定為目標解析度與相機比例 (例如 1024 / 1024)
+            renderer.setPixelRatio(1);
             camera.aspect = targetWidth / targetHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(targetWidth, targetHeight, false); // false 避免改變 CSS 樣式
+
+            renderer.setSize(targetWidth, targetHeight, false);
             renderer.render(scene, camera);
 
-            // 3. 擷取高解析度且不失真的 Base64 圖像
+            // 2. 擷取絕不拉伸變形的 Base64
             const dataURL = renderer.domElement.toDataURL("image/png");
 
-            // 4. 恢復畫布為 UI 編輯視窗大小
+            // 3. 恢復原本 UI 視窗的畫面與視角設定
+            renderer.setPixelRatio(currentPixelRatio);
             camera.aspect = currentAspect;
             camera.updateProjectionMatrix();
+
             renderer.setSize(currentW, currentH, false);
             renderer.render(scene, camera);
 
-            // 5. 傳送資料給 ComfyUI
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
         }
 
-        // 載入 3D 模型
+        // 💡 監聽來自 ComfyUI JS 的寬高更新訊息
+        window.addEventListener("message", (event) => {
+            if (event.data && event.data.type === "LIKEJ_POSE3D_SET_SIZE") {
+                targetWidth = parseInt(event.data.width) || 512;
+                targetHeight = parseInt(event.data.height) || 512;
+
+                if (event.data.triggerSend) {
+                    sendPoseToComfyUI();
+                }
+            }
+        });
+
         loader.load(modelUrl, (gltf) => {
             const model = gltf.scene;
             scene.add(model);
 
-            // 處理動畫定格
             if (gltf.animations && gltf.animations.length > 0) {
                 const mixer = new THREE.AnimationMixer(model);
                 const action = mixer.clipAction(gltf.animations[0]);
                 action.play();
-                mixer.update(0.5);
+                mixer.update(0.5); 
             }
 
-            // 計算世界中心與尺寸
             const box = computeExactWorldBoundingBox(model);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
 
-            // 視角適應計算
+            // 💡 使用目標輸出的比例 (targetWidth / targetHeight) 計算相機鏡頭距離，避免上下或左右被切割
             const fov = camera.fov * (Math.PI / 180);
-            const w = window.innerWidth || 450;
-            const h = window.innerHeight || 400;
-            const aspect = w / h;
+            const aspect = targetWidth / targetHeight;
 
             const distV = (size.y / 2) / Math.tan(fov / 2);
             const fovH = 2 * Math.atan(Math.tan(fov / 2) * aspect);
@@ -206,14 +197,12 @@
 
             let cameraDist = Math.max(distV, distH) + (size.z / 2);
 
-            // 💡 關鍵防護：如果 iframe 初始化尺寸為 0 導致計算出 Infinity/NaN，給予預設安全距離
             if (!isFinite(cameraDist) || cameraDist <= 0) {
                 cameraDist = 5;
             } else {
                 cameraDist *= 1.2;
             }
 
-            // 設定相機位置與目標點
             camera.position.set(center.x, center.y, center.z + cameraDist);
             controls.target.copy(center);
             camera.lookAt(center);
@@ -221,7 +210,6 @@
 
             document.getElementById('loading').style.display = 'none';
 
-            // 💡 模型載入完成後，延遲一幀確保畫面已繪製再發送 Base64
             requestAnimationFrame(() => {
                 sendPoseToComfyUI();
             });
@@ -234,11 +222,11 @@
         window.addEventListener('resize', () => {
             const width = window.innerWidth;
             const height = window.innerHeight;
-
+            
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
-
+            
             renderer.render(scene, camera);
         });
 
@@ -249,9 +237,7 @@
         }
         animate();
 
-        // 使用者旋轉/拖拽結束時，觸發更新傳送圖像
         controls.addEventListener('end', () => sendPoseToComfyUI());
     </script>
 </body>
-
 </html>

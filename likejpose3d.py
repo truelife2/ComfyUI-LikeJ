@@ -23,6 +23,7 @@ class LikeJPose3d:
     CATEGORY = "LikeJ"
 
     def generate_pose(self, width, height, pose_b64=""):
+        # 僅在未收到姿態數據時，使用設定的 width/height 產生黑圖備用
         if not pose_b64 or pose_b64.strip() == "":
             empty_image = np.zeros((height, width, 3), dtype=np.float32)
             return (torch.from_numpy(empty_image).unsqueeze(0),)
@@ -32,8 +33,8 @@ class LikeJPose3d:
             
         image_data = base64.b64decode(pose_b64)
         image = Image.open(io.BytesIO(image_data)).convert("RGB")
-        image = image.resize((width, height), Image.LANCZOS)
         
+        # 💡 完全不進行 PIL resize，直接原汁原味輸出前端產生的尺寸
         image_np = np.array(image).astype(np.float32) / 255.0
         image_tensor = torch.from_numpy(image_np).unsqueeze(0)
         
