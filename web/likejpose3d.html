@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>LikeJ Pose 3D</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: sans-serif;
+            font-size: 14px;
+            color: #555;
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">載入 3D 模型中...</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8f8f8);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // preserveDrawingBuffer: true 必須保持開啟，確保 toDataURL 不會抓到空白 Canvas
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(5, 10, 7);
+        scene.add(directionalLight);
+
+        const loader = new THREE.GLTFLoader();
+        const modelUrl = '/extensions/ComfyUI-LikeJ/models/female_body_base.glb';
+
+        // 💡 核心演算法：精準計算模型變形後的真實世界邊界
+        function computeExactWorldBoundingBox(model) {
+            const box = new THREE.Box3();
+            const v = new THREE.Vector3();
+
+            model.updateMatrixWorld(true);
+            let hasMesh = false;
+
+            model.traverse((child) => {
+                if (!child.isMesh || !child.visible) return;
+
+                const name = child.name.toLowerCase();
+                if (name.includes("floor") || name.includes("ground") || name.includes("plane")) return;
+
+                hasMesh = true;
+
+                if (child.isSkinnedMesh && child.skeleton) {
+                    child.skeleton.update();
+                    const geom = child.geometry;
+                    const posAttr = geom.attributes.position;
+                    const skinIndex = geom.attributes.skinIndex;
+                    const skinWeight = geom.attributes.skinWeight;
+                    const bones = child.skeleton.bones;
+                    const boneInverses = child.skeleton.boneInverses;
+
+                    const boneMatrices = bones.map((bone, idx) => {
+                        const m = new THREE.Matrix4();
+                        if (bone && boneInverses[idx]) {
+                            m.multiplyMatrices(bone.matrixWorld, boneInverses[idx]);
+                        }
+                        return m;
+                    });
+
+                    const skinMatrix = new THREE.Matrix4();
+                    const stride = Math.max(1, Math.floor(posAttr.count / 1500));
+
+                    for (let i = 0; i < posAttr.count; i += stride) {
+                        v.fromBufferAttribute(posAttr, i);
+
+                        if (skinIndex && skinWeight) {
+                            const indices = [skinIndex.getX(i), skinIndex.getY(i), skinIndex.getZ(i), skinIndex.getW(i)];
+                            const weights = [skinWeight.getX(i), skinWeight.getY(i), skinWeight.getZ(i), skinWeight.getW(i)];
+
+                            skinMatrix.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+                            for (let j = 0; j < 4; j++) {
+                                const w = weights[j];
+                                if (w > 0 && boneMatrices[indices[j]]) {
+                                    const bm = boneMatrices[indices[j]];
+                                    for (let k = 0; k < 16; k++) {
+                                        skinMatrix.elements[k] += bm.elements[k] * w;
+                                    }
+                                }
+                            }
+                            v.applyMatrix4(skinMatrix);
+                        } else {
+                            v.applyMatrix4(child.matrixWorld);
+                        }
+                        box.expandByPoint(v);
+                    }
+                } else {
+                    const geom = child.geometry;
+                    if (geom && geom.attributes.position) {
+                        const posAttr = geom.attributes.position;
+                        const stride = Math.max(1, Math.floor(posAttr.count / 1500));
+                        for (let i = 0; i < posAttr.count; i += stride) {
+                            v.fromBufferAttribute(posAttr, i);
+                            v.applyMatrix4(child.matrixWorld);
+                            box.expandByPoint(v);
+                        }
+                    }
+                }
+            });
+
+            if (!hasMesh || box.isEmpty()) {
+                box.setFromObject(model);
+            }
+
+            return box;
+        }
+
+        let targetWidth = 1024;
+        let targetHeight = 1024;
+
+        // 監聽來自前端 JS 的寬高設定數據
+        window.addEventListener("message", (event) => {
+            if (event.data && event.data.type === "LIKEJ_POSE3D_SET_SIZE") {
+                targetWidth = event.data.width || 1024;
+                targetHeight = event.data.height || 1024;
+            }
+        });
+
+        function sendPoseToComfyUI() {
+            // 1. 紀錄目前 UI 視窗顯示尺寸與相機長寬比
+            const currentW = window.innerWidth;
+            const currentH = window.innerHeight;
+            const currentAspect = camera.aspect;
+
+            // 2. 暫時將渲染畫布與相機切換為目標解析度 (如 1024x1024)
+            camera.aspect = targetWidth / targetHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(targetWidth, targetHeight, false); // false 避免改變 CSS 樣式
+            renderer.render(scene, camera);
+
+            // 3. 擷取高解析度且不失真的 Base64 圖像
+            const dataURL = renderer.domElement.toDataURL("image/png");
+
+            // 4. 恢復畫布為 UI 編輯視窗大小
+            camera.aspect = currentAspect;
+            camera.updateProjectionMatrix();
+            renderer.setSize(currentW, currentH, false);
+            renderer.render(scene, camera);
+
+            // 5. 傳送資料給 ComfyUI
+            window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
+        }
+
+        // 載入 3D 模型
+        loader.load(modelUrl, (gltf) => {
+            const model = gltf.scene;
+            scene.add(model);
+
+            // 處理動畫定格
+            if (gltf.animations && gltf.animations.length > 0) {
+                const mixer = new THREE.AnimationMixer(model);
+                const action = mixer.clipAction(gltf.animations[0]);
+                action.play();
+                mixer.update(0.5);
+            }
+
+            // 計算世界中心與尺寸
+            const box = computeExactWorldBoundingBox(model);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+
+            // 視角適應計算
+            const fov = camera.fov * (Math.PI / 180);
+            const w = window.innerWidth || 450;
+            const h = window.innerHeight || 400;
+            const aspect = w / h;
+
+            const distV = (size.y / 2) / Math.tan(fov / 2);
+            const fovH = 2 * Math.atan(Math.tan(fov / 2) * aspect);
+            const distH = (size.x / 2) / Math.tan(fovH / 2);
+
+            let cameraDist = Math.max(distV, distH) + (size.z / 2);
+
+            // 💡 關鍵防護：如果 iframe 初始化尺寸為 0 導致計算出 Infinity/NaN，給予預設安全距離
+            if (!isFinite(cameraDist) || cameraDist <= 0) {
+                cameraDist = 5;
+            } else {
+                cameraDist *= 1.2;
+            }
+
+            // 設定相機位置與目標點
+            camera.position.set(center.x, center.y, center.z + cameraDist);
+            controls.target.copy(center);
+            camera.lookAt(center);
+            controls.update();
+
+            document.getElementById('loading').style.display = 'none';
+
+            // 💡 模型載入完成後，延遲一幀確保畫面已繪製再發送 Base64
+            requestAnimationFrame(() => {
+                sendPoseToComfyUI();
+            });
+
+        }, undefined, (error) => {
+            console.error('模型載入失敗:', error);
+            document.getElementById('loading').innerText = '模型載入失敗，請檢查檔案名稱與路徑';
+        });
+
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+
+            renderer.render(scene, camera);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 使用者旋轉/拖拽結束時，觸發更新傳送圖像
+        controls.addEventListener('end', () => sendPoseToComfyUI());
+    </script>
+</body>
+
+</html>

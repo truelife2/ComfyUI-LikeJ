@@ -12,6 +12,7 @@ from . import likejloadtextfile
 from . import likejloadimages
 from . import likejswitchtoflowin
 from . import likejimageresize
+from . import likejpose3d
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -29,6 +30,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJLoadImages": likejloadimages.LikeJLoadImages,
     "LikeJSwitchToFlowIn": likejswitchtoflowin.LikeJSwitchToFlowIn,
     "LikeJImageResize": likejimageresize.LikeJImageResize,
+    "LikeJPose3d": likejpose3d.LikeJPose3d,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -47,6 +49,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJLoadImages": "LikeJ Load Images",
     "LikeJSwitchToFlowIn": "Likej Switch To FlowIn (Any)",
     "LikeJImageResize": "LikeJ Image Resize (Outpaint)",
+    "LikeJPose3d": "LikeJ 3D Pose Editor",
 }
 
 WEB_DIRECTORY = "./web"

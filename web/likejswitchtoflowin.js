@@ -64,9 +64,6 @@ app.registerExtension({
         const onConfigure = nodeType.prototype.onConfigure;
         nodeType.prototype.onConfigure = function (o) {
             if (onConfigure) onConfigure.apply(this, arguments);
-            console.log("onConfigure");
-            console.log(o);
-            console.log(o.outputs[0].value);
             if (o?.properties?.activeStatus !== undefined) {
                 this.properties = this.properties || {};
                 this.properties.activeStatus = o.properties.activeStatus;
@@ -82,7 +79,6 @@ app.registerExtension({
         const onExecuted = nodeType.prototype.onExecuted;
         nodeType.prototype.onExecuted = function (output) {
             if (onExecuted) onExecuted.apply(this, arguments);
-            console.log("onExecuted");
             
             const textData = output?.text || (output?.ui && output.ui.text);
             if (textData && textData.length > 0) {
