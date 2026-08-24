@@ -10,12 +10,10 @@ app.registerExtension({
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 const self = this;
 
-                // 1. 初始化屬性（完全不加任何 Widget，畫面 100% 乾淨）
                 this.properties = this.properties || {};
                 this.properties["pose_b64"] = this.properties["pose_b64"] || "";
                 this.properties["pose_config"] = this.properties["pose_config"] || "";
 
-                // 2. 建立原本的 iframe
                 const iframe = document.createElement("iframe");
                 iframe.src = "/extensions/ComfyUI-LikeJ/likejpose3d.html?v=" + Date.now();
                 iframe.style.width = "100%";
@@ -69,7 +67,6 @@ app.registerExtension({
                 window.addEventListener("message", (event) => {
                     if (!event.data || event.source !== iframe.contentWindow) return;
 
-                    // 💡 3D 視窗載入完成時，直接把 properties 裡的配置傳過去
                     if (event.data.type === "LIKEJ_POSE3D_READY") {
                         const savedConfig = self.properties["pose_config"] || "";
                         iframe.contentWindow.postMessage({
@@ -84,7 +81,6 @@ app.registerExtension({
                         app.graph.setDirtyCanvas(true);
                     }
 
-                    // 💡 變更時直接存入 properties，會隨 ComfyUI 工作流 JSON 一起儲存
                     if (event.data.type === "LIKEJ_POSE3D_SAVE_CONFIG") {
                         const strData = typeof event.data.config === "string" 
                             ? event.data.config 

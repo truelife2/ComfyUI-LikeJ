@@ -104,6 +104,12 @@
             padding: 2px;
         }
 
+        .control-group input[type=number] {
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            text-align: center;
+        }
+
         .toggle-btn {
             width: 100%;
             padding: 6px;
@@ -127,104 +133,6 @@
         .btn-group .toggle-btn {
             flex: 1;
         }
-
-        /* 姿態庫 Modal 樣式 */
-        .pose-modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(3px);
-        }
-
-        .pose-modal-content {
-            background: #ffffff;
-            margin: 3% auto;
-            padding: 14px;
-            width: 90%;
-            max-height: 85vh;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        .pose-modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            font-size: 14px;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 8px;
-            color: #333;
-        }
-
-        .close-btn {
-            cursor: pointer;
-            font-size: 20px;
-            color: #888;
-        }
-
-        .close-btn:hover {
-            color: #000;
-        }
-
-        .pose-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-            overflow-y: auto;
-            padding: 12px 4px;
-            max-height: 72vh;
-        }
-
-        .pose-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 6px;
-            cursor: pointer;
-            text-align: center;
-            background: #fff;
-            transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
-        }
-
-        .pose-card:hover {
-            transform: translateY(-3px);
-            border-color: #4A90E2;
-            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
-        }
-
-        .pose-card img {
-            width: 100%;
-            height: 200px;
-            object-fit: contain;
-            border-radius: 4px;
-            background: #f5f5f5;
-        }
-
-        .pose-card .title {
-            font-size: 11px;
-            margin-top: 5px;
-            color: #444;
-            font-weight: bold;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .pose-card .folder {
-            font-size: 9px;
-            color: #888;
-            margin-top: 2px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
     </style>
 </head>
 
@@ -232,25 +140,40 @@
     <div id="app-container">
         <!-- 左側控制面板 -->
         <div id="ui-panel">
-            <div class="panel-title" style="margin-top:0;">🔍 鏡頭對焦 (Focus)</div>
+            <div class="panel-title" style="margin-top:0;">📁 模型檔案</div>
+            <div class="control-group">
+                <input type="file" id="opt-model-file" accept=".glb,.gltf" style="display: none;">
+                <button id="btn-load-model" class="toggle-btn"
+                    style="background: #e3f2fd; border-color: #90caf9; color: #1976d2; font-weight: bold;">📁 載入 GLB /
+                    GLTF 模型</button>
+            </div>
+
+            <!-- 模型軸向與姿態校正面板 -->
+            <div class="panel-title">📐 軸向與姿態校正</div>
+            <div class="control-group">
+                <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between;">
+                    <label style="margin:0;">X: <input type="number" id="opt-offset-x" value="0" step="90" style="width: 40px; font-size: 11px; padding: 2px;"></label>
+                    <label style="margin:0;">Y: <input type="number" id="opt-offset-y" value="0" step="90" style="width: 40px; font-size: 11px; padding: 2px;"></label>
+                    <label style="margin:0;">Z: <input type="number" id="opt-offset-z" value="0" step="90" style="width: 40px; font-size: 11px; padding: 2px;"></label>
+                </div>
+                <button id="btn-pose-reset" class="toggle-btn"
+                    style="margin-top: 6px; background: #fff0f0; border-color: #ffb3b3; color: #d32f2f; font-weight: bold;">↺
+                    重置姿態 (T-Pose)</button>
+            </div>
+
+            <div class="panel-title">🔍 鏡頭快速對焦</div>
             <div class="control-group">
                 <div class="btn-group">
-                    <button id="btn-focus-lhand" class="toggle-btn">🔍 左手</button>
-                    <button id="btn-focus-rhand" class="toggle-btn">🔍 右手</button>
+                    <button id="btn-focus-lhand" class="toggle-btn">左手</button>
+                    <button id="btn-focus-rhand" class="toggle-btn">右手</button>
+                    <button id="btn-focus-reset" class="toggle-btn">全身</button>
                 </div>
-                <button id="btn-focus-reset" class="toggle-btn">🏠 復位全身</button>
             </div>
 
-            <div class="panel-title">📚 姿態預設庫</div>
-            <div class="control-group">
-                <button id="btn-vnccs-pose" class="toggle-btn"
-                    style="background:#4A90E2; color:#fff; font-weight:bold;">🖼️ VNCCS Pose</button>
-            </div>
-
-            <div class="panel-title">⚙️ 姿態與燈光設定</div>
+            <div class="panel-title">⚙️ 顯示與燈光設定</div>
 
             <div class="control-group">
-                <label>顯示關節點</label>
+                <label>顯示關節點與骨骼</label>
                 <button id="btn-toggle-joints" class="toggle-btn">顯示關節點</button>
             </div>
 
@@ -288,17 +211,6 @@
         </div>
     </div>
 
-    <!-- VNCCS Pose 彈窗 -->
-    <div id="pose-modal" class="pose-modal">
-        <div class="pose-modal-content">
-            <div class="pose-modal-header">
-                <span>🖼️ VNCCS 姿勢庫</span>
-                <span id="pose-modal-close" class="close-btn">&times;</span>
-            </div>
-            <div id="pose-grid" class="pose-grid"></div>
-        </div>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
@@ -314,6 +226,7 @@
 
         let transformControls;
         let jointSpheres = [];
+        let skeletonLines = null;
         let showJoints = false;
         let baseJointRadius = 0.008;
         let jointScale = 1.0;
@@ -326,6 +239,7 @@
             direct: 0.6,
             modelColor: 0.85,
             bgColor: '#f8f8f8',
+            rotationOffset: { x: 0, y: 0, z: 0 },
             pose: [],
             camera: null
         };
@@ -348,313 +262,49 @@
         transformControls.setSize(1.0);
         scene.add(transformControls);
 
-        // 完整骨骼映射表
-        const BONE_NAME_MAP = {
-            "pelvis": "mixamorigHips",
-            "spine_01": "mixamorigSpine",
-            "spine_02": "mixamorigSpine1",
-            "spine_03": "mixamorigSpine2",
-            "neck_01": "mixamorigNeck",
-            "head": "mixamorigHead",
-            "clavicle_l": "mixamorigLeftShoulder",
-            "upperarm_l": "mixamorigLeftArm",
-            "lowerarm_l": "mixamorigLeftForeArm",
-            "hand_l": "mixamorigLeftHand",
-            "clavicle_r": "mixamorigRightShoulder",
-            "upperarm_r": "mixamorigRightArm",
-            "lowerarm_r": "mixamorigRightForeArm",
-            "hand_r": "mixamorigRightHand",
-            "thigh_l": "mixamorigLeftUpLeg",
-            "calf_l": "mixamorigLeftLeg",
-            "foot_l": "mixamorigLeftFoot",
-            "ball_l": "mixamorigLeftToeBase",
-            "thigh_r": "mixamorigRightUpLeg",
-            "calf_r": "mixamorigRightLeg",
-            "foot_r": "mixamorigRightFoot",
-            "ball_r": "mixamorigRightToeBase",
-            "index_01_l": "mixamorigLeftHandIndex1", "index_02_l": "mixamorigLeftHandIndex2", "index_03_l": "mixamorigLeftHandIndex3",
-            "middle_01_l": "mixamorigLeftHandMiddle1", "middle_02_l": "mixamorigLeftHandMiddle2", "middle_03_l": "mixamorigLeftHandMiddle3",
-            "ring_01_l": "mixamorigLeftHandRing1", "ring_02_l": "mixamorigLeftHandRing2", "ring_03_l": "mixamorigLeftHandRing3",
-            "pinky_01_l": "mixamorigLeftHandPinky1", "pinky_02_l": "mixamorigLeftHandPinky2", "pinky_03_l": "mixamorigLeftHandPinky3",
-            "thumb_01_l": "mixamorigLeftHandThumb1", "thumb_02_l": "mixamorigLeftHandThumb2", "thumb_03_l": "mixamorigLeftHandThumb3",
-            "index_01_r": "mixamorigRightHandIndex1", "index_02_r": "mixamorigRightHandIndex2", "index_03_r": "mixamorigRightHandIndex3",
-            "middle_01_r": "mixamorigRightHandMiddle1", "middle_02_r": "mixamorigRightHandMiddle2", "middle_03_r": "mixamorigRightHandMiddle3",
-            "ring_01_r": "mixamorigRightHandRing1", "ring_02_r": "mixamorigRightHandRing2", "ring_03_r": "mixamorigRightHandRing3",
-            "pinky_01_r": "mixamorigRightHandPinky1", "pinky_02_r": "mixamorigRightHandPinky2", "pinky_03_r": "mixamorigRightHandPinky3",
-            "thumb_01_r": "mixamorigRightHandThumb1", "thumb_02_r": "mixamorigRightHandThumb2", "thumb_03_r": "mixamorigRightHandThumb3"
-        };
-
-        function findBoneByName(model, name) {
-            if (!model || !name) return null;
-            const mappedName = BONE_NAME_MAP[name] || name;
-
-            let found = null;
-            model.traverse(child => {
-                if (child.isBone && !found) {
-                    const cName = child.name;
-                    if (cName === mappedName || cName === name) {
-                        found = child;
-                    } else if (cName.toLowerCase() === mappedName.toLowerCase() || cName.toLowerCase() === name.toLowerCase()) {
-                        found = child;
-                    } else if (cName.toLowerCase().endsWith(mappedName.toLowerCase())) {
-                        found = child;
-                    }
-                }
-            });
-            return found;
+        function applyModelOffset() {
+            if (!currentModel) return;
+            const offset = config.rotationOffset || { x: 0, y: 0, z: 0 };
+            currentModel.position.set(0, 0, 0);
+            currentModel.rotation.set(
+                THREE.MathUtils.degToRad(offset.x || 0),
+                THREE.MathUtils.degToRad(offset.y || 0),
+                THREE.MathUtils.degToRad(offset.z || 0)
+            );
+            currentModel.updateMatrixWorld(true);
         }
 
-        // 💡 修正後能兼顧 VNCCS (四元數 q) 與原生/PoseStudio (歐拉角 val) 的載入邏輯
-        function loadPoseFromExternalJson(jsonObj) {
-            if (!currentModel || !jsonObj) {
-                console.error("❌ 姿態載入失敗：模型未初始化或 JSON 為空");
-                return;
+        function resetPose() {
+            if (!currentModel) return;
+
+            if (transformControls) {
+                transformControls.detach();
+                transformControls.visible = false;
             }
+
+            applyModelOffset();
 
             currentModel.traverse((child) => {
                 if (child.isSkinnedMesh && child.skeleton) {
-                    child.skeleton.pose(); // 重置骨架回原廠 T-Pose
-                }
-            });
-
-            // 1. 解析相容多種格式 (VNCCS, PoseStudio, 自訂 JSON)
-            let targetData = jsonObj;
-            if (jsonObj.characters && jsonObj.characters.length > 0) {
-                const char = jsonObj.characters[0];
-                if (char.poses && char.poses.length > 0) targetData = char.poses[0];
-            }
-
-            // 2. 收集姿態項目成統一陣列
-            let items = [];
-            if (Array.isArray(targetData.pose)) {
-                items = targetData.pose;
-            } else if (Array.isArray(targetData.bones)) {
-                items = targetData.bones;
-            } else if (targetData.bones && typeof targetData.bones === 'object') {
-                items = Object.keys(targetData.bones).map(key => ({
-                    name: key,
-                    val: targetData.bones[key]
-                }));
-            }
-
-            if (!items || items.length === 0) {
-                console.warn("⚠️ 找不到姿態資料");
-                return;
-            }
-
-            const boneAdjustments = {
-                'thigh_l': { offset: [135, 180, 0], scale: [-1, 1, 1] },
-                'thigh_r': { offset: [135, 180, 0], scale: [-1, 1, 1] },
-                'calf_l': { offset: [0, 0, 0], scale: [-1, 1, 1] },
-                'calf_r': { offset: [0, 0, 0], scale: [-1, 1, 1] },
-                'shin_l': { offset: [0, 0, 0], scale: [-1, 1, 1] },
-                'shin_r': { offset: [0, 0, 0], scale: [-1, 1, 1] },
-                'foot_l': { offset: [45, 0, 0], scale: [1, 1, 1] },
-                'foot_r': { offset: [45, 0, 0], scale: [1, 1, 1] },
-                'ball_l': { offset: [0, 0, 0], scale: [1, 1, 1] },
-                'ball_r': { offset: [0, 0, 0], scale: [1, 1, 1] },
-
-                'clavicle_l': { offset: [90, -45, -90], scale: [1, 1, 1] },
-                'clavicle_r': { offset: [90, 45, 90], scale: [1, 1, 1] },
-
-                'upperarm_l': { offset: [30, 0, 0], scale: [-1, -1, -1] },
-                'upperarm_r': { offset: [30, 0, 0], scale: [-1, -1, -1] },
-
-                'lowerarm_l': { offset: [30, 0, 0], scale: [-1, -1, -1] },
-                'lowerarm_r': { offset: [30, 0, 0], scale: [-1, -1, -1] },
-
-                'hand_l': { offset: [0, 0, 0], scale: [1, 1, 1] },
-                'hand_r': { offset: [0, 0, 0], scale: [1, 1, 1] },
-                'pelvis': { offset: [0, 0, 0], scale: [1, 1, 1] },
-                'spine_01': { offset: [0, 0, 0], scale: [1, 1, 1] },
-                'spine_03': { offset: [0, 0, 0], scale: [1, 1, 1] },
-                'neck_01': { offset: [0, 0, 0], scale: [1, 1, 1] }
-            };
-
-            const modelBones = [];
-            currentModel.traverse(child => { if (child.isBone) modelBones.push(child); });
-
-            function searchBone(name) {
-                if (!name) return null;
-                const mappedName = BONE_NAME_MAP[name] || name;
-                const cleanTarget = mappedName.toLowerCase().replace(/_\d+$/, '').replace(/[^a-z0-9]/g, '');
-
-                for (let bone of modelBones) {
-                    const cleanBName = bone.name.toLowerCase().replace(/_\d+$/, '').replace(/[^a-z0-9]/g, '');
-                    if (cleanBName === cleanTarget) return bone;
-                }
-                return null;
-            }
-
-            function getFingerAliases(sourceName) {
-                const match = sourceName.match(/^([a-z]+)_0([1-3])_([lr])$/);
-                if (!match) return [];
-                const [_, finger, num, side] = match;
-                const sideFull = side === 'l' ? 'left' : 'right';
-                return [
-                    `${finger}_${num}_${side}`, `${finger}${num}_${side}`,
-                    `${finger}${num}.${side}`, `${finger}_${num}.${side}`,
-                    `${sideFull}${finger}${num}`, `${sideFull}hand${finger}${num}`,
-                    `${side}${finger}${num}`, `hand${finger}${num}${side}`
-                ];
-            }
-
-            const synonyms = {
-                'clavicle_l': ['clavicle_l', 'shoulder_l', 'leftshoulder', 'shoulder.l', 'leftclavicle'],
-                'clavicle_r': ['clavicle_r', 'shoulder_r', 'rightshoulder', 'shoulder.r', 'rightclavicle'],
-                'upperarm_l': ['upperarm_l', 'arm_l', 'leftarm', 'upperarm.l', 'leftupperarm'],
-                'upperarm_r': ['upperarm_r', 'arm_r', 'rightarm', 'upperarm.r', 'rightupperarm'],
-                'lowerarm_l': ['lowerarm_l', 'forearm_l', 'elbow_l', 'leftforearm', 'lowerarm.l'],
-                'lowerarm_r': ['lowerarm_r', 'forearm_r', 'elbow_r', 'rightforearm', 'lowerarm.r'],
-                'hand_l': ['hand_l', 'wrist_l', 'lefthand', 'hand.l', 'leftwrist'],
-                'hand_r': ['hand_r', 'wrist_r', 'righthand', 'hand.r', 'rightwrist'],
-                'thigh_l': ['thigh_l', 'upleg_l', 'leg_l', 'leftupleg', 'thigh.l', 'leftupperleg'],
-                'thigh_r': ['thigh_r', 'upleg_r', 'leg_r', 'rightupleg', 'thigh.r', 'rightupperleg'],
-                'calf_l': ['calf_l', 'shin_l', 'leg_l', 'lowerleg_l', 'knee_l', 'leftleg', 'shin.l'],
-                'calf_r': ['calf_r', 'shin_r', 'leg_r', 'lowerleg_r', 'knee_r', 'rightleg', 'shin.r'],
-                'shin_l': ['shin_l', 'calf_l', 'leg_l', 'lowerleg_l', 'knee_l'],
-                'shin_r': ['shin_r', 'calf_r', 'leg_r', 'lowerleg_r', 'knee_r'],
-                'foot_l': ['foot_l', 'ankle_l', 'leftfoot', 'foot.l'],
-                'foot_r': ['foot_r', 'ankle_r', 'rightfoot', 'foot.r'],
-                'ball_l': ['ball_l', 'toe_l', 'toes_l', 'lefttoe', 'ball.l'],
-                'ball_r': ['ball_r', 'toe_r', 'toes_r', 'righttoe', 'ball.r'],
-                'spine_01': ['spine_01', 'spine1', 'spine', 'lumbar'],
-                'spine_03': ['spine_03', 'spine2', 'chest', 'thoracic'],
-                'neck_01': ['neck_01', 'neck', 'head_neck'],
-                'pelvis': ['pelvis', 'hips', 'hip', 'root']
-            };
-
-            let updatedCount = 0;
-
-            items.forEach(item => {
-                if (!item || !item.name) return;
-                const sourceBoneName = item.name;
-
-                let bone = searchBone(sourceBoneName);
-                if (!bone && synonyms[sourceBoneName]) {
-                    for (let alias of synonyms[sourceBoneName]) {
-                        bone = searchBone(alias);
-                        if (bone) break;
-                    }
-                }
-                if (!bone) {
-                    const fingerAliases = getFingerAliases(sourceBoneName);
-                    for (let alias of fingerAliases) {
-                        bone = searchBone(alias);
-                        if (bone) break;
-                    }
-                }
-
-                if (bone) {
-                    const adj = boneAdjustments[sourceBoneName] || { offset: [0, 0, 0], scale: [1, 1, 1] };
-                    const DEG = THREE.MathUtils.degToRad;
-                    let finalQuat = new THREE.Quaternion();
-
-                    // 💡 判別格式：如果是四元數 [x, y, z, w] 或是歐拉角 [rx, ry, rz]
-                    if (Array.isArray(item.q) && item.q.length === 4) {
-                        finalQuat.set(
-                            item.q[0] * adj.scale[0],
-                            item.q[1] * adj.scale[1],
-                            item.q[2] * adj.scale[2],
-                            item.q[3]
-                        ).normalize();
-                    } else {
-                        const rot = item.val || item.rot || item.v;
-                        if (Array.isArray(rot) && rot.length === 3) {
-                            const euler = new THREE.Euler(
-                                DEG(rot[0] * adj.scale[0]),
-                                DEG(rot[1] * adj.scale[1]),
-                                DEG(rot[2] * adj.scale[2]),
-                                'XYZ'
-                            );
-                            finalQuat.setFromEuler(euler);
-                        } else {
-                            return;
-                        }
-                    }
-
-                    // 2. 套用 offset 角度補償 (改回 multiply 後乘法)
-                    if (adj.offset[0] !== 0 || adj.offset[1] !== 0 || adj.offset[2] !== 0) {
-                        const adjEuler = new THREE.Euler(DEG(adj.offset[0]), DEG(adj.offset[1]), DEG(adj.offset[2]), 'XYZ');
-                        const adjQuat = new THREE.Quaternion().setFromEuler(adjEuler);
-                        finalQuat.multiply(adjQuat); // 恢復使用後乘法
-                    }
-
-                    bone.quaternion.copy(finalQuat);
-                    bone.updateMatrix();
-                    updatedCount++;
+                    child.skeleton.pose();
                 }
             });
 
             currentModel.updateMatrixWorld(true);
             currentModel.traverse((child) => {
-                if (child.isSkinnedMesh && child.skeleton) child.skeleton.update();
+                if (child.isSkinnedMesh && child.skeleton) {
+                    child.skeleton.update();
+                }
             });
 
-            if (typeof focusFullBody === 'function') focusFullBody();
-            if (typeof updateJointSpheres === 'function') updateJointSpheres();
-            if (typeof getPoseData === 'function' && typeof config !== 'undefined') config.pose = getPoseData();
-            if (typeof notifyConfigChange === 'function') notifyConfigChange();
-            if (typeof sendPoseToComfyUI === 'function') sendPoseToComfyUI();
+            updateJointSpheres();
+            focusFullBody();
+
+            config.pose = getPoseData();
+            config.camera = getCameraData();
+            notifyConfigChange();
+            sendPoseToComfyUI();
         }
-
-        // VNCCS Modal 視窗邏輯
-        const modal = document.getElementById('pose-modal');
-        const btnVnccsPose = document.getElementById('btn-vnccs-pose');
-        const btnCloseModal = document.getElementById('pose-modal-close');
-        const poseGrid = document.getElementById('pose-grid');
-
-        btnVnccsPose.addEventListener('click', async () => {
-            modal.style.display = 'block';
-            poseGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666; font-size:12px;">載入 VNCCS 姿勢庫中...</div>';
-
-            try {
-                const res = await fetch('/likejpose3d/get_library');
-                const items = await res.json();
-
-                poseGrid.innerHTML = '';
-                if (items.length === 0) {
-                    poseGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888; font-size:12px;">找不到 VNCCS 姿勢庫目錄</div>';
-                    return;
-                }
-
-                items.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'pose-card';
-
-                    const imgSrc = item.img_path
-                        ? `/likejpose3d/get_image?path=${encodeURIComponent(item.img_path)}`
-                        : 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23aaa" font-size="12">無預覽圖</text></svg>';
-
-                    card.innerHTML = `
-                        <img src="${imgSrc}" alt="${item.title}">
-                        <div class="title" title="${item.title}">${item.title}</div>
-                        <div class="folder" title="${item.folder}">${item.folder}</div>
-                    `;
-
-                    card.addEventListener('click', async () => {
-                        try {
-                            const jsonRes = await fetch(`/likejpose3d/get_json?path=${encodeURIComponent(item.json_path)}`);
-                            const jsonObj = await jsonRes.json();
-
-                            loadPoseFromExternalJson(jsonObj);
-                            modal.style.display = 'none';
-                        } catch (e) {
-                            console.error("載入姿態失敗:", e);
-                        }
-                    });
-
-                    poseGrid.appendChild(card);
-                });
-            } catch (e) {
-                poseGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:red; font-size:12px;">無法讀取 VNCCS 姿態庫</div>';
-            }
-        });
-
-        btnCloseModal.addEventListener('click', () => modal.style.display = 'none');
-        window.addEventListener('click', (e) => {
-            if (e.target === modal) modal.style.display = 'none';
-        });
 
         function getCameraData() {
             return {
@@ -838,11 +488,17 @@
             document.getElementById('val-model').innerText = config.modelColor;
             document.getElementById('opt-bgcolor').value = config.bgColor;
 
+            const offset = config.rotationOffset || { x: 0, y: 0, z: 0 };
+            document.getElementById('opt-offset-x').value = offset.x || 0;
+            document.getElementById('opt-offset-y').value = offset.y || 0;
+            document.getElementById('opt-offset-z').value = offset.z || 0;
+
             ambientLight.intensity = config.ambient;
             directionalLight.intensity = config.direct;
             scene.background.set(config.bgColor);
 
             if (currentModel) {
+                applyModelOffset();
                 const v = config.modelColor;
                 currentModel.traverse((child) => {
                     if (child.isMesh && child.material) child.material.color.setRGB(v, v, v);
@@ -853,6 +509,11 @@
         function setupSkeleton(model) {
             jointSpheres.forEach(s => scene.remove(s));
             jointSpheres = [];
+
+            if (skeletonLines) {
+                scene.remove(skeletonLines);
+                skeletonLines = null;
+            }
 
             const weightedBones = new Set();
 
@@ -865,14 +526,8 @@
 
                     if (indexAttr && weightAttr && bones) {
                         for (let i = 0; i < indexAttr.count; i++) {
-                            const weights = [
-                                weightAttr.getX(i), weightAttr.getY(i),
-                                weightAttr.getZ(i), weightAttr.getW(i)
-                            ];
-                            const indices = [
-                                indexAttr.getX(i), indexAttr.getY(i),
-                                indexAttr.getZ(i), indexAttr.getW(i)
-                            ];
+                            const weights = [weightAttr.getX(i), weightAttr.getY(i), weightAttr.getZ(i), weightAttr.getW(i)];
+                            const indices = [indexAttr.getX(i), indexAttr.getY(i), indexAttr.getZ(i), indexAttr.getW(i)];
 
                             for (let j = 0; j < 4; j++) {
                                 if (weights[j] > 0.001) {
@@ -885,6 +540,7 @@
                 }
             });
 
+            const linePositions = [];
             weightedBones.forEach((bone) => {
                 const sphereGeo = new THREE.SphereGeometry(1, 10, 10);
                 const sphereMat = new THREE.MeshBasicMaterial({
@@ -903,7 +559,27 @@
 
                 scene.add(sphere);
                 jointSpheres.push(sphere);
+
+                if (bone.parent && weightedBones.has(bone.parent)) {
+                    linePositions.push(0, 0, 0, 0, 0, 0);
+                }
             });
+
+            const lineGeo = new THREE.BufferGeometry();
+            lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(linePositions), 3));
+
+            const lineMat = new THREE.LineBasicMaterial({
+                color: 0x00d2ff,
+                linewidth: 2,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            skeletonLines = new THREE.LineSegments(lineGeo, lineMat);
+            skeletonLines.renderOrder = 998;
+            skeletonLines.visible = showJoints;
+            scene.add(skeletonLines);
         }
 
         function updateJointSpheres() {
@@ -918,6 +594,27 @@
                     sphere.scale.set(r, r, r);
                 }
             });
+
+            if (skeletonLines && showJoints) {
+                skeletonLines.visible = true;
+                const posAttr = skeletonLines.geometry.attributes.position;
+                let idx = 0;
+
+                jointSpheres.forEach(sphere => {
+                    const bone = sphere.userData.bone;
+                    if (bone && bone.parent && bone.parent.isBone) {
+                        const parentSphere = jointSpheres.find(s => s.userData.bone === bone.parent);
+                        if (parentSphere) {
+                            posAttr.setXYZ(idx++, sphere.position.x, sphere.position.y, sphere.position.z);
+                            posAttr.setXYZ(idx++, parentSphere.position.x, parentSphere.position.y, parentSphere.position.z);
+                        }
+                    }
+                });
+
+                posAttr.needsUpdate = true;
+            } else if (skeletonLines) {
+                skeletonLines.visible = false;
+            }
         }
 
         renderer.domElement.addEventListener('pointerdown', (event) => {
@@ -934,8 +631,6 @@
             if (intersects.length > 0) {
                 const hitSphere = intersects[0].object;
                 const targetBone = hitSphere.userData.bone;
-
-                console.log("👉 點擊的骨骼名稱是：", targetBone.name);
 
                 transformControls.attach(targetBone);
                 transformControls.visible = true;
@@ -1018,9 +713,62 @@
             }
         });
 
+        // 360 度自動歸零與自動對焦覆位邏輯
+        function normalizeDegree(val) {
+            let num = parseFloat(val) || 0;
+            num = num % 360;
+            return num === 0 ? 0 : num;
+        }
+
+        function onOffsetInputChange() {
+            if (!config.rotationOffset) config.rotationOffset = { x: 0, y: 0, z: 0 };
+
+            const inputX = document.getElementById('opt-offset-x');
+            const inputY = document.getElementById('opt-offset-y');
+            const inputZ = document.getElementById('opt-offset-z');
+
+            const valX = normalizeDegree(inputX.value);
+            const valY = normalizeDegree(inputY.value);
+            const valZ = normalizeDegree(inputZ.value);
+
+            inputX.value = valX;
+            inputY.value = valY;
+            inputZ.value = valZ;
+
+            config.rotationOffset.x = valX;
+            config.rotationOffset.y = valY;
+            config.rotationOffset.z = valZ;
+
+            if (currentModel) {
+                applyModelOffset();
+                updateJointSpheres();
+                focusFullBody();
+            }
+            notifyConfigChange();
+            sendPoseToComfyUI();
+        }
+
+        document.getElementById('opt-offset-x').addEventListener('change', onOffsetInputChange);
+        document.getElementById('opt-offset-y').addEventListener('change', onOffsetInputChange);
+        document.getElementById('opt-offset-z').addEventListener('change', onOffsetInputChange);
+
+        // 載入模型檔案按鈕事件
+        const btnLoadModel = document.getElementById('btn-load-model');
+        const fileInput = document.getElementById('opt-model-file');
+
+        btnLoadModel.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const fileUrl = URL.createObjectURL(file);
+                loadModelFromUrl(fileUrl, file.name);
+            }
+        });
+
         document.getElementById('btn-focus-lhand').addEventListener('click', () => focusHand(true));
         document.getElementById('btn-focus-rhand').addEventListener('click', () => focusHand(false));
         document.getElementById('btn-focus-reset').addEventListener('click', () => focusFullBody());
+        document.getElementById('btn-pose-reset').addEventListener('click', () => resetPose());
 
         document.getElementById('opt-jointsize').addEventListener('input', (e) => {
             jointScale = parseFloat(e.target.value);
@@ -1040,6 +788,7 @@
                 transformControls.detach();
                 transformControls.visible = false;
             }
+            updateJointSpheres();
         });
 
         document.getElementById('opt-ambient').addEventListener('input', (e) => {
@@ -1071,7 +820,7 @@
         });
 
         const loader = new THREE.GLTFLoader();
-        const modelUrl = '/extensions/ComfyUI-LikeJ/models/female_body_base.glb';
+        const defaultModelUrl = '/extensions/ComfyUI-LikeJ/models/female_body_base.glb';
 
         function computeExactWorldBoundingBox(model) {
             const box = new THREE.Box3();
@@ -1168,6 +917,7 @@
             const prevTCVis = transformControls.visible;
 
             jointSpheres.forEach(s => s.visible = false);
+            if (skeletonLines) skeletonLines.visible = false;
             transformControls.visible = false;
 
             const currentW = container.clientWidth;
@@ -1192,10 +942,76 @@
             renderer.render(scene, camera);
 
             jointSpheres.forEach(s => s.visible = showJoints);
+            if (skeletonLines) skeletonLines.visible = showJoints;
             transformControls.visible = showJoints && prevTCVis && !!transformControls.object;
 
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
         }
+
+        function loadModelFromUrl(url, fileName = '') {
+            const loadingEl = document.getElementById('loading');
+            loadingEl.style.display = 'block';
+            loadingEl.innerText = fileName ? `載入模型 ${fileName} 中...` : '載入 3D 模型中...';
+            isModelLoaded = false;
+
+            if (currentModel) {
+                transformControls.detach();
+                transformControls.visible = false;
+                scene.remove(currentModel);
+                currentModel.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                            else child.material.dispose();
+                        }
+                    }
+                });
+                currentModel = null;
+            }
+
+            loader.load(url, (gltf) => {
+                currentModel = gltf.scene;
+
+                applyModelOffset();
+
+                const cVal = config.modelColor;
+                currentModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshStandardMaterial({
+                            color: new THREE.Color(cVal, cVal, cVal),
+                            roughness: 0.6,
+                            metalness: 0.1,
+                            skinning: child.isSkinnedMesh || false
+                        });
+                    }
+                });
+
+                scene.add(currentModel);
+
+                const box = computeExactWorldBoundingBox(currentModel);
+                const size = box.getSize(new THREE.Vector3());
+                baseJointRadius = Math.max(0.003, size.y * 0.004);
+
+                setupSkeleton(currentModel);
+
+                loadingEl.style.display = 'none';
+                isModelLoaded = true;
+
+                focusFullBody();
+                config.pose = getPoseData();
+                notifyConfigChange();
+                sendPoseToComfyUI();
+
+                window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
+
+            }, undefined, (error) => {
+                console.error('模型載入失敗:', error);
+                loadingEl.innerText = '模型載入失敗，請確認檔案格式是否正確';
+            });
+        }
+
+        loadModelFromUrl(defaultModelUrl);
 
         window.addEventListener("message", (event) => {
             if (!event.data) return;
@@ -1215,9 +1031,11 @@
 
                     if (loadedConfig && Object.keys(loadedConfig).length > 0) {
                         config = { ...config, ...loadedConfig };
+                        if (!config.rotationOffset) config.rotationOffset = { x: 0, y: 0, z: 0 };
                         updateUIFromConfig();
 
                         if (isModelLoaded) {
+                            applyModelOffset();
                             if (config.pose && config.pose.length > 0) applyPoseData(config.pose);
                             if (config.camera) applyCameraData(config.camera);
                             sendPoseToComfyUI();
@@ -1232,39 +1050,6 @@
                     sendPoseToComfyUI();
                 }
             }
-        });
-
-        loader.load(modelUrl, (gltf) => {
-            currentModel = gltf.scene;
-
-            const cVal = config.modelColor;
-            currentModel.traverse((child) => {
-                if (child.isMesh) {
-                    child.material = new THREE.MeshStandardMaterial({
-                        color: new THREE.Color(cVal, cVal, cVal),
-                        roughness: 0.6,
-                        metalness: 0.1,
-                        skinning: child.isSkinnedMesh || false
-                    });
-                }
-            });
-
-            scene.add(currentModel);
-
-            const box = computeExactWorldBoundingBox(currentModel);
-            const size = box.getSize(new THREE.Vector3());
-            baseJointRadius = Math.max(0.003, size.y * 0.004);
-
-            setupSkeleton(currentModel);
-
-            document.getElementById('loading').style.display = 'none';
-            isModelLoaded = true;
-
-            window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
-
-        }, undefined, (error) => {
-            console.error('模型載入失敗:', error);
-            document.getElementById('loading').innerText = '模型載入失敗，請檢查檔案名稱與路徑';
         });
 
         window.addEventListener('resize', () => {
