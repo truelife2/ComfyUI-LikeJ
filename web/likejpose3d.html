@@ -127,6 +127,104 @@
         .btn-group .toggle-btn {
             flex: 1;
         }
+
+        /* 姿態庫 Modal 樣式 */
+        .pose-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+        }
+
+        .pose-modal-content {
+            background: #ffffff;
+            margin: 3% auto;
+            padding: 14px;
+            width: 90%;
+            max-height: 85vh;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .pose-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 8px;
+            color: #333;
+        }
+
+        .close-btn {
+            cursor: pointer;
+            font-size: 20px;
+            color: #888;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        .pose-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            overflow-y: auto;
+            padding: 12px 4px;
+            max-height: 72vh;
+        }
+
+        .pose-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 6px;
+            cursor: pointer;
+            text-align: center;
+            background: #fff;
+            transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .pose-card:hover {
+            transform: translateY(-3px);
+            border-color: #4A90E2;
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
+        }
+
+        .pose-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+
+        .pose-card .title {
+            font-size: 11px;
+            margin-top: 5px;
+            color: #444;
+            font-weight: bold;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pose-card .folder {
+            font-size: 9px;
+            color: #888;
+            margin-top: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
     </style>
 </head>
 
@@ -141,6 +239,12 @@
                     <button id="btn-focus-rhand" class="toggle-btn">🔍 右手</button>
                 </div>
                 <button id="btn-focus-reset" class="toggle-btn">🏠 復位全身</button>
+            </div>
+
+            <div class="panel-title">📚 姿態預設庫</div>
+            <div class="control-group">
+                <button id="btn-vnccs-pose" class="toggle-btn"
+                    style="background:#4A90E2; color:#fff; font-weight:bold;">🖼️ VNCCS Pose</button>
             </div>
 
             <div class="panel-title">⚙️ 姿態與燈光設定</div>
@@ -181,6 +285,17 @@
         <!-- 右側 3D 渲染區域 -->
         <div id="canvas-container">
             <div id="loading">載入 3D 模型中...</div>
+        </div>
+    </div>
+
+    <!-- VNCCS Pose 彈窗 -->
+    <div id="pose-modal" class="pose-modal">
+        <div class="pose-modal-content">
+            <div class="pose-modal-header">
+                <span>🖼️ VNCCS 姿勢庫</span>
+                <span id="pose-modal-close" class="close-btn">&times;</span>
+            </div>
+            <div id="pose-grid" class="pose-grid"></div>
         </div>
     </div>
 
@@ -232,6 +347,314 @@
         transformControls.setSpace('local');
         transformControls.setSize(1.0);
         scene.add(transformControls);
+
+        // 完整骨骼映射表
+        const BONE_NAME_MAP = {
+            "pelvis": "mixamorigHips",
+            "spine_01": "mixamorigSpine",
+            "spine_02": "mixamorigSpine1",
+            "spine_03": "mixamorigSpine2",
+            "neck_01": "mixamorigNeck",
+            "head": "mixamorigHead",
+            "clavicle_l": "mixamorigLeftShoulder",
+            "upperarm_l": "mixamorigLeftArm",
+            "lowerarm_l": "mixamorigLeftForeArm",
+            "hand_l": "mixamorigLeftHand",
+            "clavicle_r": "mixamorigRightShoulder",
+            "upperarm_r": "mixamorigRightArm",
+            "lowerarm_r": "mixamorigRightForeArm",
+            "hand_r": "mixamorigRightHand",
+            "thigh_l": "mixamorigLeftUpLeg",
+            "calf_l": "mixamorigLeftLeg",
+            "foot_l": "mixamorigLeftFoot",
+            "ball_l": "mixamorigLeftToeBase",
+            "thigh_r": "mixamorigRightUpLeg",
+            "calf_r": "mixamorigRightLeg",
+            "foot_r": "mixamorigRightFoot",
+            "ball_r": "mixamorigRightToeBase",
+            "index_01_l": "mixamorigLeftHandIndex1", "index_02_l": "mixamorigLeftHandIndex2", "index_03_l": "mixamorigLeftHandIndex3",
+            "middle_01_l": "mixamorigLeftHandMiddle1", "middle_02_l": "mixamorigLeftHandMiddle2", "middle_03_l": "mixamorigLeftHandMiddle3",
+            "ring_01_l": "mixamorigLeftHandRing1", "ring_02_l": "mixamorigLeftHandRing2", "ring_03_l": "mixamorigLeftHandRing3",
+            "pinky_01_l": "mixamorigLeftHandPinky1", "pinky_02_l": "mixamorigLeftHandPinky2", "pinky_03_l": "mixamorigLeftHandPinky3",
+            "thumb_01_l": "mixamorigLeftHandThumb1", "thumb_02_l": "mixamorigLeftHandThumb2", "thumb_03_l": "mixamorigLeftHandThumb3",
+            "index_01_r": "mixamorigRightHandIndex1", "index_02_r": "mixamorigRightHandIndex2", "index_03_r": "mixamorigRightHandIndex3",
+            "middle_01_r": "mixamorigRightHandMiddle1", "middle_02_r": "mixamorigRightHandMiddle2", "middle_03_r": "mixamorigRightHandMiddle3",
+            "ring_01_r": "mixamorigRightHandRing1", "ring_02_r": "mixamorigRightHandRing2", "ring_03_r": "mixamorigRightHandRing3",
+            "pinky_01_r": "mixamorigRightHandPinky1", "pinky_02_r": "mixamorigRightHandPinky2", "pinky_03_r": "mixamorigRightHandPinky3",
+            "thumb_01_r": "mixamorigRightHandThumb1", "thumb_02_r": "mixamorigRightHandThumb2", "thumb_03_r": "mixamorigRightHandThumb3"
+        };
+
+        function findBoneByName(model, name) {
+            if (!model || !name) return null;
+            const mappedName = BONE_NAME_MAP[name] || name;
+
+            let found = null;
+            model.traverse(child => {
+                if (child.isBone && !found) {
+                    const cName = child.name;
+                    if (cName === mappedName || cName === name) {
+                        found = child;
+                    } else if (cName.toLowerCase() === mappedName.toLowerCase() || cName.toLowerCase() === name.toLowerCase()) {
+                        found = child;
+                    } else if (cName.toLowerCase().endsWith(mappedName.toLowerCase())) {
+                        found = child;
+                    }
+                }
+            });
+            return found;
+        }
+
+        // 💡 修正後能兼顧 VNCCS (四元數 q) 與原生/PoseStudio (歐拉角 val) 的載入邏輯
+        function loadPoseFromExternalJson(jsonObj) {
+            if (!currentModel || !jsonObj) {
+                console.error("❌ 姿態載入失敗：模型未初始化或 JSON 為空");
+                return;
+            }
+
+            currentModel.traverse((child) => {
+                if (child.isSkinnedMesh && child.skeleton) {
+                    child.skeleton.pose(); // 重置骨架回原廠 T-Pose
+                }
+            });
+
+            // 1. 解析相容多種格式 (VNCCS, PoseStudio, 自訂 JSON)
+            let targetData = jsonObj;
+            if (jsonObj.characters && jsonObj.characters.length > 0) {
+                const char = jsonObj.characters[0];
+                if (char.poses && char.poses.length > 0) targetData = char.poses[0];
+            }
+
+            // 2. 收集姿態項目成統一陣列
+            let items = [];
+            if (Array.isArray(targetData.pose)) {
+                items = targetData.pose;
+            } else if (Array.isArray(targetData.bones)) {
+                items = targetData.bones;
+            } else if (targetData.bones && typeof targetData.bones === 'object') {
+                items = Object.keys(targetData.bones).map(key => ({
+                    name: key,
+                    val: targetData.bones[key]
+                }));
+            }
+
+            if (!items || items.length === 0) {
+                console.warn("⚠️ 找不到姿態資料");
+                return;
+            }
+
+            const boneAdjustments = {
+                'thigh_l': { offset: [135, 180, 0], scale: [-1, 1, 1] },
+                'thigh_r': { offset: [135, 180, 0], scale: [-1, 1, 1] },
+                'calf_l': { offset: [0, 0, 0], scale: [-1, 1, 1] },
+                'calf_r': { offset: [0, 0, 0], scale: [-1, 1, 1] },
+                'shin_l': { offset: [0, 0, 0], scale: [-1, 1, 1] },
+                'shin_r': { offset: [0, 0, 0], scale: [-1, 1, 1] },
+                'foot_l': { offset: [45, 0, 0], scale: [1, 1, 1] },
+                'foot_r': { offset: [45, 0, 0], scale: [1, 1, 1] },
+                'ball_l': { offset: [0, 0, 0], scale: [1, 1, 1] },
+                'ball_r': { offset: [0, 0, 0], scale: [1, 1, 1] },
+
+                'clavicle_l': { offset: [90, -45, -90], scale: [1, 1, 1] },
+                'clavicle_r': { offset: [90, 45, 90], scale: [1, 1, 1] },
+
+                'upperarm_l': { offset: [30, 0, 0], scale: [-1, -1, -1] },
+                'upperarm_r': { offset: [30, 0, 0], scale: [-1, -1, -1] },
+
+                'lowerarm_l': { offset: [30, 0, 0], scale: [-1, -1, -1] },
+                'lowerarm_r': { offset: [30, 0, 0], scale: [-1, -1, -1] },
+
+                'hand_l': { offset: [0, 0, 0], scale: [1, 1, 1] },
+                'hand_r': { offset: [0, 0, 0], scale: [1, 1, 1] },
+                'pelvis': { offset: [0, 0, 0], scale: [1, 1, 1] },
+                'spine_01': { offset: [0, 0, 0], scale: [1, 1, 1] },
+                'spine_03': { offset: [0, 0, 0], scale: [1, 1, 1] },
+                'neck_01': { offset: [0, 0, 0], scale: [1, 1, 1] }
+            };
+
+            const modelBones = [];
+            currentModel.traverse(child => { if (child.isBone) modelBones.push(child); });
+
+            function searchBone(name) {
+                if (!name) return null;
+                const mappedName = BONE_NAME_MAP[name] || name;
+                const cleanTarget = mappedName.toLowerCase().replace(/_\d+$/, '').replace(/[^a-z0-9]/g, '');
+
+                for (let bone of modelBones) {
+                    const cleanBName = bone.name.toLowerCase().replace(/_\d+$/, '').replace(/[^a-z0-9]/g, '');
+                    if (cleanBName === cleanTarget) return bone;
+                }
+                return null;
+            }
+
+            function getFingerAliases(sourceName) {
+                const match = sourceName.match(/^([a-z]+)_0([1-3])_([lr])$/);
+                if (!match) return [];
+                const [_, finger, num, side] = match;
+                const sideFull = side === 'l' ? 'left' : 'right';
+                return [
+                    `${finger}_${num}_${side}`, `${finger}${num}_${side}`,
+                    `${finger}${num}.${side}`, `${finger}_${num}.${side}`,
+                    `${sideFull}${finger}${num}`, `${sideFull}hand${finger}${num}`,
+                    `${side}${finger}${num}`, `hand${finger}${num}${side}`
+                ];
+            }
+
+            const synonyms = {
+                'clavicle_l': ['clavicle_l', 'shoulder_l', 'leftshoulder', 'shoulder.l', 'leftclavicle'],
+                'clavicle_r': ['clavicle_r', 'shoulder_r', 'rightshoulder', 'shoulder.r', 'rightclavicle'],
+                'upperarm_l': ['upperarm_l', 'arm_l', 'leftarm', 'upperarm.l', 'leftupperarm'],
+                'upperarm_r': ['upperarm_r', 'arm_r', 'rightarm', 'upperarm.r', 'rightupperarm'],
+                'lowerarm_l': ['lowerarm_l', 'forearm_l', 'elbow_l', 'leftforearm', 'lowerarm.l'],
+                'lowerarm_r': ['lowerarm_r', 'forearm_r', 'elbow_r', 'rightforearm', 'lowerarm.r'],
+                'hand_l': ['hand_l', 'wrist_l', 'lefthand', 'hand.l', 'leftwrist'],
+                'hand_r': ['hand_r', 'wrist_r', 'righthand', 'hand.r', 'rightwrist'],
+                'thigh_l': ['thigh_l', 'upleg_l', 'leg_l', 'leftupleg', 'thigh.l', 'leftupperleg'],
+                'thigh_r': ['thigh_r', 'upleg_r', 'leg_r', 'rightupleg', 'thigh.r', 'rightupperleg'],
+                'calf_l': ['calf_l', 'shin_l', 'leg_l', 'lowerleg_l', 'knee_l', 'leftleg', 'shin.l'],
+                'calf_r': ['calf_r', 'shin_r', 'leg_r', 'lowerleg_r', 'knee_r', 'rightleg', 'shin.r'],
+                'shin_l': ['shin_l', 'calf_l', 'leg_l', 'lowerleg_l', 'knee_l'],
+                'shin_r': ['shin_r', 'calf_r', 'leg_r', 'lowerleg_r', 'knee_r'],
+                'foot_l': ['foot_l', 'ankle_l', 'leftfoot', 'foot.l'],
+                'foot_r': ['foot_r', 'ankle_r', 'rightfoot', 'foot.r'],
+                'ball_l': ['ball_l', 'toe_l', 'toes_l', 'lefttoe', 'ball.l'],
+                'ball_r': ['ball_r', 'toe_r', 'toes_r', 'righttoe', 'ball.r'],
+                'spine_01': ['spine_01', 'spine1', 'spine', 'lumbar'],
+                'spine_03': ['spine_03', 'spine2', 'chest', 'thoracic'],
+                'neck_01': ['neck_01', 'neck', 'head_neck'],
+                'pelvis': ['pelvis', 'hips', 'hip', 'root']
+            };
+
+            let updatedCount = 0;
+
+            items.forEach(item => {
+                if (!item || !item.name) return;
+                const sourceBoneName = item.name;
+
+                let bone = searchBone(sourceBoneName);
+                if (!bone && synonyms[sourceBoneName]) {
+                    for (let alias of synonyms[sourceBoneName]) {
+                        bone = searchBone(alias);
+                        if (bone) break;
+                    }
+                }
+                if (!bone) {
+                    const fingerAliases = getFingerAliases(sourceBoneName);
+                    for (let alias of fingerAliases) {
+                        bone = searchBone(alias);
+                        if (bone) break;
+                    }
+                }
+
+                if (bone) {
+                    const adj = boneAdjustments[sourceBoneName] || { offset: [0, 0, 0], scale: [1, 1, 1] };
+                    const DEG = THREE.MathUtils.degToRad;
+                    let finalQuat = new THREE.Quaternion();
+
+                    // 💡 判別格式：如果是四元數 [x, y, z, w] 或是歐拉角 [rx, ry, rz]
+                    if (Array.isArray(item.q) && item.q.length === 4) {
+                        finalQuat.set(
+                            item.q[0] * adj.scale[0],
+                            item.q[1] * adj.scale[1],
+                            item.q[2] * adj.scale[2],
+                            item.q[3]
+                        ).normalize();
+                    } else {
+                        const rot = item.val || item.rot || item.v;
+                        if (Array.isArray(rot) && rot.length === 3) {
+                            const euler = new THREE.Euler(
+                                DEG(rot[0] * adj.scale[0]),
+                                DEG(rot[1] * adj.scale[1]),
+                                DEG(rot[2] * adj.scale[2]),
+                                'XYZ'
+                            );
+                            finalQuat.setFromEuler(euler);
+                        } else {
+                            return;
+                        }
+                    }
+
+                    // 2. 套用 offset 角度補償 (改回 multiply 後乘法)
+                    if (adj.offset[0] !== 0 || adj.offset[1] !== 0 || adj.offset[2] !== 0) {
+                        const adjEuler = new THREE.Euler(DEG(adj.offset[0]), DEG(adj.offset[1]), DEG(adj.offset[2]), 'XYZ');
+                        const adjQuat = new THREE.Quaternion().setFromEuler(adjEuler);
+                        finalQuat.multiply(adjQuat); // 恢復使用後乘法
+                    }
+
+                    bone.quaternion.copy(finalQuat);
+                    bone.updateMatrix();
+                    updatedCount++;
+                }
+            });
+
+            currentModel.updateMatrixWorld(true);
+            currentModel.traverse((child) => {
+                if (child.isSkinnedMesh && child.skeleton) child.skeleton.update();
+            });
+
+            if (typeof focusFullBody === 'function') focusFullBody();
+            if (typeof updateJointSpheres === 'function') updateJointSpheres();
+            if (typeof getPoseData === 'function' && typeof config !== 'undefined') config.pose = getPoseData();
+            if (typeof notifyConfigChange === 'function') notifyConfigChange();
+            if (typeof sendPoseToComfyUI === 'function') sendPoseToComfyUI();
+        }
+
+        // VNCCS Modal 視窗邏輯
+        const modal = document.getElementById('pose-modal');
+        const btnVnccsPose = document.getElementById('btn-vnccs-pose');
+        const btnCloseModal = document.getElementById('pose-modal-close');
+        const poseGrid = document.getElementById('pose-grid');
+
+        btnVnccsPose.addEventListener('click', async () => {
+            modal.style.display = 'block';
+            poseGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#666; font-size:12px;">載入 VNCCS 姿勢庫中...</div>';
+
+            try {
+                const res = await fetch('/likejpose3d/get_library');
+                const items = await res.json();
+
+                poseGrid.innerHTML = '';
+                if (items.length === 0) {
+                    poseGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888; font-size:12px;">找不到 VNCCS 姿勢庫目錄</div>';
+                    return;
+                }
+
+                items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'pose-card';
+
+                    const imgSrc = item.img_path
+                        ? `/likejpose3d/get_image?path=${encodeURIComponent(item.img_path)}`
+                        : 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23aaa" font-size="12">無預覽圖</text></svg>';
+
+                    card.innerHTML = `
+                        <img src="${imgSrc}" alt="${item.title}">
+                        <div class="title" title="${item.title}">${item.title}</div>
+                        <div class="folder" title="${item.folder}">${item.folder}</div>
+                    `;
+
+                    card.addEventListener('click', async () => {
+                        try {
+                            const jsonRes = await fetch(`/likejpose3d/get_json?path=${encodeURIComponent(item.json_path)}`);
+                            const jsonObj = await jsonRes.json();
+
+                            loadPoseFromExternalJson(jsonObj);
+                            modal.style.display = 'none';
+                        } catch (e) {
+                            console.error("載入姿態失敗:", e);
+                        }
+                    });
+
+                    poseGrid.appendChild(card);
+                });
+            } catch (e) {
+                poseGrid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:red; font-size:12px;">無法讀取 VNCCS 姿態庫</div>';
+            }
+        });
+
+        btnCloseModal.addEventListener('click', () => modal.style.display = 'none');
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        });
 
         function getCameraData() {
             return {
@@ -369,7 +792,6 @@
 
         transformControls.addEventListener('dragging-changed', function (event) {
             controls.enabled = !event.value;
-            // 💡 只有當使用者放開控制軸時，才主動抓取姿態並回傳 ComfyUI 存檔
             if (!event.value) {
                 config.pose = getPoseData();
                 config.camera = getCameraData();
@@ -432,26 +854,55 @@
             jointSpheres.forEach(s => scene.remove(s));
             jointSpheres = [];
 
+            const weightedBones = new Set();
+
             model.traverse((child) => {
-                if (child.isBone) {
-                    const sphereGeo = new THREE.SphereGeometry(1, 10, 10);
-                    const sphereMat = new THREE.MeshBasicMaterial({
-                        color: 0xff2222,
-                        wireframe: true,
-                        depthTest: false,
-                        transparent: true,
-                        opacity: 0.85
-                    });
-                    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-                    sphere.userData.bone = child;
-                    sphere.renderOrder = 999;
+                if (child.isSkinnedMesh && child.skeleton) {
+                    const geom = child.geometry;
+                    const indexAttr = geom.attributes.skinIndex;
+                    const weightAttr = geom.attributes.skinWeight;
+                    const bones = child.skeleton.bones;
 
-                    const r = baseJointRadius * jointScale;
-                    sphere.scale.set(r, r, r);
+                    if (indexAttr && weightAttr && bones) {
+                        for (let i = 0; i < indexAttr.count; i++) {
+                            const weights = [
+                                weightAttr.getX(i), weightAttr.getY(i),
+                                weightAttr.getZ(i), weightAttr.getW(i)
+                            ];
+                            const indices = [
+                                indexAttr.getX(i), indexAttr.getY(i),
+                                indexAttr.getZ(i), indexAttr.getW(i)
+                            ];
 
-                    scene.add(sphere);
-                    jointSpheres.push(sphere);
+                            for (let j = 0; j < 4; j++) {
+                                if (weights[j] > 0.001) {
+                                    const boneObj = bones[indices[j]];
+                                    if (boneObj) weightedBones.add(boneObj);
+                                }
+                            }
+                        }
+                    }
                 }
+            });
+
+            weightedBones.forEach((bone) => {
+                const sphereGeo = new THREE.SphereGeometry(1, 10, 10);
+                const sphereMat = new THREE.MeshBasicMaterial({
+                    color: 0xff2222,
+                    wireframe: true,
+                    depthTest: false,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+                sphere.userData.bone = bone;
+                sphere.renderOrder = 999;
+
+                const r = baseJointRadius * jointScale;
+                sphere.scale.set(r, r, r);
+
+                scene.add(sphere);
+                jointSpheres.push(sphere);
             });
         }
 
@@ -478,21 +929,19 @@
 
             raycaster.setFromCamera(mouse, camera);
 
-            // 1. 檢查是否點擊到關節球
             const intersects = raycaster.intersectObjects(jointSpheres);
 
             if (intersects.length > 0) {
                 const hitSphere = intersects[0].object;
                 const targetBone = hitSphere.userData.bone;
+
+                console.log("👉 點擊的骨骼名稱是：", targetBone.name);
+
                 transformControls.attach(targetBone);
                 transformControls.visible = true;
             } else {
-                // 2. 判斷是否點在旋轉環上
-                // TransformControls 只有在鼠標真正對準控制環時，axis 才會有值 ('X', 'Y', 'Z', 'E' 等)
-                // 點在空白處或隱形平面上時，axis 會是 null
                 const isClickingGizmo = transformControls.visible && transformControls.axis !== null;
 
-                // 3. 既沒點到關節球，也沒點到旋轉環 -> 取消選取並隱藏控制球
                 if (!isClickingGizmo) {
                     transformControls.detach();
                     transformControls.visible = false;
@@ -512,7 +961,6 @@
             let targetBone = null;
             let hitPoint = null;
 
-            // 1. 若關節點目前為顯示狀態，優先檢查是否雙擊到「關節球」或「旋轉軸」
             if (showJoints) {
                 const jointIntersects = raycaster.intersectObjects(jointSpheres);
                 if (jointIntersects.length > 0) {
@@ -525,13 +973,11 @@
                 }
             }
 
-            // 2. 若沒擊中關節球（或關節點處於隱藏狀態），則射線偵測模型本體
             if (!targetBone) {
                 const modelIntersects = raycaster.intersectObject(currentModel, true);
                 if (modelIntersects.length > 0) {
                     hitPoint = modelIntersects[0].point;
 
-                    // 計算離雙擊觸發點最近的骨骼關節
                     let minDistance = Infinity;
                     jointSpheres.forEach(sphere => {
                         if (sphere.userData.bone) {
@@ -547,12 +993,9 @@
                 }
             }
 
-            // 3. 成功找到目標骨骼時的處理
             if (targetBone) {
-                // 紀錄雙擊前關節點是否為隱藏狀態
                 const wasJointsHidden = !showJoints;
 
-                // 💡 若關節點原本是隱藏的，開啟顯示並更新 UI 按鈕
                 if (wasJointsHidden) {
                     showJoints = true;
                     const toggleBtn = document.getElementById('btn-toggle-joints');
@@ -560,11 +1003,9 @@
                     updateJointSpheres();
                 }
 
-                // 附著控制軸
                 transformControls.attach(targetBone);
                 transformControls.visible = true;
 
-                // 💡 只有在關節點原本「就已經是顯示狀態」時，雙擊才會觸發鏡頭縮放拉近
                 if (!wasJointsHidden) {
                     const worldPos = new THREE.Vector3();
                     targetBone.getWorldPosition(worldPos);
@@ -712,7 +1153,6 @@
             return box;
         }
 
-        // 💡 純粹繪製截圖並傳給 ComfyUI，不覆蓋 config
         function sendPoseToComfyUI() {
             if (!isModelLoaded) return;
 
@@ -820,7 +1260,6 @@
             document.getElementById('loading').style.display = 'none';
             isModelLoaded = true;
 
-            // 💡 模型載入完成，主動發送 READY 訊號向 ComfyUI 索取 saved pose
             window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
 
         }, undefined, (error) => {
