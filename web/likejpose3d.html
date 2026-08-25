@@ -64,6 +64,27 @@
             user-select: none;
         }
 
+        /* 骨骼名稱懸浮標籤樣式 */
+        #bone-label {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #00e5ff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        #bone-label-name {
+            color: #ffffff;
+        }
+
         .panel-title {
             font-weight: bold;
             font-size: 13px;
@@ -152,9 +173,12 @@
             <div class="panel-title">📐 軸向與姿態校正</div>
             <div class="control-group">
                 <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between;">
-                    <label style="margin:0;">X: <input type="number" id="opt-offset-x" value="0" step="90" style="width: 40px; font-size: 11px; padding: 2px;"></label>
-                    <label style="margin:0;">Y: <input type="number" id="opt-offset-y" value="0" step="90" style="width: 40px; font-size: 11px; padding: 2px;"></label>
-                    <label style="margin:0;">Z: <input type="number" id="opt-offset-z" value="0" step="90" style="width: 40px; font-size: 11px; padding: 2px;"></label>
+                    <label style="margin:0;">X: <input type="number" id="opt-offset-x" value="0" step="90"
+                            style="width: 40px; font-size: 11px; padding: 2px;"></label>
+                    <label style="margin:0;">Y: <input type="number" id="opt-offset-y" value="0" step="90"
+                            style="width: 40px; font-size: 11px; padding: 2px;"></label>
+                    <label style="margin:0;">Z: <input type="number" id="opt-offset-z" value="0" step="90"
+                            style="width: 40px; font-size: 11px; padding: 2px;"></label>
                 </div>
                 <button id="btn-pose-reset" class="toggle-btn"
                     style="margin-top: 6px; background: #fff0f0; border-color: #ffb3b3; color: #d32f2f; font-weight: bold;">↺
@@ -208,6 +232,7 @@
         <!-- 右側 3D 渲染區域 -->
         <div id="canvas-container">
             <div id="loading">載入 3D 模型中...</div>
+            <div id="bone-label">🦴 骨骼：<span id="bone-label-name">-</span></div>
         </div>
     </div>
 
@@ -226,7 +251,7 @@
 
         let transformControls;
         let jointSpheres = [];
-        let skeletonLines = null;
+        let skeletonHelper = null;
         let showJoints = false;
         let baseJointRadius = 0.008;
         let jointScale = 1.0;
@@ -262,6 +287,19 @@
         transformControls.setSize(1.0);
         scene.add(transformControls);
 
+        function updateSelectedBoneLabel(boneName) {
+            const labelEl = document.getElementById('bone-label');
+            const nameEl = document.getElementById('bone-label-name');
+            if (!labelEl || !nameEl) return;
+
+            if (boneName) {
+                nameEl.innerText = boneName;
+                labelEl.style.display = 'block';
+            } else {
+                labelEl.style.display = 'none';
+            }
+        }
+
         function applyModelOffset() {
             if (!currentModel) return;
             const offset = config.rotationOffset || { x: 0, y: 0, z: 0 };
@@ -281,6 +319,7 @@
                 transformControls.detach();
                 transformControls.visible = false;
             }
+            updateSelectedBoneLabel(null);
 
             applyModelOffset();
 
@@ -298,10 +337,9 @@
             });
 
             updateJointSpheres();
-            focusFullBody();
+            focusFullBody(true);
 
             config.pose = getPoseData();
-            config.camera = getCameraData();
             notifyConfigChange();
             sendPoseToComfyUI();
         }
@@ -320,12 +358,15 @@
             controls.update();
         }
 
-        function focusOnPosition(targetPos, distance = 0.3) {
+        function focusOnPosition(targetPos, distance = 0.3, resetAngle = false) {
             const startCamPos = camera.position.clone();
             const startTarget = controls.target.clone();
 
-            const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-            if (dir.lengthSq() === 0) dir.set(0, 0, 1);
+            let dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+
+            if (resetAngle || dir.lengthSq() === 0) {
+                dir.set(0, 0, 1);
+            }
 
             const newCamPos = new THREE.Vector3().copy(targetPos).addScaledVector(dir, distance);
 
@@ -355,30 +396,44 @@
 
         function focusHand(isLeft = true) {
             if (!currentModel) return;
-            let handBone = null;
+
+            currentModel.updateMatrixWorld(true);
+
+            const box = computeExactWorldBoundingBox(currentModel);
+            const modelHeight = box.getSize(new THREE.Vector3()).y || 1.8;
+            const dynamicDistance = Math.max(0.12, modelHeight * 0.20);
+
+            let candidates = [];
 
             currentModel.traverse((child) => {
-                if (child.isBone && !handBone) {
+                if (child.isBone) {
                     const name = child.name.toLowerCase();
-                    const isL = name.includes('left') || name.includes('l_') || name.includes('_l') || name.includes('lh');
-                    const isR = name.includes('right') || name.includes('r_') || name.includes('_r') || name.includes('rh');
-                    const isHand = name.includes('hand') || name.includes('wrist');
 
-                    if (isHand) {
-                        if (isLeft && isL) handBone = child;
-                        if (!isLeft && isR) handBone = child;
-                    }
+                    const isHandKeyword = (name.includes('hand') || name.includes('wrist') || name.includes('palm'))
+                        && !name.includes('forearm') && !name.includes('arm');
+                    if (!isHandKeyword) return;
+
+                    const isL = name.includes('left') || name.includes('l_') || name.includes('_l') || name.includes('.l') || name.includes('lh');
+                    const isR = name.includes('right') || name.includes('r_') || name.includes('_r') || name.includes('.r') || name.includes('rh');
+
+                    if (isLeft && isL) candidates.push(child);
+                    if (!isLeft && isR) candidates.push(child);
                 }
             });
+
+            let handBone = null;
+            if (candidates.length > 0) {
+                handBone = candidates.find(b => b.name.toLowerCase().includes('hand')) || candidates[candidates.length - 1];
+            }
 
             if (handBone) {
                 const worldPos = new THREE.Vector3();
                 handBone.getWorldPosition(worldPos);
-                focusOnPosition(worldPos, 0.25);
+                focusOnPosition(worldPos, dynamicDistance);
             }
         }
 
-        function focusFullBody() {
+        function focusFullBody(resetAngle = false) {
             if (!currentModel) return;
             const box = computeExactWorldBoundingBox(currentModel);
             const center = box.getCenter(new THREE.Vector3());
@@ -395,7 +450,7 @@
             if (!isFinite(cameraDist) || cameraDist <= 0) cameraDist = 5;
             else cameraDist *= 1.05;
 
-            focusOnPosition(center, cameraDist);
+            focusOnPosition(center, cameraDist, resetAngle);
         }
 
         function getPoseData() {
@@ -440,9 +495,40 @@
             updateJointSpheres();
         }
 
+
+        // 判斷 parent 是否為 child 的祖先骨頭
+        function isAncestorOf(parent, child) {
+            let p = child.parent;
+            while (p) {
+                if (p === parent) return true;
+                p = p.parent;
+            }
+            return false;
+        }
+
+        // 1. 開始拖曳：記錄狀態並標記同組中的「子孫骨骼」
         transformControls.addEventListener('dragging-changed', function (event) {
             controls.enabled = !event.value;
-            if (!event.value) {
+            if (event.value) {
+                if (currentModel) currentModel.updateMatrixWorld(true);
+
+                const activeBone = transformControls.object;
+                if (activeBone && activeBone.userData.groupBones) {
+                    const group = activeBone.userData.groupBones;
+                    const qTemp = new THREE.Quaternion();
+
+                    group.forEach(b => {
+                        // 防護關鍵：標記組內是否有其他骨頭是自己的「祖先」
+                        b.userData.hasGroupAncestor = group.some(other => other !== b && isAncestorOf(other, b));
+
+                        b.userData.startWorldQ = b.getWorldQuaternion(new THREE.Quaternion());
+                        const parentWorldQ = b.parent ? b.parent.getWorldQuaternion(qTemp) : new THREE.Quaternion();
+                        b.userData.parentWorldQInv = parentWorldQ.clone().invert();
+                    });
+
+                    activeBone.userData.startWorldQInv = activeBone.userData.startWorldQ.clone().invert();
+                }
+            } else {
                 config.pose = getPoseData();
                 config.camera = getCameraData();
                 notifyConfigChange();
@@ -450,14 +536,34 @@
             }
         });
 
+        // 2. 旋轉過程中：排除子孫骨骼，防止二次旋轉，並即時刷新骨骼矩陣
         transformControls.addEventListener('change', () => {
             if (currentModel) {
-                currentModel.updateMatrixWorld(true);
-                currentModel.traverse((child) => {
-                    if (child.isSkinnedMesh && child.skeleton) {
-                        child.skeleton.update();
-                    }
-                });
+                const activeBone = transformControls.object;
+                if (activeBone && activeBone.userData.groupBones && activeBone.userData.startWorldQInv) {
+                    const activeCurrentWorldQ = activeBone.getWorldQuaternion(new THREE.Quaternion());
+                    const worldDeltaQ = activeCurrentWorldQ.clone().multiply(activeBone.userData.startWorldQInv);
+
+                    const qTemp = new THREE.Quaternion();
+                    activeBone.userData.groupBones.forEach(b => {
+                        if (b !== activeBone) {
+                            // 若 b 的祖先已在同組內旋轉，b 會自動繼承，跳過不處理
+                            if (!b.userData.hasGroupAncestor) {
+                                qTemp.copy(worldDeltaQ).multiply(b.userData.startWorldQ);
+                                b.quaternion.copy(b.userData.parentWorldQInv).multiply(qTemp);
+                            }
+                        }
+                    });
+
+                    // 強制刷新世界矩陣與骨骼結構，防止 SkeletonHelper 姿態線錯位
+                    currentModel.updateMatrixWorld(true);
+                    currentModel.traverse((child) => {
+                        if (child.isSkinnedMesh && child.skeleton) {
+                            child.skeleton.update();
+                        }
+                    });
+                }
+                updateJointSpheres();
             }
         });
 
@@ -510,48 +616,103 @@
             jointSpheres.forEach(s => scene.remove(s));
             jointSpheres = [];
 
-            if (skeletonLines) {
-                scene.remove(skeletonLines);
-                skeletonLines = null;
+            if (skeletonHelper) {
+                scene.remove(skeletonHelper);
+                skeletonHelper = null;
             }
 
-            const weightedBones = new Set();
+            const targetBones = new Set();
+            {
+                model.traverse((child) => {
+                    if (child.isSkinnedMesh && child.skeleton) {
+                        child.skeleton.pose();
+                    }
+                });
+                model.updateMatrixWorld(true);
+                model.traverse((child) => {
+                    if (child.isSkinnedMesh && child.skeleton) {
+                        child.skeleton.update();
+                    }
+                });
 
-            model.traverse((child) => {
-                if (child.isSkinnedMesh && child.skeleton) {
-                    const geom = child.geometry;
-                    const indexAttr = geom.attributes.skinIndex;
-                    const weightAttr = geom.attributes.skinWeight;
-                    const bones = child.skeleton.bones;
+                const ikPattern = /(^|[_\.\-\s])ik([_\.\-\s]|$)/i;
+                const ctrlPattern = /(^|[_\.\-\s])(target|pole|ctrl|control|handle|vis|wgt)([_\.\-\s]|$)/i;
 
-                    if (indexAttr && weightAttr && bones) {
-                        for (let i = 0; i < indexAttr.count; i++) {
-                            const weights = [weightAttr.getX(i), weightAttr.getY(i), weightAttr.getZ(i), weightAttr.getW(i)];
-                            const indices = [indexAttr.getX(i), indexAttr.getY(i), indexAttr.getZ(i), indexAttr.getW(i)];
+                const removeBones = new Set();
+                model.traverse((child) => {
+                    if (child.isBone) {
+                        const pos = new THREE.Vector3();
+                        child.getWorldPosition(pos);
 
-                            for (let j = 0; j < 4; j++) {
-                                if (weights[j] > 0.001) {
-                                    const boneObj = bones[indices[j]];
-                                    if (boneObj) weightedBones.add(boneObj);
-                                }
+                        const useless = isuseless(child);
+
+                        if (useless || pos.lengthSq() < 0.0001) {
+                            if (isallchild_useless(child)) {
+                                removeBones.add(child);
+                                return;
                             }
                         }
+
+                        if (!useless) {
+                            targetBones.add(child);
+                        }
                     }
+                });
+                removeBones.forEach((bone) => {
+                    if (bone.parent) {
+                        bone.parent.remove(bone);
+                    }
+                });
+
+                function isuseless(child) {
+                    const name = child.name || '';
+                    return ikPattern.test(name) || ctrlPattern.test(name);
                 }
+                function isallchild_useless(child) {
+                    for (const bone of child.children) {
+                        if (!isuseless(bone)) {
+                            const pos = new THREE.Vector3();
+                            bone.getWorldPosition(pos);
+
+                            if (pos.lengthSq() >= 0.0001) return false;
+                        }
+                        if (!isallchild_useless(bone)) return false;
+                    }
+                    return true;
+                }
+            }
+
+            const sphereGeo = new THREE.SphereGeometry(1, 10, 10);
+            const sphereMat = new THREE.MeshBasicMaterial({
+                color: 0xff2222,
+                wireframe: true,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.85
             });
 
-            const linePositions = [];
-            weightedBones.forEach((bone) => {
-                const sphereGeo = new THREE.SphereGeometry(1, 10, 10);
-                const sphereMat = new THREE.MeshBasicMaterial({
-                    color: 0xff2222,
-                    wireframe: true,
-                    depthTest: false,
-                    transparent: true,
-                    opacity: 0.85
+            const positionMap = new Map();
+
+            targetBones.forEach((bone) => {
+                const pos = new THREE.Vector3();
+                bone.getWorldPosition(pos);
+
+                const key = `${pos.x.toFixed(3)},${pos.y.toFixed(3)},${pos.z.toFixed(3)}`;
+
+                if (!positionMap.has(key)) {
+                    positionMap.set(key, []);
+                }
+                positionMap.get(key).push(bone);
+            });
+
+            positionMap.forEach((bones) => {
+                bones.forEach(b => {
+                    b.userData.groupBones = bones;
                 });
+
                 const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-                sphere.userData.bone = bone;
+                sphere.userData.bones = bones;
+                sphere.userData.bone = bones[0];
                 sphere.renderOrder = 999;
 
                 const r = baseJointRadius * jointScale;
@@ -559,27 +720,16 @@
 
                 scene.add(sphere);
                 jointSpheres.push(sphere);
-
-                if (bone.parent && weightedBones.has(bone.parent)) {
-                    linePositions.push(0, 0, 0, 0, 0, 0);
-                }
             });
 
-            const lineGeo = new THREE.BufferGeometry();
-            lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(linePositions), 3));
-
-            const lineMat = new THREE.LineBasicMaterial({
-                color: 0x00d2ff,
-                linewidth: 2,
-                depthTest: false,
-                transparent: true,
-                opacity: 0.8
-            });
-
-            skeletonLines = new THREE.LineSegments(lineGeo, lineMat);
-            skeletonLines.renderOrder = 998;
-            skeletonLines.visible = showJoints;
-            scene.add(skeletonLines);
+            skeletonHelper = new THREE.SkeletonHelper(model);
+            skeletonHelper.material.color.setHex(0x00d2ff);
+            skeletonHelper.material.depthTest = false;
+            skeletonHelper.material.transparent = true;
+            skeletonHelper.material.opacity = 0.8;
+            skeletonHelper.renderOrder = 998;
+            skeletonHelper.visible = showJoints;
+            scene.add(skeletonHelper);
         }
 
         function updateJointSpheres() {
@@ -595,25 +745,8 @@
                 }
             });
 
-            if (skeletonLines && showJoints) {
-                skeletonLines.visible = true;
-                const posAttr = skeletonLines.geometry.attributes.position;
-                let idx = 0;
-
-                jointSpheres.forEach(sphere => {
-                    const bone = sphere.userData.bone;
-                    if (bone && bone.parent && bone.parent.isBone) {
-                        const parentSphere = jointSpheres.find(s => s.userData.bone === bone.parent);
-                        if (parentSphere) {
-                            posAttr.setXYZ(idx++, sphere.position.x, sphere.position.y, sphere.position.z);
-                            posAttr.setXYZ(idx++, parentSphere.position.x, parentSphere.position.y, parentSphere.position.z);
-                        }
-                    }
-                });
-
-                posAttr.needsUpdate = true;
-            } else if (skeletonLines) {
-                skeletonLines.visible = false;
+            if (skeletonHelper) {
+                skeletonHelper.visible = showJoints;
             }
         }
 
@@ -634,12 +767,20 @@
 
                 transformControls.attach(targetBone);
                 transformControls.visible = true;
+
+                const bonesCount = hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
+                const labelText = bonesCount > 1
+                    ? `${targetBone.name} (+${bonesCount - 1} 個連動骨)`
+                    : targetBone.name;
+
+                updateSelectedBoneLabel(labelText);
             } else {
                 const isClickingGizmo = transformControls.visible && transformControls.axis !== null;
 
                 if (!isClickingGizmo) {
                     transformControls.detach();
                     transformControls.visible = false;
+                    updateSelectedBoneLabel(null);
                 }
             }
         });
@@ -700,20 +841,28 @@
 
                 transformControls.attach(targetBone);
                 transformControls.visible = true;
+                updateSelectedBoneLabel(targetBone.name);
 
                 if (!wasJointsHidden) {
                     const worldPos = new THREE.Vector3();
                     targetBone.getWorldPosition(worldPos);
 
-                    const boneName = targetBone.name ? targetBone.name.toLowerCase() : '';
-                    const isFineDetail = boneName.includes('hand') || boneName.includes('finger') || boneName.includes('thumb') || boneName.includes('index') || boneName.includes('wrist');
+                    const box = computeExactWorldBoundingBox(currentModel);
+                    const modelHeight = box.getSize(new THREE.Vector3()).y || 1.8;
 
-                    focusOnPosition(worldPos, isFineDetail ? 0.2 : 0.4);
+                    const boneName = targetBone.name ? targetBone.name.toLowerCase() : '';
+                    const isFineDetail = boneName.includes('hand') || boneName.includes('finger') ||
+                        boneName.includes('thumb') || boneName.includes('index') ||
+                        boneName.includes('wrist');
+
+                    const ratio = isFineDetail ? 0.12 : 0.25;
+                    const dynamicDistance = modelHeight * ratio;
+
+                    focusOnPosition(worldPos, dynamicDistance);
                 }
             }
         });
 
-        // 360 度自動歸零與自動對焦覆位邏輯
         function normalizeDegree(val) {
             let num = parseFloat(val) || 0;
             num = num % 360;
@@ -752,7 +901,6 @@
         document.getElementById('opt-offset-y').addEventListener('change', onOffsetInputChange);
         document.getElementById('opt-offset-z').addEventListener('change', onOffsetInputChange);
 
-        // 載入模型檔案按鈕事件
         const btnLoadModel = document.getElementById('btn-load-model');
         const fileInput = document.getElementById('opt-model-file');
 
@@ -767,7 +915,7 @@
 
         document.getElementById('btn-focus-lhand').addEventListener('click', () => focusHand(true));
         document.getElementById('btn-focus-rhand').addEventListener('click', () => focusHand(false));
-        document.getElementById('btn-focus-reset').addEventListener('click', () => focusFullBody());
+        document.getElementById('btn-focus-reset').addEventListener('click', () => focusFullBody(false));
         document.getElementById('btn-pose-reset').addEventListener('click', () => resetPose());
 
         document.getElementById('opt-jointsize').addEventListener('input', (e) => {
@@ -787,6 +935,7 @@
             if (!showJoints) {
                 transformControls.detach();
                 transformControls.visible = false;
+                updateSelectedBoneLabel(null);
             }
             updateJointSpheres();
         });
@@ -917,7 +1066,7 @@
             const prevTCVis = transformControls.visible;
 
             jointSpheres.forEach(s => s.visible = false);
-            if (skeletonLines) skeletonLines.visible = false;
+            if (skeletonHelper) skeletonHelper.visible = false;
             transformControls.visible = false;
 
             const currentW = container.clientWidth;
@@ -942,7 +1091,7 @@
             renderer.render(scene, camera);
 
             jointSpheres.forEach(s => s.visible = showJoints);
-            if (skeletonLines) skeletonLines.visible = showJoints;
+            if (skeletonHelper) skeletonHelper.visible = showJoints;
             transformControls.visible = showJoints && prevTCVis && !!transformControls.object;
 
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
@@ -954,9 +1103,15 @@
             loadingEl.innerText = fileName ? `載入模型 ${fileName} 中...` : '載入 3D 模型中...';
             isModelLoaded = false;
 
+            config.rotationOffset = { x: 0, y: 0, z: 0 };
+            document.getElementById('opt-offset-x').value = 0;
+            document.getElementById('opt-offset-y').value = 0;
+            document.getElementById('opt-offset-z').value = 0;
+
             if (currentModel) {
                 transformControls.detach();
                 transformControls.visible = false;
+                updateSelectedBoneLabel(null);
                 scene.remove(currentModel);
                 currentModel.traverse((child) => {
                     if (child.isMesh) {
@@ -970,10 +1125,13 @@
                 currentModel = null;
             }
 
+            if (skeletonHelper) {
+                scene.remove(skeletonHelper);
+                skeletonHelper = null;
+            }
+
             loader.load(url, (gltf) => {
                 currentModel = gltf.scene;
-
-                applyModelOffset();
 
                 const cVal = config.modelColor;
                 currentModel.traverse((child) => {
@@ -998,10 +1156,7 @@
                 loadingEl.style.display = 'none';
                 isModelLoaded = true;
 
-                focusFullBody();
-                config.pose = getPoseData();
-                notifyConfigChange();
-                sendPoseToComfyUI();
+                resetPose();
 
                 window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
 
@@ -1041,12 +1196,12 @@
                             sendPoseToComfyUI();
                         }
                     } else {
-                        focusFullBody();
+                        focusFullBody(true);
                         sendPoseToComfyUI();
                     }
                 } catch (e) {
                     console.warn("無法解析 Node 配置，使用預設視角", e);
-                    focusFullBody();
+                    focusFullBody(true);
                     sendPoseToComfyUI();
                 }
             }
