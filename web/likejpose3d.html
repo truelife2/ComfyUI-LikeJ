@@ -64,7 +64,6 @@
             user-select: none;
         }
 
-        /* 骨骼名稱懸浮標籤樣式 */
         #bone-label {
             position: absolute;
             bottom: 12px;
@@ -140,10 +139,18 @@
             cursor: pointer;
             font-size: 12px;
             margin-top: 2px;
+            transition: all 0.2s ease;
         }
 
         .toggle-btn:hover {
             background: #e5e5e5;
+        }
+
+        .toggle-btn.active {
+            background: #4A90E2;
+            color: #ffffff;
+            border-color: #357ABD;
+            font-weight: bold;
         }
 
         .btn-group {
@@ -164,9 +171,24 @@
             <div class="panel-title" style="margin-top:0;">📁 模型檔案</div>
             <div class="control-group">
                 <input type="file" id="opt-model-file" accept=".glb,.gltf" style="display: none;">
-                <button id="btn-load-model" class="toggle-btn"
-                    style="background: #e3f2fd; border-color: #90caf9; color: #1976d2; font-weight: bold;">📁 載入 GLB /
-                    GLTF 模型</button>
+                <div class="btn-group">
+                    <button id="btn-load-model" class="toggle-btn"
+                        style="background: #e3f2fd; border-color: #90caf9; color: #1976d2; font-weight: bold;">📁
+                        載入</button>
+                    <button id="btn-restore-default-model" class="toggle-btn">↺ 預設</button>
+                </div>
+            </div>
+
+            <!-- 控制模式切換 -->
+            <div class="panel-title">🕹️ 控制模式</div>
+            <div class="control-group">
+                <div class="btn-group">
+                    <button id="btn-mode-rotate" class="toggle-btn active"
+                        onclick="setTransformMode('rotate')">旋轉</button>
+                    <button id="btn-mode-translate" class="toggle-btn"
+                        onclick="setTransformMode('translate')">平移</button>
+                    <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')">縮放</button>
+                </div>
             </div>
 
             <!-- 模型軸向與姿態校正面板 -->
@@ -182,7 +204,7 @@
                 </div>
                 <button id="btn-pose-reset" class="toggle-btn"
                     style="margin-top: 6px; background: #fff0f0; border-color: #ffb3b3; color: #d32f2f; font-weight: bold;">↺
-                    重置姿態 (T-Pose)</button>
+                    重置全身姿態 (T-Pose)</button>
             </div>
 
             <div class="panel-title">🔍 鏡頭快速對焦</div>
@@ -203,7 +225,7 @@
 
             <div class="control-group">
                 <label>關節點大小 <span id="val-jointsize">1.0</span></label>
-                <input type="range" id="opt-jointsize" min="0.2" max="2.5" step="0.1" value="1.0">
+                <input type="range" id="opt-jointsize" min="0.2" max="5" step="0.1" value="1.0">
             </div>
 
             <div class="control-group">
@@ -256,6 +278,10 @@
         let baseJointRadius = 0.008;
         let jointScale = 1.0;
 
+        // 右鍵雙擊記錄變數
+        let lastRightClickTime = 0;
+        let lastRightClickBone = null;
+
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
@@ -287,6 +313,50 @@
         transformControls.setSize(1.0);
         scene.add(transformControls);
 
+        function setTransformMode(mode) {
+            if (!transformControls) return;
+            transformControls.setMode(mode);
+
+            document.querySelectorAll('.btn-group .toggle-btn').forEach(btn => {
+                if (btn.id.startsWith('btn-mode-')) {
+                    btn.classList.remove('active');
+                }
+            });
+            const activeBtn = document.getElementById(`btn-mode-${mode}`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        function deselectCurrentBone() {
+            if (transformControls && transformControls.visible) {
+                transformControls.detach();
+                transformControls.visible = false;
+                updateSelectedBoneLabel(null);
+            }
+        }
+
+        // 核心：重置指定骨骼的平移、旋轉與縮放
+        function resetBoneTransform(targetBone) {
+            if (!targetBone || !targetBone.isBone) return;
+
+            if (targetBone.userData.restPosition) targetBone.position.copy(targetBone.userData.restPosition);
+            if (targetBone.userData.restQuaternion) targetBone.quaternion.copy(targetBone.userData.restQuaternion);
+            if (targetBone.userData.restScale) targetBone.scale.copy(targetBone.userData.restScale);
+
+            if (currentModel) {
+                currentModel.updateMatrixWorld(true);
+                currentModel.traverse((child) => {
+                    if (child.isSkinnedMesh && child.skeleton) {
+                        child.skeleton.update();
+                    }
+                });
+            }
+
+            updateJointSpheres();
+            config.pose = getPoseData();
+            notifyConfigChange();
+            sendPoseToComfyUI();
+        }
+
         function updateSelectedBoneLabel(boneName) {
             const labelEl = document.getElementById('bone-label');
             const nameEl = document.getElementById('bone-label-name');
@@ -315,12 +385,7 @@
         function resetPose() {
             if (!currentModel) return;
 
-            if (transformControls) {
-                transformControls.detach();
-                transformControls.visible = false;
-            }
-            updateSelectedBoneLabel(null);
-
+            deselectCurrentBone();
             applyModelOffset();
 
             currentModel.traverse((child) => {
@@ -461,7 +526,8 @@
                     pose.push({
                         name: child.name,
                         p: [child.position.x, child.position.y, child.position.z],
-                        q: [child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w]
+                        q: [child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w],
+                        s: [child.scale.x, child.scale.y, child.scale.z]
                     });
                 }
             });
@@ -481,6 +547,7 @@
                     const data = poseMap.get(child.name);
                     if (data.q) child.quaternion.set(data.q[0], data.q[1], data.q[2], data.q[3]);
                     if (data.p) child.position.set(data.p[0], data.p[1], data.p[2]);
+                    if (data.s) child.scale.set(data.s[0], data.s[1], data.s[2]);
                     child.updateMatrix();
                 }
             });
@@ -495,8 +562,6 @@
             updateJointSpheres();
         }
 
-
-        // 判斷 parent 是否為 child 的祖先骨頭
         function isAncestorOf(parent, child) {
             let p = child.parent;
             while (p) {
@@ -506,7 +571,6 @@
             return false;
         }
 
-        // 1. 開始拖曳：記錄狀態並標記同組中的「子孫骨骼」
         transformControls.addEventListener('dragging-changed', function (event) {
             controls.enabled = !event.value;
             if (event.value) {
@@ -518,9 +582,7 @@
                     const qTemp = new THREE.Quaternion();
 
                     group.forEach(b => {
-                        // 防護關鍵：標記組內是否有其他骨頭是自己的「祖先」
                         b.userData.hasGroupAncestor = group.some(other => other !== b && isAncestorOf(other, b));
-
                         b.userData.startWorldQ = b.getWorldQuaternion(new THREE.Quaternion());
                         const parentWorldQ = b.parent ? b.parent.getWorldQuaternion(qTemp) : new THREE.Quaternion();
                         b.userData.parentWorldQInv = parentWorldQ.clone().invert();
@@ -536,7 +598,6 @@
             }
         });
 
-        // 2. 旋轉過程中：排除子孫骨骼，防止二次旋轉，並即時刷新骨骼矩陣
         transformControls.addEventListener('change', () => {
             if (currentModel) {
                 const activeBone = transformControls.object;
@@ -547,7 +608,6 @@
                     const qTemp = new THREE.Quaternion();
                     activeBone.userData.groupBones.forEach(b => {
                         if (b !== activeBone) {
-                            // 若 b 的祖先已在同組內旋轉，b 會自動繼承，跳過不處理
                             if (!b.userData.hasGroupAncestor) {
                                 qTemp.copy(worldDeltaQ).multiply(b.userData.startWorldQ);
                                 b.quaternion.copy(b.userData.parentWorldQInv).multiply(qTemp);
@@ -555,7 +615,6 @@
                         }
                     });
 
-                    // 強制刷新世界矩陣與骨骼結構，防止 SkeletonHelper 姿態線錯位
                     currentModel.updateMatrixWorld(true);
                     currentModel.traverse((child) => {
                         if (child.isSkinnedMesh && child.skeleton) {
@@ -635,12 +694,17 @@
                     }
                 });
 
-                const ikPattern = /(^|[_\.\-\s])ik([_\.\-\s]|$)/i;
-                const ctrlPattern = /(^|[_\.\-\s])(target|pole|ctrl|control|handle|vis|wgt)([_\.\-\s]|$)/i;
+                const ikPattern = /^(ik|upik)|[^a-zA-Z0-9](ik|upik)|(ik|upik)$|(ik|upik)[^a-zA-Z0-9]/i;
+                const ctrlPattern = /^(target|pole|ctrl|control|handle|vis|wgt)|[^a-zA-Z0-9](target|pole|ctrl|control|handle|vis|wgt)|(target|pole|ctrl|control|handle|vis|wgt)$|(target|pole|ctrl|control|handle|vis|wgt)[^a-zA-Z0-9]/i;
 
                 const removeBones = new Set();
                 model.traverse((child) => {
                     if (child.isBone) {
+                        // 紀錄初始 Rest 姿態
+                        child.userData.restPosition = child.position.clone();
+                        child.userData.restQuaternion = child.quaternion.clone();
+                        child.userData.restScale = child.scale.clone();
+
                         const pos = new THREE.Vector3();
                         child.getWorldPosition(pos);
 
@@ -653,7 +717,8 @@
                             }
                         }
 
-                        if (!useless) {
+                        // if (!useless)
+                        {
                             targetBones.add(child);
                         }
                     }
@@ -666,14 +731,14 @@
 
                 function isuseless(child) {
                     const name = child.name || '';
-                    return ikPattern.test(name) || ctrlPattern.test(name);
+                    if (ikPattern.test(name) || ctrlPattern.test(name)) return true;
+                    return false;
                 }
                 function isallchild_useless(child) {
                     for (const bone of child.children) {
                         if (!isuseless(bone)) {
                             const pos = new THREE.Vector3();
                             bone.getWorldPosition(pos);
-
                             if (pos.lengthSq() >= 0.0001) return false;
                         }
                         if (!isallchild_useless(bone)) return false;
@@ -750,43 +815,96 @@
             }
         }
 
+        // 直接綁定於 renderer.domElement 上處理點擊與 Raycast 邏輯
         renderer.domElement.addEventListener('pointerdown', (event) => {
-            if (!showJoints) return;
-
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-            raycaster.setFromCamera(mouse, camera);
+            // --- 右鍵雙擊重置 (button === 2) ---
+            if (event.button === 2) {
+                raycaster.setFromCamera(mouse, camera);
 
-            const intersects = raycaster.intersectObjects(jointSpheres);
+                let hitBone = null;
 
-            if (intersects.length > 0) {
-                const hitSphere = intersects[0].object;
-                const targetBone = hitSphere.userData.bone;
+                // 1. 檢測是否直接點擊在關節球上
+                if (showJoints) {
+                    const intersects = raycaster.intersectObjects(jointSpheres);
+                    if (intersects.length > 0) {
+                        hitBone = intersects[0].object.userData.bone;
+                    }
+                }
 
-                transformControls.attach(targetBone);
-                transformControls.visible = true;
+                // 2. 若沒點到關節球，檢測是否點擊在模型的 Mesh 上（找出最近關節）
+                if (!hitBone && currentModel) {
+                    const modelIntersects = raycaster.intersectObject(currentModel, true);
+                    if (modelIntersects.length > 0) {
+                        const hitPoint = modelIntersects[0].point;
+                        let minDistance = Infinity;
+                        jointSpheres.forEach(sphere => {
+                            if (sphere.userData.bone) {
+                                const boneWorldPos = new THREE.Vector3();
+                                sphere.userData.bone.getWorldPosition(boneWorldPos);
+                                const dist = boneWorldPos.distanceTo(hitPoint);
+                                if (dist < minDistance) {
+                                    minDistance = dist;
+                                    hitBone = sphere.userData.bone;
+                                }
+                            }
+                        });
+                    }
+                }
 
-                const bonesCount = hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
-                const labelText = bonesCount > 1
-                    ? `${targetBone.name} (+${bonesCount - 1} 個連動骨)`
-                    : targetBone.name;
+                // 3. 若都沒點到，預設使用當前選中的骨骼
+                if (!hitBone && transformControls.visible && transformControls.object) {
+                    hitBone = transformControls.object;
+                }
 
-                updateSelectedBoneLabel(labelText);
-            } else {
-                const isClickingGizmo = transformControls.visible && transformControls.axis !== null;
+                const currentTime = Date.now();
+                // 判斷是否為 350ms 內的右鍵雙擊，且兩次點擊對象相同
+                if (currentTime - lastRightClickTime < 350 && hitBone && lastRightClickBone === hitBone) {
+                    resetBoneTransform(hitBone);
+                    lastRightClickTime = 0;
+                    lastRightClickBone = null;
+                } else {
+                    lastRightClickTime = currentTime;
+                    lastRightClickBone = hitBone;
+                }
+                return;
+            }
 
-                if (!isClickingGizmo) {
-                    transformControls.detach();
-                    transformControls.visible = false;
-                    updateSelectedBoneLabel(null);
+            // --- 左鍵選取點位 (button === 0) ---
+            if (event.button === 0) {
+                if (!showJoints) return;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(jointSpheres);
+
+                if (intersects.length > 0) {
+                    const hitSphere = intersects[0].object;
+                    const targetBone = hitSphere.userData.bone;
+
+                    transformControls.attach(targetBone);
+                    transformControls.visible = true;
+
+                    const bonesCount = hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
+                    const labelText = bonesCount > 1
+                        ? `${targetBone.name} (+${bonesCount - 1} 個連動骨)`
+                        : targetBone.name;
+
+                    updateSelectedBoneLabel(labelText);
+                } else {
+                    const isClickingGizmo = transformControls.visible && transformControls.axis !== null;
+                    if (!isClickingGizmo) {
+                        deselectCurrentBone();
+                    }
                 }
             }
         });
 
+        // 左鍵雙擊特寫對焦
         renderer.domElement.addEventListener('dblclick', (event) => {
-            if (!currentModel) return;
+            if (event.button !== 0 || !currentModel) return;
 
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -902,15 +1020,22 @@
         document.getElementById('opt-offset-z').addEventListener('change', onOffsetInputChange);
 
         const btnLoadModel = document.getElementById('btn-load-model');
+        const btnRestoreDefaultModel = document.getElementById('btn-restore-default-model');
         const fileInput = document.getElementById('opt-model-file');
 
         btnLoadModel.addEventListener('click', () => fileInput.click());
+
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const fileUrl = URL.createObjectURL(file);
                 loadModelFromUrl(fileUrl, file.name);
             }
+        });
+
+        btnRestoreDefaultModel.addEventListener('click', () => {
+            fileInput.value = '';
+            loadModelFromUrl(defaultModelUrl, 'female_body_base.glb');
         });
 
         document.getElementById('btn-focus-lhand').addEventListener('click', () => focusHand(true));
@@ -933,9 +1058,7 @@
             showJoints = !showJoints;
             document.getElementById('btn-toggle-joints').innerText = showJoints ? "隱藏關節點" : "顯示關節點";
             if (!showJoints) {
-                transformControls.detach();
-                transformControls.visible = false;
-                updateSelectedBoneLabel(null);
+                deselectCurrentBone();
             }
             updateJointSpheres();
         });
@@ -1109,9 +1232,7 @@
             document.getElementById('opt-offset-z').value = 0;
 
             if (currentModel) {
-                transformControls.detach();
-                transformControls.visible = false;
-                updateSelectedBoneLabel(null);
+                deselectCurrentBone();
                 scene.remove(currentModel);
                 currentModel.traverse((child) => {
                     if (child.isMesh) {
