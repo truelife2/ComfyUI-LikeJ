@@ -26,7 +26,6 @@
             height: 100vh;
         }
 
-        /* 側邊面板整體風格優化 */
         #ui-panel {
             width: 220px;
             min-width: 220px;
@@ -86,7 +85,6 @@
             color: #ffffff;
         }
 
-        /* 區塊標題與佈局管理 */
         .panel-title {
             font-weight: 700;
             font-size: 12px;
@@ -117,7 +115,6 @@
             font-weight: 500;
         }
 
-        /* 通用按鈕風格組合 */
         .toggle-btn {
             width: 100%;
             padding: 6px 8px;
@@ -146,6 +143,13 @@
             font-weight: 600;
         }
 
+        .btn-lang {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
         .btn-danger {
             background: #fef2f2;
             border-color: #fca5a5;
@@ -158,6 +162,18 @@
             border-color: #f87171;
         }
 
+        .btn-success {
+            background: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+            font-weight: 600;
+        }
+
+        .btn-success:hover {
+            background: #dcfce7;
+            border-color: #4ade80;
+        }
+
         .btn-group {
             display: flex;
             gap: 4px;
@@ -167,7 +183,6 @@
             flex: 1;
         }
 
-        /* 下拉選單與上傳按鈕樣式 */
         .select-control {
             width: 100%;
             height: 30px;
@@ -204,7 +219,6 @@
             background: #dbeafe;
         }
 
-        /* 軸向數值輸入排版 */
         .offset-group {
             display: flex;
             gap: 6px;
@@ -234,7 +248,6 @@
             border-color: #3b82f6;
         }
 
-        /* 表單控制元件 */
         .control-group input[type=range] {
             width: 100%;
             height: 4px;
@@ -259,84 +272,87 @@
     <div id="app-container">
         <!-- 左側控制面板 -->
         <div id="ui-panel">
-            <div class="panel-title">📁 模型檔案</div>
+            <div class="panel-title" data-i18n="titleModelFile">📁 Model File</div>
             <div class="control-group">
                 <select id="opt-model-select" class="select-control"></select>
-                <button id="btn-upload-trigger" class="toggle-btn btn-upload">📤 上傳新模型</button>
+                <button id="btn-upload-trigger" class="toggle-btn btn-upload" data-i18n="btnUploadModel">📤 Upload
+                    Model</button>
                 <input type="file" id="opt-model-file" accept=".glb,.gltf" style="display:none;">
+                <div class="btn-group">
+                    <button id="btn-pose-reset" class="toggle-btn btn-danger" data-i18n="btnResetPose">↺ Reset
+                        Pose</button>
+                    <button id="btn-save-default-pose" class="toggle-btn btn-success" data-i18n="btnSavePose">💾 Save as
+                        Initial Pose</button>
+                </div>
             </div>
 
-            <!-- 控制模式切換 -->
-            <div class="panel-title">🕹️ 控制模式</div>
+            <div class="panel-title" data-i18n="titleTransform">🕹️ Transform Controls</div>
             <div class="control-group">
                 <div class="btn-group">
-                    <button id="btn-mode-rotate" class="toggle-btn active"
-                        onclick="setTransformMode('rotate')">旋轉</button>
-                    <button id="btn-mode-translate" class="toggle-btn"
-                        onclick="setTransformMode('translate')">平移</button>
-                    <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')">縮放</button>
+                    <button id="btn-mode-rotate" class="toggle-btn active" onclick="setTransformMode('rotate')"
+                        data-i18n="btnRotate">Rotate</button>
+                    <button id="btn-mode-translate" class="toggle-btn" onclick="setTransformMode('translate')"
+                        data-i18n="btnTranslate">Move</button>
+                    <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')"
+                        data-i18n="btnScale">Zoom</button>
                 </div>
-            </div>
-
-            <!-- 模型軸向與姿態校正面板 -->
-            <div class="panel-title">📐 軸向與姿態校正</div>
-            <div class="control-group">
-                <div class="offset-group">
-                    <label class="offset-item">X <input type="number" id="opt-offset-x" class="num-input" value="0" step="90"></label>
-                    <label class="offset-item">Y <input type="number" id="opt-offset-y" class="num-input" value="0" step="90"></label>
-                    <label class="offset-item">Z <input type="number" id="opt-offset-z" class="num-input" value="0" step="90"></label>
-                </div>
-                <button id="btn-pose-reset" class="toggle-btn btn-danger" style="margin-top: 6px;">↺ 重置姿態</button>
-            </div>
-
-            <div class="panel-title">🔍 鏡頭快速對焦</div>
-            <div class="control-group">
-                <div class="btn-group">
-                    <button id="btn-focus-lhand" class="toggle-btn">左手</button>
-                    <button id="btn-focus-rhand" class="toggle-btn">右手</button>
-                    <button id="btn-focus-reset" class="toggle-btn">全身</button>
-                </div>
-            </div>
-
-            <div class="panel-title">⚙️ 顯示與燈光設定</div>
-
-            <div class="control-group">
-                <label>顯示關節點與骨骼</label>
-                <button id="btn-toggle-joints" class="toggle-btn">顯示關節點</button>
-            </div>
-
-            <div class="control-group">
-                <label>關節點大小 <span id="val-jointsize">1.0</span></label>
+                <button id="btn-toggle-joints" class="toggle-btn">Show Joints</button>
+                <label><span data-i18n="lblJointSize">Joint Size</span> <span id="val-jointsize">1.0</span></label>
                 <input type="range" id="opt-jointsize" min="0.2" max="5" step="0.1" value="1.0">
-            </div>
-
-            <div class="control-group">
-                <label>控制軸大小 <span id="val-gizmosize">1.0</span></label>
+                <label><span data-i18n="lblGizmoSize">Control Axis Size</span> <span
+                        id="val-gizmosize">1.0</span></label>
                 <input type="range" id="opt-gizmosize" min="0.5" max="2.5" step="0.1" value="1.0">
             </div>
 
+            <div class="panel-title" data-i18n="titleAxis">📐 Axis Alignment</div>
             <div class="control-group">
-                <label>環境光強度 <span id="val-ambient">0.4</span></label>
+                <div class="offset-group">
+                    <label class="offset-item">X <input type="number" id="opt-offset-x" class="num-input" value="0"
+                            step="90"></label>
+                    <label class="offset-item">Y <input type="number" id="opt-offset-y" class="num-input" value="0"
+                            step="90"></label>
+                    <label class="offset-item">Z <input type="number" id="opt-offset-z" class="num-input" value="0"
+                            step="90"></label>
+                </div>
+            </div>
+
+            <div class="panel-title" data-i18n="titleCamera">🔍 Camera Focus</div>
+            <div class="control-group">
+                <div class="btn-group">
+                    <button id="btn-focus-lhand" class="toggle-btn" data-i18n="btnFocusLHand">LHand</button>
+                    <button id="btn-focus-rhand" class="toggle-btn" data-i18n="btnFocusRHand">RHand</button>
+                    <button id="btn-focus-reset" class="toggle-btn" data-i18n="btnFocusFull">Full</button>
+                </div>
+            </div>
+
+            <div class="panel-title" data-i18n="titleLights">⚙️ Lights</div>
+            <div class="control-group">
+                <label><span data-i18n="lblAmbientLight">Ambient Light</span> <span id="val-ambient">0.4</span></label>
                 <input type="range" id="opt-ambient" min="0" max="2" step="0.05" value="0.4">
             </div>
             <div class="control-group">
-                <label>主光強度 <span id="val-direct">0.6</span></label>
+                <label><span data-i18n="lblDirectLight">Main Light</span> <span id="val-direct">0.6</span></label>
                 <input type="range" id="opt-direct" min="0" max="2" step="0.05" value="0.6">
             </div>
             <div class="control-group">
-                <label>模型明亮度 <span id="val-model">0.5</span></label>
+                <label><span data-i18n="lblModelBrightness">Model Brightness</span> <span
+                        id="val-model">0.5</span></label>
                 <input type="range" id="opt-model" min="0.1" max="1" step="0.05" value="0.5">
             </div>
             <div class="control-group">
-                <label>背景顏色</label>
+                <label data-i18n="lblBgColor">Background Color</label>
                 <input type="color" id="opt-bgcolor" value="#f8f8f8">
             </div>
+
+            <!-- 語系切換按鈕 -->
+            <button id="btn-toggle-lang" class="toggle-btn btn-lang" onclick="toggleLanguage()">🌐 English / 中文</button>
+
         </div>
 
-        <!-- 右側 3D 渲染區域 -->
         <div id="canvas-container">
-            <div id="loading">載入 3D 模型中...</div>
-            <div id="bone-label">🦴 骨骼：<span id="bone-label-name">-</span></div>
+            <div id="loading" data-i18n="loadingModel">The 3D Model is loading...</div>
+            <div id="bone-label"><span data-i18n="lblBonePrefix">🦴 Bone:</span> <span id="bone-label-name">-</span>
+            </div>
         </div>
     </div>
 
@@ -346,6 +362,98 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <script>
+        // 多語系字典定義
+        const i18n = {
+            zh: {
+                titleModelFile: "📁 模型檔案",
+                btnUploadModel: "📤 上傳模型",
+                btnResetPose: "↺ 重置姿態",
+                btnSavePose: "💾 儲存為初始姿態",
+                titleTransform: "🕹️ 變換控制",
+                btnRotate: "旋轉",
+                btnTranslate: "位移",
+                btnScale: "縮放",
+                btnShowJoints: "顯示關節",
+                btnHideJoints: "隱藏關節",
+                lblJointSize: "關節大小",
+                lblGizmoSize: "控制軸大小",
+                titleAxis: "📐 軸向對齊",
+                titleCamera: "🔍 鏡頭焦點",
+                btnFocusLHand: "左手",
+                btnFocusRHand: "右手",
+                btnFocusFull: "全身",
+                titleLights: "⚙️ 燈光設定",
+                lblAmbientLight: "環境光強度",
+                lblDirectLight: "主光強度",
+                lblModelBrightness: "模型明亮度",
+                lblBgColor: "背景顏色",
+                loadingModel: "3D 模型載入中...",
+                uploadingModel: "模型檔案上傳中...",
+                lblBonePrefix: "🦴 骨骼:",
+                drivenBones: "個連動骨骼",
+                msgUploadError: "模型上傳失敗: ",
+                msgSaveSuccess: "模型初始姿態已成功儲存",
+                msgSaveFailed: "儲存模型初始姿態失敗: ",
+                msgLoadError: "模型載入失敗，請檢查檔案格式。"
+            },
+            en: {
+                titleModelFile: "📁 Model File",
+                btnUploadModel: "📤 Upload Model",
+                btnResetPose: "↺ Reset Pose",
+                btnSavePose: "💾 Save as Initial Pose",
+                titleTransform: "🕹️ Transform Controls",
+                btnRotate: "Rotate",
+                btnTranslate: "Move",
+                btnScale: "Zoom",
+                btnShowJoints: "Show Joints",
+                btnHideJoints: "Hide Joints",
+                lblJointSize: "Joint Size",
+                lblGizmoSize: "Control Axis Size",
+                titleAxis: "📐 Axis Alignment",
+                titleCamera: "🔍 Camera Focus",
+                btnFocusLHand: "LHand",
+                btnFocusRHand: "RHand",
+                btnFocusFull: "Full",
+                titleLights: "⚙️ Lights",
+                lblAmbientLight: "Ambient Light",
+                lblDirectLight: "Main Light",
+                lblModelBrightness: "Model Brightness",
+                lblBgColor: "Background Color",
+                loadingModel: "The 3D Model is loading...",
+                uploadingModel: "The Model file is uploading...",
+                lblBonePrefix: "🦴 Bone:",
+                drivenBones: "Driven Bones",
+                msgUploadError: "Model upload failed: ",
+                msgSaveSuccess: "The Model Initial Pose Has Been Saved",
+                msgSaveFailed: "Failed to save the Model Initial Pose: ",
+                msgLoadError: "Failed to load model, please check the file format."
+            }
+        };
+
+        let currentLang = localStorage.getItem('likej_pose3d_lang') || 'en';
+
+        function updateLanguage() {
+            localStorage.setItem('likej_pose3d_lang', currentLang);
+
+            const langData = i18n[currentLang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (langData[key]) {
+                    el.innerText = langData[key];
+                }
+            });
+
+            const btnToggleJoints = document.getElementById('btn-toggle-joints');
+            if (btnToggleJoints) {
+                btnToggleJoints.innerText = showJoints ? langData.btnHideJoints : langData.btnShowJoints;
+            }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            updateLanguage();
+        }
+
         const container = document.getElementById('canvas-container');
 
         let targetWidth = 1024;
@@ -356,9 +464,10 @@
         let transformControls;
         let jointSpheres = [];
         let skeletonHelper = null;
-        let showJoints = false;
+        let showJoints = false; // 純視覺 UI 狀態，不儲存
         let baseJointRadius = 0.008;
         let jointScale = 1.0;
+        let currentBgColor = '#f8f8f8'; // 純視覺 UI 狀態，不儲存
 
         let lastRightClickTime = 0;
         let lastRightClickBone = null;
@@ -372,14 +481,15 @@
             ambient: 0.4,
             direct: 0.6,
             modelColor: 0.85,
-            bgColor: '#f8f8f8',
+            jointSize: 1.0,
+            gizmoSize: 1.0,
             rotationOffset: { x: 0, y: 0, z: 0 },
             pose: [],
             camera: null
         };
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(config.bgColor);
+        scene.background = new THREE.Color(currentBgColor);
 
         const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
 
@@ -729,6 +839,7 @@
             }, "*");
         }
 
+        // 更新 UI 介面與場景狀態
         function updateUIFromConfig() {
             document.getElementById('opt-ambient').value = config.ambient;
             document.getElementById('val-ambient').innerText = config.ambient;
@@ -736,7 +847,20 @@
             document.getElementById('val-direct').innerText = config.direct;
             document.getElementById('opt-model').value = config.modelColor;
             document.getElementById('val-model').innerText = config.modelColor;
-            document.getElementById('opt-bgcolor').value = config.bgColor;
+            document.getElementById('opt-bgcolor').value = currentBgColor;
+
+            if (config.jointSize !== undefined) {
+                jointScale = config.jointSize;
+                document.getElementById('opt-jointsize').value = config.jointSize;
+                document.getElementById('val-jointsize').innerText = config.jointSize;
+            }
+            if (config.gizmoSize !== undefined) {
+                transformControls.setSize(config.gizmoSize);
+                document.getElementById('opt-gizmosize').value = config.gizmoSize;
+                document.getElementById('val-gizmosize').innerText = config.gizmoSize;
+            }
+
+            updateLanguage();
 
             const offset = config.rotationOffset || { x: 0, y: 0, z: 0 };
             document.getElementById('opt-offset-x').value = offset.x || 0;
@@ -745,7 +869,7 @@
 
             ambientLight.intensity = config.ambient;
             directionalLight.intensity = config.direct;
-            scene.background.set(config.bgColor);
+            scene.background.set(currentBgColor);
 
             if (currentModel) {
                 applyModelOffset();
@@ -753,6 +877,7 @@
                 currentModel.traverse((child) => {
                     if (child.isMesh && child.material) child.material.color.setRGB(v, v, v);
                 });
+                updateJointSpheres();
             }
         }
 
@@ -963,7 +1088,7 @@
 
                     const bonesCount = hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
                     const labelText = bonesCount > 1
-                        ? `${targetBone.name} (+${bonesCount - 1} 個連動骨)`
+                        ? `${targetBone.name} (+${bonesCount - 1} ${i18n[currentLang].drivenBones})`
                         : targetBone.name;
 
                     updateSelectedBoneLabel(labelText);
@@ -1025,9 +1150,9 @@
 
                 if (wasJointsHidden) {
                     showJoints = true;
-                    const toggleBtn = document.getElementById('btn-toggle-joints');
-                    if (toggleBtn) toggleBtn.innerText = "隱藏關節點";
+                    updateLanguage();
                     updateJointSpheres();
+                    sendPoseToComfyUI();
                 }
 
                 transformControls.attach(targetBone);
@@ -1149,14 +1274,14 @@
 
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
-            loadingEl.innerText = `上傳 ${file.name} 中...`;
+            loadingEl.innerText = `${i18n[currentLang].uploadingModel} '${file.name}'`;
 
             try {
                 const res = await fetch('/likejpose3d/upload_model', { method: 'POST', body: formData });
                 const result = await res.json();
                 if (result.success) {
                     await refreshModelList(result.filename);
-                    
+
                     config.modelName = result.filename;
                     config.isDefaultModel = false;
 
@@ -1164,7 +1289,7 @@
                     loadModelFromUrl(url, result.filename, false);
                 }
             } catch (err) {
-                alert("模型上傳失敗: " + err);
+                alert(i18n[currentLang].msgUploadError + err);
             } finally {
                 fileInput.value = '';
             }
@@ -1175,24 +1300,71 @@
         document.getElementById('btn-focus-reset').addEventListener('click', () => focusFullBody(false));
         document.getElementById('btn-pose-reset').addEventListener('click', () => resetPose());
 
+        // 儲存預設姿態
+        document.getElementById('btn-save-default-pose').addEventListener('click', async () => {
+            if (!config.modelName) return;
+
+            const defaultPoseData = {
+                rotationOffset: config.rotationOffset || { x: 0, y: 0, z: 0 },
+                pose: getPoseData(),
+                camera: getCameraData(),
+                ambient: config.ambient,
+                direct: config.direct,
+                modelColor: config.modelColor,
+                jointSize: config.jointSize !== undefined ? config.jointSize : jointScale,
+                gizmoSize: config.gizmoSize !== undefined ? config.gizmoSize : transformControls.size
+            };
+
+            try {
+                const res = await fetch('/likejpose3d/save_default_pose', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: config.modelName,
+                        is_default: config.isDefaultModel,
+                        config: defaultPoseData
+                    })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert(`${i18n[currentLang].msgSaveSuccess}\r\n${result.filename}`);
+                } else {
+                    alert(i18n[currentLang].msgSaveFailed + (result.error || "Unknown Error"));
+                }
+            } catch (e) {
+                alert(i18n[currentLang].msgSaveFailed + e);
+            }
+        });
+
+        // 關節點大小 Event Listener
         document.getElementById('opt-jointsize').addEventListener('input', (e) => {
             jointScale = parseFloat(e.target.value);
+            config.jointSize = jointScale;
             document.getElementById('val-jointsize').innerText = jointScale;
+            updateJointSpheres();
+            notifyConfigChange();
+            sendPoseToComfyUI();
         });
 
+        // 控制軸大小 Event Listener
         document.getElementById('opt-gizmosize').addEventListener('input', (e) => {
             const sz = parseFloat(e.target.value);
+            config.gizmoSize = sz;
             transformControls.setSize(sz);
             document.getElementById('val-gizmosize').innerText = sz;
+            notifyConfigChange();
+            sendPoseToComfyUI();
         });
 
+        // 開關關節點
         document.getElementById('btn-toggle-joints').addEventListener('click', () => {
             showJoints = !showJoints;
-            document.getElementById('btn-toggle-joints').innerText = showJoints ? "隱藏關節點" : "顯示關節點";
+            updateLanguage();
             if (!showJoints) {
                 deselectCurrentBone();
             }
             updateJointSpheres();
+            sendPoseToComfyUI();
         });
 
         document.getElementById('opt-ambient').addEventListener('input', (e) => {
@@ -1216,10 +1388,10 @@
             sendPoseToComfyUI();
         });
 
+        // 背景顏色
         document.getElementById('opt-bgcolor').addEventListener('input', (e) => {
-            config.bgColor = e.target.value;
-            updateUIFromConfig();
-            notifyConfigChange();
+            currentBgColor = e.target.value;
+            scene.background.set(currentBgColor);
             sendPoseToComfyUI();
         });
 
@@ -1351,10 +1523,23 @@
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
         }
 
+        async function fetchDefaultPose(fileName, isDefault) {
+            try {
+                const res = await fetch(`/likejpose3d/get_default_pose?filename=${encodeURIComponent(fileName)}&is_default=${isDefault ? 'true' : 'false'}`);
+                const result = await res.json();
+                if (result.success && result.exists && result.config) {
+                    return result.config;
+                }
+            } catch (e) {
+                console.warn("Failed to read model initial pose:", e);
+            }
+            return null;
+        }
+
         function loadModelFromUrl(url, fileName = '', isRestoring = false) {
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
-            loadingEl.innerText = fileName ? `載入模型 ${fileName} 中...` : '載入 3D 模型中...';
+            loadingEl.innerText = fileName ? `${i18n[currentLang].loadingModel} (${fileName})` : i18n[currentLang].loadingModel;
             isModelLoaded = false;
 
             if (!isRestoring) {
@@ -1427,15 +1612,43 @@
                     if (config.camera) applyCameraData(config.camera);
                     sendPoseToComfyUI();
                 } else {
-                    focusFullBody(true);
+                    fetchDefaultPose(fileName, config.isDefaultModel).then((defaultConfig) => {
+                        if (defaultConfig) {
+                            if (defaultConfig.rotationOffset) config.rotationOffset = defaultConfig.rotationOffset;
+                            if (defaultConfig.ambient !== undefined) config.ambient = defaultConfig.ambient;
+                            if (defaultConfig.direct !== undefined) config.direct = defaultConfig.direct;
+                            if (defaultConfig.modelColor !== undefined) config.modelColor = defaultConfig.modelColor;
+                            if (defaultConfig.jointSize !== undefined) config.jointSize = defaultConfig.jointSize;
+                            if (defaultConfig.gizmoSize !== undefined) config.gizmoSize = defaultConfig.gizmoSize;
 
-                    notifyConfigChange();
-                    sendPoseToComfyUI();
+                            updateUIFromConfig();
+                            applyModelOffset();
+
+                            if (defaultConfig.pose && defaultConfig.pose.length > 0) {
+                                config.pose = defaultConfig.pose;
+                                applyPoseData(defaultConfig.pose);
+                            } else {
+                                resetPose();
+                            }
+
+                            if (defaultConfig.camera) {
+                                config.camera = defaultConfig.camera;
+                                applyCameraData(defaultConfig.camera);
+                            } else {
+                                focusFullBody(true);
+                            }
+                        } else {
+                            focusFullBody(true);
+                        }
+
+                        notifyConfigChange();
+                        sendPoseToComfyUI();
+                    });
                 }
 
             }, undefined, (error) => {
-                console.error('模型載入失敗:', error);
-                loadingEl.innerText = '模型載入失敗，請確認檔案格式是否正確';
+                console.error('Failed to load model:', error);
+                loadingEl.innerText = i18n[currentLang].msgLoadError;
             });
         }
 
@@ -1455,14 +1668,12 @@
                         : event.data.configStr;
 
                     if (loadedConfig && Object.keys(loadedConfig).length > 0) {
-                        delete loadedConfig.modelUrl;
-
                         config = { ...config, ...loadedConfig };
                         if (!config.rotationOffset) config.rotationOffset = { x: 0, y: 0, z: 0 };
 
                         const modelName = config.modelName || 'female_body_base.glb';
                         const isDefault = config.isDefaultModel !== undefined ? config.isDefaultModel : true;
-                        
+
                         const targetUrl = getModelApiUrl(modelName, isDefault);
 
                         loadModelFromUrl(targetUrl, modelName, true);
@@ -1472,7 +1683,7 @@
                         loadModelFromUrl(targetUrl, defaultName, false);
                     }
                 } catch (e) {
-                    console.warn("無法解析 Node 配置，載入預設模型", e);
+                    console.warn("Failed to parse Node configuration, loading default model", e);
                     const defaultName = 'female_body_base.glb';
                     const targetUrl = getModelApiUrl(defaultName, true);
                     loadModelFromUrl(targetUrl, defaultName, false);
@@ -1504,6 +1715,9 @@
             notifyConfigChange();
             sendPoseToComfyUI();
         });
+
+        // 初始化預設語言
+        updateLanguage();
 
         window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
     </script>
