@@ -281,8 +281,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(4px);
+            background: rgba(15, 23, 42, 0.75);
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -564,18 +563,19 @@
             </div>
             <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
                 <div class="control-group">
+                    <label data-i18n="lblPoseName">Pose Name:</label>
+                    <input type="text" id="input-pose-name" class="num-input"
+                        style="text-align: left; height: 32px; padding: 0 8px; font-size: 12px;">
+
                     <label data-i18n="lblSelectExistingPose">Overwrite Existing Pose (Optional):</label>
                     <select id="select-existing-pose" class="select-control">
-                        <option value="" data-i18n="optNewPose">-- Create New Pose --</option>
+                        <option value="" data-i18n="optNewPose">➕ Create New Pose</option>
                     </select>
                 </div>
-                <div class="control-group">
-                    <label data-i18n="lblPoseName">Pose Name:</label>
-                    <input type="text" id="input-pose-name" class="num-input" style="text-align: left; height: 32px; padding: 0 8px; font-size: 12px;" placeholder="pose_20260828">
-                </div>
-                <div class="btn-group" style="margin-top: 8px;">
+                <div class="btn-group">
                     <button id="btn-cancel-save-pose" class="toggle-btn" data-i18n="btnCancel">Cancel</button>
-                    <button id="btn-confirm-save-pose" class="toggle-btn btn-success" data-i18n="btnConfirmSave">Save</button>
+                    <button id="btn-confirm-save-pose" class="toggle-btn btn-success"
+                        data-i18n="btnConfirmSave">Save</button>
                 </div>
             </div>
         </div>
@@ -630,7 +630,7 @@
                 msgDeleteFailed: "刪除姿態失敗: ",
                 modalSavePoseTitle: "💾 儲存姿態",
                 lblSelectExistingPose: "選擇已有姿態來覆蓋 (選填)：",
-                optNewPose: "-- 建立新姿態 --",
+                optNewPose: "➕ 建立新姿態",
                 lblPoseName: "姿態名稱：",
                 btnCancel: "取消",
                 btnConfirmSave: "儲存",
@@ -677,7 +677,7 @@
                 msgDeleteFailed: "Failed to delete pose: ",
                 modalSavePoseTitle: "💾 Save Custom Pose",
                 lblSelectExistingPose: "Overwrite Existing Pose (Optional):",
-                optNewPose: "-- Create New Pose --",
+                optNewPose: "➕ Create New Pose",
                 lblPoseName: "Pose Name:",
                 btnCancel: "Cancel",
                 btnConfirmSave: "Save",
