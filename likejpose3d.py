@@ -7,6 +7,8 @@ import json
 from PIL import Image
 from server import PromptServer
 from aiohttp import web
+import json
+from aiohttp import web
 
 CURRENT_NODE_DIR = os.path.dirname(os.path.realpath(__file__))
 CUSTOM_NODES_DIR = os.path.abspath(os.path.join(CURRENT_NODE_DIR, ".."))
@@ -130,6 +132,146 @@ async def save_default_pose(request):
             json.dump(config_data, f, ensure_ascii=False, indent=2)
 
         return web.json_response({"success": True, "filename": json_filename})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.post("/likejpose3d/save_custom_pose")
+async def save_custom_pose(request):
+    try:
+        data = await request.json()
+        model_filename = data.get("model_filename", "")  # 例如 female_body_base.glb
+        pose_name = data.get("pose_name", "").strip()  # 姿態檔名稱 (不含副檔名)
+        is_default = data.get("is_default", False)
+        config_data = data.get("config", {})
+        preview_b64 = data.get("preview_b64", "")  # Base64 圖片數據
+
+        if not model_filename or not pose_name:
+            return web.json_response({"success": False, "error": "Missing model_filename or pose_name"}, status=400)
+
+        # 1. 取得模型基礎名稱 (作為子目錄名稱，如 "female_body_base")
+        model_folder_name = os.path.splitext(model_filename)[0]
+
+        # 2. 定義姿態儲存根目錄
+        base_dir = DEFAULT_MODELS_DIR if is_default else MODELS_DIR
+        target_dir = os.path.join(base_dir, model_folder_name)
+
+        # 自動創建以模型名稱為名的目錄
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir, exist_ok=True)
+
+        # 3. 儲存 .json 檔案
+        json_path = os.path.join(target_dir, f"{pose_name}.json")
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(config_data, f, ensure_ascii=False, indent=2)
+
+        # 4. 儲存 .png 預覽圖
+        if preview_b64:
+            if "," in preview_b64:
+                preview_b64 = preview_b64.split(",")[1]
+            img_bytes = base64.b64decode(preview_b64)
+            img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+
+            png_path = os.path.join(target_dir, f"{pose_name}.png")
+            img.save(png_path, format="PNG")
+
+        return web.json_response({"success": True, "pose_name": pose_name, "folder": model_folder_name})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.get("/likejpose3d/list_saved_poses")
+async def list_saved_poses(request):
+    """搜尋 models 目錄下所有以模型命名的子資料夾，收集裡面的姿態配置與圖片"""
+    try:
+        poses = []
+        search_dirs = [("default", DEFAULT_MODELS_DIR), ("custom", MODELS_DIR)]
+
+        for dir_type, base_dir in search_dirs:
+            if not os.path.exists(base_dir):
+                continue
+
+            # 遍歷模型子資料夾
+            for folder_name in os.listdir(base_dir):
+                folder_path = os.path.join(base_dir, folder_name)
+                if os.path.isdir(folder_path):
+                    # 搜尋裡面的 .json 姿態檔
+                    for file_name in os.listdir(folder_path):
+                        if file_name.endswith(".json") and not file_name.endswith("_default.json"):
+                            pose_id = os.path.splitext(file_name)[0]
+                            png_name = f"{pose_id}.png"
+                            has_preview = os.path.exists(os.path.join(folder_path, png_name))
+
+                            poses.append(
+                                {
+                                    "model_folder": folder_name,
+                                    "pose_name": pose_id,
+                                    "is_default": (dir_type == "default"),
+                                    "json_file": file_name,
+                                    "has_preview": has_preview,
+                                    "preview_url": f"/likejpose3d/get_pose_file?folder={folder_name}&file={png_name}&is_default={str(dir_type == 'default').lower()}" if has_preview else None,
+                                    "json_url": f"/likejpose3d/get_pose_file?folder={folder_name}&file={file_name}&is_default={str(dir_type == 'default').lower()}",
+                                }
+                            )
+
+        return web.json_response({"success": True, "poses": poses})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.get("/likejpose3d/get_pose_file")
+async def get_pose_file(request):
+    """獲取特定姿態的 json 或 png 檔案"""
+    try:
+        folder = request.query.get("folder", "")
+        file_name = request.query.get("file", "")
+        is_default = request.query.get("is_default", "false").lower() == "true"
+
+        base_dir = DEFAULT_MODELS_DIR if is_default else MODELS_DIR
+        file_path = os.path.join(base_dir, folder, file_name)
+
+        if not os.path.exists(file_path):
+            return web.Response(status=404)
+
+        return web.FileResponse(file_path)
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.post("/likejpose3d/delete_pose")
+async def delete_pose(request):
+    """刪除指定的姿態 .json 檔與對應的 .png 預覽圖"""
+    try:
+        data = await request.json()
+        folder = data.get("folder", "")
+        pose_name = data.get("pose_name", "")
+        is_default = data.get("is_default", False)
+
+        if not folder or not pose_name:
+            return web.json_response({"success": False, "error": "Missing folder or pose_name"}, status=400)
+
+        base_dir = DEFAULT_MODELS_DIR if is_default else MODELS_DIR
+        target_dir = os.path.realpath(os.path.join(base_dir, folder))
+        real_base_dir = os.path.realpath(base_dir)
+
+        # 安全檢查：確保路徑不會超出目標目錄
+        if not target_dir.startswith(real_base_dir):
+            return web.json_response({"success": False, "error": "Forbidden path"}, status=403)
+
+        json_path = os.path.join(target_dir, f"{pose_name}.json")
+        png_path = os.path.join(target_dir, f"{pose_name}.png")
+
+        deleted = False
+        if os.path.exists(json_path):
+            os.remove(json_path)
+            deleted = True
+        if os.path.exists(png_path):
+            os.remove(png_path)
+
+        if deleted:
+            return web.json_response({"success": True, "pose_name": pose_name})
+        else:
+            return web.json_response({"success": False, "error": "Pose file not found"}, status=404)
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)}, status=500)
 
