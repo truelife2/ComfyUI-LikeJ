@@ -5,6 +5,7 @@ app.registerExtension({
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.name === "LikeJPose3d") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
+            const onConfigure = nodeType.prototype.onConfigure;
 
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
@@ -91,6 +92,21 @@ app.registerExtension({
                     }
                 });
 
+                return r;
+            };
+
+            nodeType.prototype.onConfigure = function (info) {
+                const r = onConfigure ? onConfigure.apply(this, arguments) : undefined;
+                const self = this;
+
+                const iframeWidget = self.widgets?.find(w => w.name === "3d_editor");
+                const iframe = iframeWidget?.element;
+                if (iframe && iframe.contentWindow && self.properties?.["pose_config"]) {
+                    iframe.contentWindow.postMessage({
+                        type: "LIKEJ_POSE3D_LOAD_CONFIG",
+                        configStr: self.properties["pose_config"]
+                    }, "*");
+                }
                 return r;
             };
         }

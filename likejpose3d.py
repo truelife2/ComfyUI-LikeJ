@@ -8,57 +8,71 @@ from PIL import Image
 from server import PromptServer
 from aiohttp import web
 
-# 💡 自動定位至 ComfyUI_VNCCS_Utils/PoseLibrary 資料夾
 CURRENT_NODE_DIR = os.path.dirname(os.path.realpath(__file__))
 CUSTOM_NODES_DIR = os.path.abspath(os.path.join(CURRENT_NODE_DIR, ".."))
-POSES_DIR = os.path.join(CUSTOM_NODES_DIR, "ComfyUI_VNCCS_Utils", "PoseLibrary")
 
-# 1. 遞迴掃描 VNCCS 姿態庫所有圖文配對
-@PromptServer.instance.routes.get("/likejpose3d/get_library")
-async def get_library(request):
+MODELS_DIR = os.path.join(CURRENT_NODE_DIR, "models")
+if not os.path.exists(MODELS_DIR):
+    os.makedirs(MODELS_DIR)
+
+DEFAULT_MODELS_DIR = os.path.join(CURRENT_NODE_DIR, "web/models")
+
+
+@PromptServer.instance.routes.get("/likejpose3d/get_models")
+async def get_models(request):
     items = []
-    if not os.path.exists(POSES_DIR):
-        return web.json_response(items)
 
-    for root, dirs, files in os.walk(POSES_DIR):
-        json_files = [f for f in files if f.endswith('.json') and f != "repositories.user.json"]
-        for jf in json_files:
-            base_name = os.path.splitext(jf)[0]
-            
-            img_file = None
-            for ext in ['.webp', '.png', '.jpg', '.jpeg']:
-                if f"{base_name}{ext}" in files:
-                    img_file = f"{base_name}{ext}"
-                    break
-            
-            rel_root = os.path.relpath(root, POSES_DIR)
-            folder_tag = rel_root if rel_root != "." else "根目錄"
-            
-            items.append({
-                "title": base_name,
-                "folder": folder_tag,
-                "json_path": os.path.relpath(os.path.join(root, jf), POSES_DIR),
-                "img_path": os.path.relpath(os.path.join(root, img_file), POSES_DIR) if img_file else None
-            })
+    # A. 掃描插件根目錄下的預設 GLB/GLTF（可放多個內建預設模型）
+    if os.path.exists(DEFAULT_MODELS_DIR):
+        default_files = [f for f in os.listdir(DEFAULT_MODELS_DIR) if f.endswith((".glb", ".gltf"))]
+        for f in default_files:
+            items.append({"name": f, "is_default": True, "label": f"[預設] {f}"})
+
+    # B. 掃描 models 資料夾（支援 mklink）
+    real_models_dir = os.path.realpath(MODELS_DIR)
+    if os.path.exists(real_models_dir):
+        user_files = [f for f in os.listdir(real_models_dir) if f.endswith((".glb", ".gltf"))]
+        for f in user_files:
+            items.append({"name": f, "is_default": False, "label": f})
+
     return web.json_response(items)
 
-# 2. 讀取縮圖串流
-@PromptServer.instance.routes.get("/likejpose3d/get_image")
-async def get_image(request):
-    rel_path = request.query.get("path", "")
-    full_path = os.path.abspath(os.path.join(POSES_DIR, rel_path))
-    if full_path.startswith(POSES_DIR) and os.path.exists(full_path):
-        return web.FileResponse(full_path)
-    return web.Response(status=404)
 
-# 3. 讀取姿態 JSON 內容
-@PromptServer.instance.routes.get("/likejpose3d/get_json")
-async def get_json(request):
-    rel_path = request.query.get("path", "")
-    full_path = os.path.abspath(os.path.join(POSES_DIR, rel_path))
-    if full_path.startswith(POSES_DIR) and os.path.exists(full_path):
-        with open(full_path, "r", encoding="utf-8") as f:
-            return web.json_response(json.load(f))
+@PromptServer.instance.routes.post("/likejpose3d/upload_model")
+async def upload_model(request):
+    reader = await request.multipart()
+    field = await reader.next()
+    if field.name == "file":
+        filename = field.filename
+        file_path = os.path.join(MODELS_DIR, filename)
+        with open(file_path, "wb") as f:
+            while True:
+                chunk = await field.read_chunk()
+                if not chunk:
+                    break
+                f.write(chunk)
+        return web.json_response({"success": True, "filename": filename})
+    return web.json_response({"success": False, "error": "No file uploaded"})
+
+
+@PromptServer.instance.routes.get("/likejpose3d/get_model_file")
+async def get_model_file(request):
+    filename = request.query.get("filename", "")
+    is_default = request.query.get("is_default", "false").lower() in ["true", "1"]
+
+    if not filename:
+        return web.Response(status=400)
+
+    if is_default:
+        target_path = os.path.join(DEFAULT_MODELS_DIR, filename)
+    else:
+        real_models_dir = os.path.realpath(MODELS_DIR)
+        target_path = os.path.realpath(os.path.join(MODELS_DIR, filename))
+        if not target_path.startswith(real_models_dir):
+            return web.Response(status=403)
+
+    if os.path.exists(target_path):
+        return web.FileResponse(target_path)
     return web.Response(status=404)
 
 
@@ -74,7 +88,7 @@ class LikeJPose3d:
                 "prompt": "PROMPT",
                 "extra_pnginfo": "EXTRA_PNGINFO",
                 "unique_id": "UNIQUE_ID",
-            }
+            },
         }
 
     RETURN_TYPES = ("IMAGE", "STRING")

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 
 <head>
     <meta charset="UTF-8">
@@ -16,7 +16,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f0f0f0;
         }
 
@@ -26,16 +26,17 @@
             height: 100vh;
         }
 
+        /* 側邊面板整體風格優化 */
         #ui-panel {
-            width: 200px;
-            min-width: 200px;
+            width: 220px;
+            min-width: 220px;
             height: 100%;
             background: #ffffff;
-            border-right: 1px solid #e0e0e0;
+            border-right: 1px solid #e2e8f0;
             padding: 12px;
             overflow-y: auto;
             user-select: none;
-            box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
             z-index: 10;
         }
 
@@ -58,8 +59,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 14px;
-            color: #555;
+            font-size: 13px;
+            color: #64748b;
             pointer-events: none;
             user-select: none;
         }
@@ -68,30 +69,37 @@
             position: absolute;
             bottom: 12px;
             left: 12px;
-            background: rgba(0, 0, 0, 0.75);
-            color: #00e5ff;
+            background: rgba(15, 23, 42, 0.85);
+            color: #38bdf8;
             padding: 6px 10px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 600;
             pointer-events: none;
             display: none;
             z-index: 20;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(4px);
         }
 
         #bone-label-name {
             color: #ffffff;
         }
 
+        /* 區塊標題與佈局管理 */
         .panel-title {
-            font-weight: bold;
-            font-size: 13px;
-            margin-top: 10px;
+            font-weight: 700;
+            font-size: 12px;
+            margin-top: 14px;
             margin-bottom: 8px;
-            border-bottom: 2px solid #4A90E2;
             padding-bottom: 4px;
-            color: #222;
+            color: #334155;
+            border-bottom: 2px solid #3b82f6;
+            letter-spacing: 0.5px;
+        }
+
+        .panel-title:first-child {
+            margin-top: 0;
         }
 
         .control-group {
@@ -104,53 +112,50 @@
         .control-group label {
             display: flex;
             justify-content: space-between;
-            color: #555;
-            font-size: 12px;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 500;
         }
 
-        .control-group input[type=range] {
-            width: 100%;
-            cursor: pointer;
-            margin: 0;
-        }
-
-        .control-group input[type=color] {
-            width: 100%;
-            height: 28px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            cursor: pointer;
-            background: transparent;
-            padding: 2px;
-        }
-
-        .control-group input[type=number] {
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            text-align: center;
-        }
-
+        /* 通用按鈕風格組合 */
         .toggle-btn {
             width: 100%;
-            padding: 6px;
-            background: #f0f0f0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 6px 8px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 12px;
-            margin-top: 2px;
-            transition: all 0.2s ease;
+            color: #334155;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
 
         .toggle-btn:hover {
-            background: #e5e5e5;
+            background: #f1f5f9;
+            border-color: #94a3b8;
         }
 
         .toggle-btn.active {
-            background: #4A90E2;
+            background: #2563eb;
             color: #ffffff;
-            border-color: #357ABD;
-            font-weight: bold;
+            border-color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .btn-danger {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .btn-danger:hover {
+            background: #fee2e2;
+            border-color: #f87171;
         }
 
         .btn-group {
@@ -161,6 +166,92 @@
         .btn-group .toggle-btn {
             flex: 1;
         }
+
+        /* 下拉選單與上傳按鈕樣式 */
+        .select-control {
+            width: 100%;
+            height: 30px;
+            padding: 0 8px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #334155;
+            outline: none;
+            cursor: pointer;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .select-control:focus {
+            border-color: #3b82f6;
+        }
+
+        .btn-upload {
+            width: 100%;
+            height: 30px;
+            padding: 0 10px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            font-weight: 600;
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+
+        .btn-upload:hover {
+            background: #dbeafe;
+        }
+
+        /* 軸向數值輸入排版 */
+        .offset-group {
+            display: flex;
+            gap: 6px;
+            justify-content: space-between;
+        }
+
+        .offset-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .num-input {
+            width: 100%;
+            height: 26px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .num-input:focus {
+            border-color: #3b82f6;
+        }
+
+        /* 表單控制元件 */
+        .control-group input[type=range] {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            margin: 4px 0;
+            accent-color: #2563eb;
+        }
+
+        .control-group input[type=color] {
+            width: 100%;
+            height: 28px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+            padding: 2px;
+        }
     </style>
 </head>
 
@@ -168,15 +259,11 @@
     <div id="app-container">
         <!-- 左側控制面板 -->
         <div id="ui-panel">
-            <div class="panel-title" style="margin-top:0;">📁 模型檔案</div>
+            <div class="panel-title">📁 模型檔案</div>
             <div class="control-group">
-                <input type="file" id="opt-model-file" accept=".glb,.gltf" style="display: none;">
-                <div class="btn-group">
-                    <button id="btn-load-model" class="toggle-btn"
-                        style="background: #e3f2fd; border-color: #90caf9; color: #1976d2; font-weight: bold;">📁
-                        載入</button>
-                    <button id="btn-restore-default-model" class="toggle-btn">↺ 預設</button>
-                </div>
+                <select id="opt-model-select" class="select-control"></select>
+                <button id="btn-upload-trigger" class="toggle-btn btn-upload">📤 上傳新模型</button>
+                <input type="file" id="opt-model-file" accept=".glb,.gltf" style="display:none;">
             </div>
 
             <!-- 控制模式切換 -->
@@ -194,17 +281,12 @@
             <!-- 模型軸向與姿態校正面板 -->
             <div class="panel-title">📐 軸向與姿態校正</div>
             <div class="control-group">
-                <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between;">
-                    <label style="margin:0;">X: <input type="number" id="opt-offset-x" value="0" step="90"
-                            style="width: 40px; font-size: 11px; padding: 2px;"></label>
-                    <label style="margin:0;">Y: <input type="number" id="opt-offset-y" value="0" step="90"
-                            style="width: 40px; font-size: 11px; padding: 2px;"></label>
-                    <label style="margin:0;">Z: <input type="number" id="opt-offset-z" value="0" step="90"
-                            style="width: 40px; font-size: 11px; padding: 2px;"></label>
+                <div class="offset-group">
+                    <label class="offset-item">X <input type="number" id="opt-offset-x" class="num-input" value="0" step="90"></label>
+                    <label class="offset-item">Y <input type="number" id="opt-offset-y" class="num-input" value="0" step="90"></label>
+                    <label class="offset-item">Z <input type="number" id="opt-offset-z" class="num-input" value="0" step="90"></label>
                 </div>
-                <button id="btn-pose-reset" class="toggle-btn"
-                    style="margin-top: 6px; background: #fff0f0; border-color: #ffb3b3; color: #d32f2f; font-weight: bold;">↺
-                    重置全身姿態 (T-Pose)</button>
+                <button id="btn-pose-reset" class="toggle-btn btn-danger" style="margin-top: 6px;">↺ 重置姿態 (T-Pose)</button>
             </div>
 
             <div class="panel-title">🔍 鏡頭快速對焦</div>
@@ -278,7 +360,6 @@
         let baseJointRadius = 0.008;
         let jointScale = 1.0;
 
-        // 右鍵雙擊記錄變數
         let lastRightClickTime = 0;
         let lastRightClickBone = null;
 
@@ -286,6 +367,8 @@
         const mouse = new THREE.Vector2();
 
         let config = {
+            modelName: 'female_body_base.glb',
+            isDefaultModel: true,
             ambient: 0.4,
             direct: 0.6,
             modelColor: 0.85,
@@ -334,7 +417,6 @@
             }
         }
 
-        // 核心：重置指定骨骼的平移、旋轉與縮放
         function resetBoneTransform(targetBone) {
             if (!targetBone || !targetBone.isBone) return;
 
@@ -638,9 +720,12 @@
         scene.add(backLight);
 
         function notifyConfigChange() {
+            const exportConfig = { ...config };
+            delete exportConfig.modelUrl;
+
             window.parent.postMessage({
                 type: "LIKEJ_POSE3D_SAVE_CONFIG",
-                config: config
+                config: exportConfig
             }, "*");
         }
 
@@ -700,7 +785,6 @@
                 const removeBones = new Set();
                 model.traverse((child) => {
                     if (child.isBone) {
-                        // 紀錄初始 Rest 姿態
                         child.userData.restPosition = child.position.clone();
                         child.userData.restQuaternion = child.quaternion.clone();
                         child.userData.restScale = child.scale.clone();
@@ -717,10 +801,7 @@
                             }
                         }
 
-                        // if (!useless)
-                        {
-                            targetBones.add(child);
-                        }
+                        targetBones.add(child);
                     }
                 });
                 removeBones.forEach((bone) => {
@@ -815,19 +896,16 @@
             }
         }
 
-        // 直接綁定於 renderer.domElement 上處理點擊與 Raycast 邏輯
         renderer.domElement.addEventListener('pointerdown', (event) => {
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-            // --- 右鍵雙擊重置 (button === 2) ---
             if (event.button === 2) {
                 raycaster.setFromCamera(mouse, camera);
 
                 let hitBone = null;
 
-                // 1. 檢測是否直接點擊在關節球上
                 if (showJoints) {
                     const intersects = raycaster.intersectObjects(jointSpheres);
                     if (intersects.length > 0) {
@@ -835,7 +913,6 @@
                     }
                 }
 
-                // 2. 若沒點到關節球，檢測是否點擊在模型的 Mesh 上（找出最近關節）
                 if (!hitBone && currentModel) {
                     const modelIntersects = raycaster.intersectObject(currentModel, true);
                     if (modelIntersects.length > 0) {
@@ -855,13 +932,11 @@
                     }
                 }
 
-                // 3. 若都沒點到，預設使用當前選中的骨骼
                 if (!hitBone && transformControls.visible && transformControls.object) {
                     hitBone = transformControls.object;
                 }
 
                 const currentTime = Date.now();
-                // 判斷是否為 350ms 內的右鍵雙擊，且兩次點擊對象相同
                 if (currentTime - lastRightClickTime < 350 && hitBone && lastRightClickBone === hitBone) {
                     resetBoneTransform(hitBone);
                     lastRightClickTime = 0;
@@ -873,7 +948,6 @@
                 return;
             }
 
-            // --- 左鍵選取點位 (button === 0) ---
             if (event.button === 0) {
                 if (!showJoints) return;
 
@@ -902,7 +976,6 @@
             }
         });
 
-        // 左鍵雙擊特寫對焦
         renderer.domElement.addEventListener('dblclick', (event) => {
             if (event.button !== 0 || !currentModel) return;
 
@@ -1019,23 +1092,82 @@
         document.getElementById('opt-offset-y').addEventListener('change', onOffsetInputChange);
         document.getElementById('opt-offset-z').addEventListener('change', onOffsetInputChange);
 
-        const btnLoadModel = document.getElementById('btn-load-model');
-        const btnRestoreDefaultModel = document.getElementById('btn-restore-default-model');
+        const modelSelect = document.getElementById('opt-model-select');
+        const btnUploadTrigger = document.getElementById('btn-upload-trigger');
         const fileInput = document.getElementById('opt-model-file');
 
-        btnLoadModel.addEventListener('click', () => fileInput.click());
+        async function refreshModelList(selectedName = '') {
+            try {
+                const res = await fetch('/likejpose3d/get_models');
+                const models = await res.json();
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const fileUrl = URL.createObjectURL(file);
-                loadModelFromUrl(fileUrl, file.name);
+                modelSelect.innerHTML = '';
+
+                models.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.name;
+                    opt.innerText = item.label;
+                    opt.dataset.isDefault = item.is_default ? "true" : "false";
+                    modelSelect.appendChild(opt);
+                });
+
+                const targetName = selectedName || config.modelName;
+                if (targetName) {
+                    modelSelect.value = targetName;
+                }
+            } catch (e) {
+                console.error("無法取得模型清單", e);
             }
+        }
+
+        function getModelApiUrl(filename, isDefault = false) {
+            return `/likejpose3d/get_model_file?filename=${encodeURIComponent(filename)}&is_default=${isDefault ? 'true' : 'false'}`;
+        }
+
+        modelSelect.addEventListener('change', (e) => {
+            const selectedOpt = e.target.options[e.target.selectedIndex];
+            const filename = selectedOpt.value;
+            const isDefault = selectedOpt.dataset.isDefault === "true";
+
+            config.modelName = filename;
+            config.isDefaultModel = isDefault;
+
+            const url = getModelApiUrl(filename, isDefault);
+            loadModelFromUrl(url, filename, false);
         });
 
-        btnRestoreDefaultModel.addEventListener('click', () => {
-            fileInput.value = '';
-            loadModelFromUrl(defaultModelUrl, 'female_body_base.glb');
+        refreshModelList();
+
+        btnUploadTrigger.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const loadingEl = document.getElementById('loading');
+            loadingEl.style.display = 'block';
+            loadingEl.innerText = `上傳 ${file.name} 中...`;
+
+            try {
+                const res = await fetch('/likejpose3d/upload_model', { method: 'POST', body: formData });
+                const result = await res.json();
+                if (result.success) {
+                    await refreshModelList(result.filename);
+                    
+                    config.modelName = result.filename;
+                    config.isDefaultModel = false;
+
+                    const url = getModelApiUrl(result.filename, false);
+                    loadModelFromUrl(url, result.filename, false);
+                }
+            } catch (err) {
+                alert("模型上傳失敗: " + err);
+            } finally {
+                fileInput.value = '';
+            }
         });
 
         document.getElementById('btn-focus-lhand').addEventListener('click', () => focusHand(true));
@@ -1092,7 +1224,6 @@
         });
 
         const loader = new THREE.GLTFLoader();
-        const defaultModelUrl = '/extensions/ComfyUI-LikeJ/models/female_body_base.glb';
 
         function computeExactWorldBoundingBox(model) {
             const box = new THREE.Box3();
@@ -1220,16 +1351,18 @@
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
         }
 
-        function loadModelFromUrl(url, fileName = '') {
+        function loadModelFromUrl(url, fileName = '', isRestoring = false) {
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
             loadingEl.innerText = fileName ? `載入模型 ${fileName} 中...` : '載入 3D 模型中...';
             isModelLoaded = false;
 
-            config.rotationOffset = { x: 0, y: 0, z: 0 };
-            document.getElementById('opt-offset-x').value = 0;
-            document.getElementById('opt-offset-y').value = 0;
-            document.getElementById('opt-offset-z').value = 0;
+            if (!isRestoring) {
+                config.rotationOffset = { x: 0, y: 0, z: 0 };
+                document.getElementById('opt-offset-x').value = 0;
+                document.getElementById('opt-offset-y').value = 0;
+                document.getElementById('opt-offset-z').value = 0;
+            }
 
             if (currentModel) {
                 deselectCurrentBone();
@@ -1254,6 +1387,12 @@
             loader.load(url, (gltf) => {
                 currentModel = gltf.scene;
 
+                config.modelName = fileName;
+
+                if (modelSelect && fileName) {
+                    modelSelect.value = fileName;
+                }
+
                 const cVal = config.modelColor;
                 currentModel.traverse((child) => {
                     if (child.isMesh) {
@@ -1277,9 +1416,22 @@
                 loadingEl.style.display = 'none';
                 isModelLoaded = true;
 
-                resetPose();
+                if (isRestoring) {
+                    updateUIFromConfig();
+                    applyModelOffset();
+                    if (config.pose && config.pose.length > 0) {
+                        applyPoseData(config.pose);
+                    } else {
+                        resetPose();
+                    }
+                    if (config.camera) applyCameraData(config.camera);
+                    sendPoseToComfyUI();
+                } else {
+                    focusFullBody(true);
 
-                window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
+                    notifyConfigChange();
+                    sendPoseToComfyUI();
+                }
 
             }, undefined, (error) => {
                 console.error('模型載入失敗:', error);
@@ -1287,43 +1439,43 @@
             });
         }
 
-        loadModelFromUrl(defaultModelUrl);
-
         window.addEventListener("message", (event) => {
             if (!event.data) return;
 
             if (event.data.type === "LIKEJ_POSE3D_SET_SIZE") {
                 targetWidth = parseInt(event.data.width) || 512;
                 targetHeight = parseInt(event.data.height) || 512;
-
                 if (event.data.triggerSend) sendPoseToComfyUI();
             }
 
             if (event.data.type === "LIKEJ_POSE3D_LOAD_CONFIG") {
                 try {
-                    const loadedConfig = typeof event.data.configStr === "string"
+                    let loadedConfig = typeof event.data.configStr === "string"
                         ? JSON.parse(event.data.configStr)
                         : event.data.configStr;
 
                     if (loadedConfig && Object.keys(loadedConfig).length > 0) {
+                        delete loadedConfig.modelUrl;
+
                         config = { ...config, ...loadedConfig };
                         if (!config.rotationOffset) config.rotationOffset = { x: 0, y: 0, z: 0 };
-                        updateUIFromConfig();
 
-                        if (isModelLoaded) {
-                            applyModelOffset();
-                            if (config.pose && config.pose.length > 0) applyPoseData(config.pose);
-                            if (config.camera) applyCameraData(config.camera);
-                            sendPoseToComfyUI();
-                        }
+                        const modelName = config.modelName || 'female_body_base.glb';
+                        const isDefault = config.isDefaultModel !== undefined ? config.isDefaultModel : true;
+                        
+                        const targetUrl = getModelApiUrl(modelName, isDefault);
+
+                        loadModelFromUrl(targetUrl, modelName, true);
                     } else {
-                        focusFullBody(true);
-                        sendPoseToComfyUI();
+                        const defaultName = 'female_body_base.glb';
+                        const targetUrl = getModelApiUrl(defaultName, true);
+                        loadModelFromUrl(targetUrl, defaultName, false);
                     }
                 } catch (e) {
-                    console.warn("無法解析 Node 配置，使用預設視角", e);
-                    focusFullBody(true);
-                    sendPoseToComfyUI();
+                    console.warn("無法解析 Node 配置，載入預設模型", e);
+                    const defaultName = 'female_body_base.glb';
+                    const targetUrl = getModelApiUrl(defaultName, true);
+                    loadModelFromUrl(targetUrl, defaultName, false);
                 }
             }
         });
@@ -1352,6 +1504,8 @@
             notifyConfigChange();
             sendPoseToComfyUI();
         });
+
+        window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
     </script>
 </body>
 
