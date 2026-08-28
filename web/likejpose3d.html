@@ -445,6 +445,34 @@
             background: #dc2626;
             transform: scale(1.1);
         }
+
+        /* 關節列表項目樣式 */
+        .joint-list-item {
+            padding: 8px 12px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #334155;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.15s ease;
+        }
+
+        .joint-list-item:hover {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+        }
+
+        .joint-list-item.active {
+            background: #2563eb;
+            border-color: #1d4ed8;
+            color: #ffffff;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -486,7 +514,11 @@
                     <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')"
                         data-i18n="btnScale">Zoom</button>
                 </div>
-                <button id="btn-toggle-joints" class="toggle-btn">Show Joints</button>
+                <div class="btn-group">
+                    <button id="btn-joints-modal" class="toggle-btn btn-info" data-i18n="btnJointList">🦴 Joint
+                        List</button>
+                    <button id="btn-toggle-joints" class="toggle-btn">Show Joints</button>
+                </div>
                 <label><span data-i18n="lblJointSize">Joint Size</span> <span id="val-jointsize">1.0</span></label>
                 <input type="range" id="opt-jointsize" min="0.2" max="5" step="0.1" value="1.0">
                 <label><span data-i18n="lblGizmoSize">Control Axis Size</span> <span
@@ -542,6 +574,28 @@
         <div id="canvas-container">
             <div id="loading" data-i18n="loadingModel">The 3D Model is loading...</div>
             <div id="bone-label"><span data-i18n="lblBonePrefix">🦴 Bone:</span> <span id="bone-label-name">-</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 骨骼關節列表彈窗 Modal -->
+    <div id="joints-list-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px; height: 70%; max-height: 550px;">
+            <div class="modal-header">
+                <div class="modal-title" data-i18n="modalJointsTitle">🦴 Bone Joints List</div>
+                <button class="modal-close" id="btn-close-joints-modal">✕</button>
+            </div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px;">
+                <input type="text" id="input-search-joints" class="num-input"
+                    style="flex: 1; text-align: left; height: 32px; padding: 0 10px; font-size: 12px; border-radius: 6px;"
+                    placeholder="Search joint name..." data-i18n-placeholder="placeholderSearchJoints">
+                <button id="btn-copy-joints" class="toggle-btn btn-info"
+                    style="width: auto; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap;"
+                    data-i18n="btnCopyJoints">📋 複製名稱</button>
+            </div>
+            <div id="joints-list-container"
+                style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                <!-- 關節項目會動態渲染於此 -->
             </div>
         </div>
     </div>
@@ -605,6 +659,12 @@
                 btnScale: "縮放",
                 btnShowJoints: "顯示關節",
                 btnHideJoints: "隱藏關節",
+                btnJointList: "🦴 關節列表",
+                btnCopyJoints: "📋 複製名稱",
+                msgCopySuccess: "已複製關節名稱！",
+                modalJointsTitle: "🦴 骨骼關節列表",
+                placeholderSearchJoints: "搜尋關節名稱...",
+                emptyJoints: "未找到關節點",
                 lblJointSize: "關節大小",
                 lblGizmoSize: "控制軸大小",
                 titleAxis: "📐 軸向對齊",
@@ -656,6 +716,12 @@
                 btnScale: "Zoom",
                 btnShowJoints: "Show Joints",
                 btnHideJoints: "Hide Joints",
+                btnJointList: "🦴 Joint List",
+                btnCopyJoints: "📋 Copy Names",
+                msgCopySuccess: "Copied Joint Names!",
+                modalJointsTitle: "🦴 Bone Joints List",
+                placeholderSearchJoints: "Search joint name...",
+                emptyJoints: "No joint points found",
                 lblJointSize: "Joint Size",
                 lblGizmoSize: "Control Axis Size",
                 titleAxis: "📐 Axis Alignment",
@@ -711,6 +777,13 @@
                 }
             });
 
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (langData[key]) {
+                    el.placeholder = langData[key];
+                }
+            });
+
             const btnToggleJoints = document.getElementById('btn-toggle-joints');
             if (btnToggleJoints) {
                 btnToggleJoints.innerText = showJoints ? langData.btnHideJoints : langData.btnShowJoints;
@@ -739,6 +812,9 @@
 
         let lastRightClickTime = 0;
         let lastRightClickBone = null;
+
+        let pointerDownPos = { x: 0, y: 0 };
+        let isPointerDownOnBlank = false;
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
@@ -1289,11 +1365,13 @@
             }
         }
 
+        // 1. 修改原本的 pointerdown 事件 handlers
         renderer.domElement.addEventListener('pointerdown', (event) => {
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
+            // 右鍵邏輯保持不變
             if (event.button === 2) {
                 raycaster.setFromCamera(mouse, camera);
 
@@ -1341,7 +1419,11 @@
                 return;
             }
 
+            // 左鍵邏輯：記錄按下位置，不在此處直接取消選取
             if (event.button === 0) {
+                pointerDownPos = { x: event.clientX, y: event.clientY };
+                isPointerDownOnBlank = false;
+
                 if (!showJoints) return;
 
                 raycaster.setFromCamera(mouse, camera);
@@ -1363,12 +1445,26 @@
                 } else {
                     const isClickingGizmo = transformControls.visible && transformControls.axis !== null;
                     if (!isClickingGizmo) {
-                        deselectCurrentBone();
+                        // 標記目前點擊在空白處
+                        isPointerDownOnBlank = true;
                     }
                 }
             }
         });
 
+        // 2. 新增 pointerup 事件：判斷是拖曳畫面還是單純點擊
+        renderer.domElement.addEventListener('pointerup', (event) => {
+            if (event.button === 0 && isPointerDownOnBlank) {
+                // 計算按住到放開之間的移動距離
+                const moveDistance = Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y);
+
+                // 位移小於 5 像素視為單純點擊空白處，才執行取消選取
+                if (moveDistance < 5) {
+                    deselectCurrentBone();
+                }
+                isPointerDownOnBlank = false;
+            }
+        });
         renderer.domElement.addEventListener('dblclick', (event) => {
             if (event.button !== 0 || !currentModel) return;
 
@@ -1654,6 +1750,130 @@
                 }
             } catch (e) {
                 alert(i18n[currentLang].msgSaveFailed + e);
+            }
+        });
+
+        // ================= 骨骼關節列表 Modal 邏輯 =================
+        const jointsListModal = document.getElementById('joints-list-modal');
+        const jointsContainer = document.getElementById('joints-list-container');
+        const btnJointsModal = document.getElementById('btn-joints-modal');
+        const btnCloseJointsModal = document.getElementById('btn-close-joints-modal');
+        const inputSearchJoints = document.getElementById('input-search-joints');
+        const btnCopyJoints = document.getElementById('btn-copy-joints');
+
+        function renderJointList(filterText = '') {
+            jointsContainer.innerHTML = '';
+
+            if (!jointSpheres || jointSpheres.length === 0) {
+                jointsContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 20px;">${i18n[currentLang].emptyJoints}</div>`;
+                return;
+            }
+
+            const activeTarget = (transformControls && transformControls.visible) ? transformControls.object : null;
+
+            let count = 0;
+            jointSpheres.forEach((sphere) => {
+                const bone = sphere.userData.bone;
+                if (!bone) return;
+
+                const boneName = bone.name || "Unnamed_Joint";
+
+                if (filterText && !boneName.toLowerCase().includes(filterText.toLowerCase())) {
+                    return;
+                }
+
+                count++;
+                const item = document.createElement('div');
+                item.className = 'joint-list-item';
+
+                const isSelected = activeTarget && (activeTarget === bone || (activeTarget.userData?.groupBones && activeTarget.userData.groupBones.includes(bone)));
+                if (isSelected) {
+                    item.classList.add('active');
+                }
+
+                const bonesCount = sphere.userData.bones ? sphere.userData.bones.length : 1;
+                const extraInfo = bonesCount > 1 ? `<span style="font-size: 10px; opacity: 0.8;">(+${bonesCount - 1})</span>` : '';
+
+                item.innerHTML = `<span>🔴 ${boneName}</span> ${extraInfo}`;
+
+                item.addEventListener('click', () => {
+                    if (!showJoints) {
+                        showJoints = true;
+                        updateLanguage();
+                        updateJointSpheres();
+                        sendPoseToComfyUI();
+                    }
+
+                    transformControls.attach(bone);
+                    transformControls.visible = true;
+
+                    const labelText = bonesCount > 1
+                        ? `${bone.name} (+${bonesCount - 1} ${i18n[currentLang].drivenBones})`
+                        : bone.name;
+
+                    updateSelectedBoneLabel(labelText);
+
+                    renderJointList(inputSearchJoints.value);
+                });
+
+                jointsContainer.appendChild(item);
+            });
+
+            if (count === 0) {
+                jointsContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 20px;">${i18n[currentLang].emptyJoints}</div>`;
+            }
+        }
+
+        btnJointsModal.addEventListener('click', () => {
+            inputSearchJoints.value = '';
+            renderJointList();
+            jointsListModal.classList.add('active');
+        });
+
+        btnCloseJointsModal.addEventListener('click', () => {
+            jointsListModal.classList.remove('active');
+        });
+
+        // 點擊背景遮罩關閉 Modal
+        jointsListModal.addEventListener('click', (e) => {
+            if (e.target === jointsListModal) {
+                jointsListModal.classList.remove('active');
+            }
+        });
+
+        // 雙擊 Modal 任意處自動關閉 (避開輸入框與按鈕)
+        jointsListModal.addEventListener('dblclick', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+            jointsListModal.classList.remove('active');
+        });
+
+        inputSearchJoints.addEventListener('input', (e) => {
+            renderJointList(e.target.value);
+        });
+
+        // 複製全部關節名稱
+        btnCopyJoints.addEventListener('click', async () => {
+            if (!jointSpheres || jointSpheres.length === 0) return;
+
+            const jointNames = [];
+            jointSpheres.forEach(sphere => {
+                if (sphere.userData && sphere.userData.bone && sphere.userData.bone.name) {
+                    jointNames.push(sphere.userData.bone.name);
+                }
+            });
+
+            if (jointNames.length === 0) return;
+
+            const textToCopy = jointNames.join('\n');
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                const originalText = btnCopyJoints.innerText;
+                btnCopyJoints.innerText = i18n[currentLang].msgCopySuccess || '已複製！';
+                setTimeout(() => {
+                    updateLanguage();
+                }, 1500);
+            } catch (err) {
+                console.error('複製關節名稱失敗:', err);
             }
         });
 
