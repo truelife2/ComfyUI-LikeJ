@@ -118,9 +118,10 @@
 ## LikeJPose3d.
 > idea from:
 > https://github.com/AHEKOT/ComfyUI_VNCCS_Utils
+
 > models from:
 > https://sketchfab.com/feed
-> 
+
 
 
 
