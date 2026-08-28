@@ -276,6 +276,51 @@ async def delete_pose(request):
         return web.json_response({"success": False, "error": str(e)}, status=500)
 
 
+import shutil  # 請確保檔案頂部有匯入 shutil
+
+
+@PromptServer.instance.routes.post("/likejpose3d/delete_model")
+async def delete_model(request):
+    """刪除自訂模型檔 (.glb/.gltf)、初始姿態檔 (.json) 以及同名的姿態資料夾與檔案"""
+    try:
+        data = await request.json()
+        filename = data.get("filename", "")
+        is_default = data.get("is_default", False)
+
+        if not filename:
+            return web.json_response({"success": False, "error": "No filename provided"}, status=400)
+
+        # 1. 安全檢查：預設模型禁止刪除
+        if is_default:
+            return web.json_response({"success": False, "error": "Cannot delete default model"}, status=403)
+
+        real_models_dir = os.path.realpath(MODELS_DIR)
+        target_path = os.path.realpath(os.path.join(MODELS_DIR, filename))
+
+        # 路徑與權限檢查
+        if not target_path.startswith(real_models_dir) or not os.path.exists(target_path):
+            return web.json_response({"success": False, "error": "File not found or access denied"}, status=404)
+
+        base_name = os.path.splitext(filename)[0]
+
+        # 2. 刪除模型主檔 (.glb / .gltf)
+        os.remove(target_path)
+
+        # 3. 刪除模型對應的初始姿態 JSON 檔 (例如 filename.json)
+        default_json_path = os.path.join(MODELS_DIR, f"{base_name}.json")
+        if os.path.exists(default_json_path):
+            os.remove(default_json_path)
+
+        # 4. 刪除模型專屬的姿態資料夾及其內部所有檔案 (例如 /models/filename/)
+        pose_folder_path = os.path.join(MODELS_DIR, base_name)
+        if os.path.exists(pose_folder_path) and os.path.isdir(pose_folder_path):
+            shutil.rmtree(pose_folder_path)
+
+        return web.json_response({"success": True, "filename": filename})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
 class LikeJPose3d:
     @classmethod
     def INPUT_TYPES(s):
