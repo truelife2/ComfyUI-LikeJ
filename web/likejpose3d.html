@@ -500,8 +500,11 @@
                     <button id="btn-save-custom-pose" class="toggle-btn btn-success" data-i18n="btnSaveCustomPose">💾
                         Save Pose</button>
                 </div>
-                <button id="btn-pose-reset" class="toggle-btn btn-danger" data-i18n="btnResetPose">↺ Reset
-                    Pose</button>
+                <div class="btn-group">
+                    <button id="btn-load-initial-pose" class="toggle-btn btn-info" data-i18n="btnLoadInitialPose">↺
+                        初始姿態</button>
+                    <button id="btn-pose-reset" class="toggle-btn btn-danger" data-i18n="btnResetPose">↺ 重置姿態</button>
+                </div>
             </div>
 
             <div class="panel-title" data-i18n="titleTransform">🕹️ Transform Controls</div>
@@ -652,6 +655,7 @@
                 titleModelFile: "📁 模型檔案",
                 btnUploadModel: "📤 上傳模型",
                 btnResetPose: "↺ 重置姿態",
+                btnLoadInitialPose: "↺ 初始姿態",
                 btnSavePose: "💾 儲存為初始姿態",
                 titleTransform: "🕹️ 變換控制",
                 btnRotate: "旋轉",
@@ -709,6 +713,7 @@
                 titleModelFile: "📁 Model File",
                 btnUploadModel: "📤 Upload Model",
                 btnResetPose: "↺ Reset Pose",
+                btnLoadInitialPose: "↺ Initial Pose",
                 btnSavePose: "💾 Save as Initial Pose",
                 titleTransform: "🕹️ Transform Controls",
                 btnRotate: "Rotate",
@@ -943,6 +948,43 @@
             config.pose = getPoseData();
             notifyConfigChange();
             sendPoseToComfyUI();
+        }
+
+        function loadInitialPose() {
+            if (!config.modelName) return;
+
+            fetchDefaultPose(config.modelName, config.isDefaultModel).then((defaultConfig) => {
+                if (defaultConfig) {
+                    if (defaultConfig.rotationOffset) config.rotationOffset = defaultConfig.rotationOffset;
+                    if (defaultConfig.ambient !== undefined) config.ambient = defaultConfig.ambient;
+                    if (defaultConfig.direct !== undefined) config.direct = defaultConfig.direct;
+                    if (defaultConfig.modelColor !== undefined) config.modelColor = defaultConfig.modelColor;
+                    if (defaultConfig.jointSize !== undefined) config.jointSize = defaultConfig.jointSize;
+                    if (defaultConfig.gizmoSize !== undefined) config.gizmoSize = defaultConfig.gizmoSize;
+
+                    updateUIFromConfig();
+                    applyModelOffset();
+
+                    if (defaultConfig.pose && defaultConfig.pose.length > 0) {
+                        config.pose = defaultConfig.pose;
+                        applyPoseData(defaultConfig.pose);
+                    } else {
+                        resetPose();
+                    }
+
+                    if (defaultConfig.camera) {
+                        config.camera = defaultConfig.camera;
+                        applyCameraData(defaultConfig.camera);
+                    } else {
+                        focusFullBody(true);
+                    }
+                } else {
+                    focusFullBody(true);
+                }
+
+                notifyConfigChange();
+                sendPoseToComfyUI();
+            });
         }
 
         function getCameraData() {
@@ -1716,6 +1758,9 @@
         document.getElementById('btn-focus-rhand').addEventListener('click', () => focusHand(false));
         document.getElementById('btn-focus-reset').addEventListener('click', () => focusFullBody(false));
         document.getElementById('btn-pose-reset').addEventListener('click', () => resetPose());
+        document.getElementById('btn-load-initial-pose').addEventListener('click', () => {
+            loadInitialPose();
+        });
 
         // 儲存預設姿態
         document.getElementById('btn-save-default-pose').addEventListener('click', async () => {
@@ -2381,38 +2426,7 @@
                     if (config.camera) applyCameraData(config.camera);
                     sendPoseToComfyUI();
                 } else {
-                    fetchDefaultPose(fileName, config.isDefaultModel).then((defaultConfig) => {
-                        if (defaultConfig) {
-                            if (defaultConfig.rotationOffset) config.rotationOffset = defaultConfig.rotationOffset;
-                            if (defaultConfig.ambient !== undefined) config.ambient = defaultConfig.ambient;
-                            if (defaultConfig.direct !== undefined) config.direct = defaultConfig.direct;
-                            if (defaultConfig.modelColor !== undefined) config.modelColor = defaultConfig.modelColor;
-                            if (defaultConfig.jointSize !== undefined) config.jointSize = defaultConfig.jointSize;
-                            if (defaultConfig.gizmoSize !== undefined) config.gizmoSize = defaultConfig.gizmoSize;
-
-                            updateUIFromConfig();
-                            applyModelOffset();
-
-                            if (defaultConfig.pose && defaultConfig.pose.length > 0) {
-                                config.pose = defaultConfig.pose;
-                                applyPoseData(defaultConfig.pose);
-                            } else {
-                                resetPose();
-                            }
-
-                            if (defaultConfig.camera) {
-                                config.camera = defaultConfig.camera;
-                                applyCameraData(defaultConfig.camera);
-                            } else {
-                                focusFullBody(true);
-                            }
-                        } else {
-                            focusFullBody(true);
-                        }
-
-                        notifyConfigChange();
-                        sendPoseToComfyUI();
-                    });
+                    loadInitialPose();
                 }
 
             }, undefined, (error) => {
