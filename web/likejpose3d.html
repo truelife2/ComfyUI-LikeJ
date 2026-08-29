@@ -4,476 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>LikeJ Pose 3D</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f0f0;
-        }
-
-        #app-container {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        #ui-panel {
-            width: 220px;
-            min-width: 220px;
-            height: 100%;
-            background: #ffffff;
-            border-right: 1px solid #e2e8f0;
-            padding: 12px;
-            overflow-y: auto;
-            user-select: none;
-            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
-            z-index: 10;
-        }
-
-        #canvas-container {
-            flex: 1;
-            height: 100%;
-            position: relative;
-            overflow: hidden;
-            background-color: #f8f8f8;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 13px;
-            color: #64748b;
-            pointer-events: none;
-            user-select: none;
-        }
-
-        #bone-label {
-            position: absolute;
-            bottom: 12px;
-            left: 12px;
-            background: rgba(15, 23, 42, 0.85);
-            color: #38bdf8;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            pointer-events: none;
-            display: none;
-            z-index: 20;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            backdrop-filter: blur(4px);
-        }
-
-        #bone-label-name {
-            color: #ffffff;
-        }
-
-        .panel-title {
-            font-weight: 700;
-            font-size: 12px;
-            margin-top: 14px;
-            margin-bottom: 8px;
-            padding-bottom: 4px;
-            color: #334155;
-            border-bottom: 2px solid #3b82f6;
-            letter-spacing: 0.5px;
-        }
-
-        .panel-title:first-child {
-            margin-top: 0;
-        }
-
-        .control-group {
-            margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .control-group label {
-            display: flex;
-            justify-content: space-between;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        .toggle-btn {
-            width: 100%;
-            padding: 6px 8px;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            color: #334155;
-            transition: all 0.15s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-        }
-
-        .toggle-btn:hover {
-            background: #f1f5f9;
-            border-color: #94a3b8;
-        }
-
-        .toggle-btn.active {
-            background: #2563eb;
-            color: #ffffff;
-            border-color: #1d4ed8;
-            font-weight: 600;
-        }
-
-        .btn-lang {
-            background: #f1f5f9;
-            border-color: #94a3b8;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .btn-danger {
-            background: #fef2f2;
-            border-color: #fca5a5;
-            color: #dc2626;
-            font-weight: 600;
-        }
-
-        .btn-danger:hover {
-            background: #fee2e2;
-            border-color: #f87171;
-        }
-
-        .btn-success {
-            background: #f0fdf4;
-            border-color: #86efac;
-            color: #166534;
-            font-weight: 600;
-        }
-
-        .btn-success:hover {
-            background: #dcfce7;
-            border-color: #4ade80;
-        }
-
-        .btn-info {
-            background: #eff6ff;
-            border-color: #93c5fd;
-            color: #1e40af;
-            font-weight: 600;
-        }
-
-        .btn-info:hover {
-            background: #dbeafe;
-            border-color: #60a5fa;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 4px;
-        }
-
-        .btn-group .toggle-btn {
-            flex: 1;
-        }
-
-        .select-control {
-            width: 100%;
-            height: 30px;
-            padding: 0 8px;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #334155;
-            outline: none;
-            cursor: pointer;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            overflow: hidden;
-        }
-
-        .select-control:focus {
-            border-color: #3b82f6;
-        }
-
-        .btn-upload {
-            background: #eff6ff;
-            border-color: #93c5fd;
-            color: #1e40af;
-            font-weight: 600;
-        }
-
-        .btn-upload:hover {
-            background: #dbeafe;
-            border-color: #60a5fa;
-        }
-
-        .offset-group {
-            display: flex;
-            gap: 6px;
-            justify-content: space-between;
-        }
-
-        .offset-item {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            color: #64748b;
-        }
-
-        .num-input {
-            width: 100%;
-            height: 26px;
-            border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            text-align: center;
-            font-size: 11px;
-            outline: none;
-        }
-
-        .num-input:focus {
-            border-color: #3b82f6;
-        }
-
-        .control-group input[type=range] {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            margin: 4px 0;
-            accent-color: #2563eb;
-        }
-
-        .control-group input[type=color] {
-            width: 100%;
-            height: 28px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            cursor: pointer;
-            background: transparent;
-            padding: 2px;
-        }
-
-        /* Modal 彈窗樣式 */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(15, 23, 42, 0.75);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .modal-content {
-            width: 80%;
-            max-width: 900px;
-            height: 80%;
-            max-height: 650px;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .modal-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-        }
-
-        .modal-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .modal-close {
-            background: transparent;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #64748b;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-close:hover {
-            background: #e2e8f0;
-            color: #0f172a;
-        }
-
-        .modal-body {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 16px;
-            align-content: start;
-        }
-
-        .pose-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #ffffff;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        .pose-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            border-color: #3b82f6;
-        }
-
-        .pose-card-img-wrapper {
-            width: 100%;
-            height: 160px;
-            background: #f1f5f9;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        .pose-card-img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        .pose-card-placeholder {
-            font-size: 32px;
-            color: #94a3b8;
-        }
-
-        .pose-card-info {
-            padding: 8px 10px;
-            background: #ffffff;
-        }
-
-        .pose-card-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: #334155;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .pose-card-model {
-            font-size: 10px;
-            color: #64748b;
-            margin-top: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .pose-card-delete {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            width: 24px;
-            height: 24px;
-            background: rgba(220, 38, 38, 0.85);
-            color: #ffffff;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            line-height: 1;
-            opacity: 0;
-            transition: opacity 0.2s ease, background 0.2s ease, transform 0.15s ease;
-            z-index: 10;
-        }
-
-        .pose-card:hover .pose-card-delete {
-            opacity: 1;
-        }
-
-        .pose-card-delete:hover {
-            background: #dc2626;
-            transform: scale(1.1);
-        }
-
-        /* 關節列表項目樣式 */
-        .joint-list-item {
-            padding: 8px 12px;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #334155;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: all 0.15s ease;
-        }
-
-        .joint-list-item:hover {
-            background: #eff6ff;
-            border-color: #3b82f6;
-            color: #1d4ed8;
-        }
-
-        .joint-list-item.active {
-            background: #2563eb;
-            border-color: #1d4ed8;
-            color: #ffffff;
-            font-weight: 600;
-        }
-    </style>
+    <link rel="stylesheet" href="likejpose3d.css">
 </head>
 
 <body>
@@ -598,7 +129,6 @@
             </div>
             <div id="joints-list-container"
                 style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
-                <!-- 關節項目會動態渲染於此 -->
             </div>
         </div>
     </div>
@@ -611,7 +141,6 @@
                 <button class="modal-close" id="btn-close-modal">✕</button>
             </div>
             <div class="modal-body" id="pose-gallery">
-                <!-- 姿態卡片會由 JS 動態生成 -->
             </div>
         </div>
     </div>
@@ -648,216 +177,36 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
+    <script src="likejpose3d_state.js"></script>
+    <script src="likejpose3d_modal.js"></script>
+
     <script>
-        // 多語系字典定義
-        const i18n = {
-            zh: {
-                titleModelFile: "📁 模型檔案",
-                btnUploadModel: "📤 上傳模型",
-                btnResetPose: "↺ 重置姿態",
-                btnLoadInitialPose: "↺ 初始姿態",
-                btnSavePose: "💾 儲存為初始姿態",
-                titleTransform: "🕹️ 變換控制",
-                btnRotate: "旋轉",
-                btnTranslate: "位移",
-                btnScale: "縮放",
-                btnShowJoints: "顯示關節",
-                btnHideJoints: "隱藏關節",
-                btnJointList: "🦴 關節列表",
-                btnCopyJoints: "📋 複製名稱",
-                msgCopySuccess: "已複製關節名稱！",
-                modalJointsTitle: "🦴 骨骼關節列表",
-                placeholderSearchJoints: "搜尋關節名稱...",
-                emptyJoints: "未找到關節點",
-                lblJointSize: "關節大小",
-                lblGizmoSize: "控制軸大小",
-                titleAxis: "📐 軸向對齊",
-                titleCamera: "🔍 鏡頭焦點",
-                btnFocusLHand: "左手",
-                btnFocusRHand: "右手",
-                btnFocusFull: "全身",
-                titleLights: "⚙️ 燈光設定",
-                lblAmbientLight: "環境光強度",
-                lblDirectLight: "主光強度",
-                lblModelBrightness: "模型明亮度",
-                lblBgColor: "背景顏色",
-                loadingModel: "3D 模型載入中...",
-                uploadingModel: "模型檔案上傳中...",
-                lblBonePrefix: "🦴 骨骼:",
-                drivenBones: "個連動骨骼",
-                msgUploadError: "模型上傳失敗: ",
-                msgSaveSuccess: "模型初始姿態已成功儲存",
-                msgSaveFailed: "儲存模型初始姿態失敗: ",
-                msgLoadError: "模型載入失敗，請檢查檔案格式。",
-                btnSaveCustomPose: "💾 儲存姿態",
-                promptPoseName: "請輸入姿態名稱 (若已存在則覆蓋)：",
-                msgSavePoseSuccess: "姿態已成功儲存：",
-                btnLoadPose: "📂 載入姿態",
-                modalPoseTitle: "📂 選擇要載入的姿態",
-                emptyPoses: "目前沒有已儲存的姿態檔。",
-                confirmDeletePose: "確定要刪除此姿態檔嗎？",
-                msgDeleteFailed: "刪除姿態失敗: ",
-                modalSavePoseTitle: "💾 儲存姿態",
-                lblSelectExistingPose: "選擇已有姿態來覆蓋 (選填)：",
-                optNewPose: "➕ 建立新姿態",
-                lblPoseName: "姿態名稱：",
-                btnCancel: "取消",
-                btnConfirmSave: "儲存",
-                msgPleaseEnterPoseName: "請輸入姿態名稱！",
-                confirmDeleteModel: "確定要刪除此模型及相關的所有姿態檔案嗎？",
-                cannotDeleteDefault: "預設模型無法刪除！",
-                msgDeleteModelFailed: "刪除模型失敗: ",
-                titleDeleteModel: "刪除模型",
-            },
-            en: {
-                titleModelFile: "📁 Model File",
-                btnUploadModel: "📤 Upload Model",
-                btnResetPose: "↺ Reset Pose",
-                btnLoadInitialPose: "↺ Initial Pose",
-                btnSavePose: "💾 Save as Initial Pose",
-                titleTransform: "🕹️ Transform Controls",
-                btnRotate: "Rotate",
-                btnTranslate: "Move",
-                btnScale: "Zoom",
-                btnShowJoints: "Show Joints",
-                btnHideJoints: "Hide Joints",
-                btnJointList: "🦴 Joint List",
-                btnCopyJoints: "📋 Copy Names",
-                msgCopySuccess: "Copied Joint Names!",
-                modalJointsTitle: "🦴 Bone Joints List",
-                placeholderSearchJoints: "Search joint name...",
-                emptyJoints: "No joint points found",
-                lblJointSize: "Joint Size",
-                lblGizmoSize: "Control Axis Size",
-                titleAxis: "📐 Axis Alignment",
-                titleCamera: "🔍 Camera Focus",
-                btnFocusLHand: "LHand",
-                btnFocusRHand: "RHand",
-                btnFocusFull: "Full",
-                titleLights: "⚙️ Lights",
-                lblAmbientLight: "Ambient Light",
-                lblDirectLight: "Main Light",
-                lblModelBrightness: "Model Brightness",
-                lblBgColor: "Background Color",
-                loadingModel: "The 3D Model is loading...",
-                uploadingModel: "The Model file is uploading...",
-                lblBonePrefix: "🦴 Bone:",
-                drivenBones: "Driven Bones",
-                msgUploadError: "Model upload failed: ",
-                msgSaveSuccess: "The Model Initial Pose Has Been Saved",
-                msgSaveFailed: "Failed to save the Model Initial Pose: ",
-                msgLoadError: "Failed to load model, please check the file format.",
-                btnSaveCustomPose: "💾 Save Pose",
-                promptPoseName: "Enter pose name (Will overwrite if exists):",
-                msgSavePoseSuccess: "Pose saved successfully: ",
-                btnLoadPose: "📂 Load Pose",
-                modalPoseTitle: "📂 Select Pose to Load",
-                emptyPoses: "No saved poses found.",
-                confirmDeletePose: "Are you sure you want to delete this pose?",
-                msgDeleteFailed: "Failed to delete pose: ",
-                modalSavePoseTitle: "💾 Save Custom Pose",
-                lblSelectExistingPose: "Overwrite Existing Pose (Optional):",
-                optNewPose: "➕ Create New Pose",
-                lblPoseName: "Pose Name:",
-                btnCancel: "Cancel",
-                btnConfirmSave: "Save",
-                msgPleaseEnterPoseName: "Please enter a pose name!",
-                confirmDeleteModel: "Are you sure you want to delete this model and all its associated pose files?",
-                cannotDeleteDefault: "Default models cannot be deleted!",
-                msgDeleteModelFailed: "Failed to delete model: ",
-                titleDeleteModel: "Delete Model",
-            }
-        };
-
-        let currentLang = localStorage.getItem('likej_pose3d_lang') || 'en';
-
-        function updateLanguage() {
-            localStorage.setItem('likej_pose3d_lang', currentLang);
-
-            const langData = i18n[currentLang];
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (langData[key]) {
-                    el.innerText = langData[key];
-                }
-            });
-
-            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-                const key = el.getAttribute('data-i18n-placeholder');
-                if (langData[key]) {
-                    el.placeholder = langData[key];
-                }
-            });
-
-            const btnToggleJoints = document.getElementById('btn-toggle-joints');
-            if (btnToggleJoints) {
-                btnToggleJoints.innerText = showJoints ? langData.btnHideJoints : langData.btnShowJoints;
-            }
-        }
-
-        function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'zh' : 'en';
-            updateLanguage();
-        }
-
         const container = document.getElementById('canvas-container');
 
-        let targetWidth = 1024;
-        let targetHeight = 1024;
-        let isModelLoaded = false;
-        let currentModel = null;
+        AppState.raycaster = new THREE.Raycaster();
+        AppState.mouse = new THREE.Vector2();
 
-        let transformControls;
-        let jointSpheres = [];
-        let skeletonHelper = null;
-        let showJoints = false; // 純視覺 UI 狀態，不儲存
-        let baseJointRadius = 0.008;
-        let jointScale = 1.0;
-        let currentBgColor = '#f8f8f8'; // 純視覺 UI 狀態，不儲存
+        AppState.scene = new THREE.Scene();
+        AppState.scene.background = new THREE.Color(AppState.currentBgColor);
 
-        let lastRightClickTime = 0;
-        let lastRightClickBone = null;
+        AppState.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
 
-        let pointerDownPos = { x: 0, y: 0 };
-        let isPointerDownOnBlank = false;
+        AppState.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        AppState.renderer.setSize(container.clientWidth, container.clientHeight);
+        AppState.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(AppState.renderer.domElement);
 
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
+        AppState.controls = new THREE.OrbitControls(AppState.camera, AppState.renderer.domElement);
 
-        let config = {
-            modelName: 'female_body_base.glb',
-            isDefaultModel: true,
-            ambient: 0.4,
-            direct: 0.6,
-            modelColor: 0.85,
-            jointSize: 1.0,
-            gizmoSize: 1.0,
-            rotationOffset: { x: 0, y: 0, z: 0 },
-            pose: [],
-            camera: null
-        };
-
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(currentBgColor);
-
-        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        container.appendChild(renderer.domElement);
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-        transformControls = new THREE.TransformControls(camera, renderer.domElement);
-        transformControls.setMode('rotate');
-        transformControls.setSpace('local');
-        transformControls.setSize(1.0);
-        scene.add(transformControls);
+        AppState.transformControls = new THREE.TransformControls(AppState.camera, AppState.renderer.domElement);
+        AppState.transformControls.setMode('rotate');
+        AppState.transformControls.setSpace('local');
+        AppState.transformControls.setSize(1.0);
+        AppState.scene.add(AppState.transformControls);
 
         function setTransformMode(mode) {
-            if (!transformControls) return;
-            transformControls.setMode(mode);
+            if (!AppState.transformControls) return;
+            AppState.transformControls.setMode(mode);
 
             document.querySelectorAll('.btn-group .toggle-btn').forEach(btn => {
                 if (btn.id.startsWith('btn-mode-')) {
@@ -869,9 +218,9 @@
         }
 
         function deselectCurrentBone() {
-            if (transformControls && transformControls.visible) {
-                transformControls.detach();
-                transformControls.visible = false;
+            if (AppState.transformControls && AppState.transformControls.visible) {
+                AppState.transformControls.detach();
+                AppState.transformControls.visible = false;
                 updateSelectedBoneLabel(null);
             }
         }
@@ -883,9 +232,9 @@
             if (targetBone.userData.restQuaternion) targetBone.quaternion.copy(targetBone.userData.restQuaternion);
             if (targetBone.userData.restScale) targetBone.scale.copy(targetBone.userData.restScale);
 
-            if (currentModel) {
-                currentModel.updateMatrixWorld(true);
-                currentModel.traverse((child) => {
+            if (AppState.currentModel) {
+                AppState.currentModel.updateMatrixWorld(true);
+                AppState.currentModel.traverse((child) => {
                     if (child.isSkinnedMesh && child.skeleton) {
                         child.skeleton.update();
                     }
@@ -893,7 +242,7 @@
             }
 
             updateJointSpheres();
-            config.pose = getPoseData();
+            AppState.config.pose = getPoseData();
             notifyConfigChange();
             sendPoseToComfyUI();
         }
@@ -912,31 +261,31 @@
         }
 
         function applyModelOffset() {
-            if (!currentModel) return;
-            const offset = config.rotationOffset || { x: 0, y: 0, z: 0 };
-            currentModel.position.set(0, 0, 0);
-            currentModel.rotation.set(
+            if (!AppState.currentModel) return;
+            const offset = AppState.config.rotationOffset || { x: 0, y: 0, z: 0 };
+            AppState.currentModel.position.set(0, 0, 0);
+            AppState.currentModel.rotation.set(
                 THREE.MathUtils.degToRad(offset.x || 0),
                 THREE.MathUtils.degToRad(offset.y || 0),
                 THREE.MathUtils.degToRad(offset.z || 0)
             );
-            currentModel.updateMatrixWorld(true);
+            AppState.currentModel.updateMatrixWorld(true);
         }
 
         function resetPose() {
-            if (!currentModel) return;
+            if (!AppState.currentModel) return;
 
             deselectCurrentBone();
             applyModelOffset();
 
-            currentModel.traverse((child) => {
+            AppState.currentModel.traverse((child) => {
                 if (child.isSkinnedMesh && child.skeleton) {
                     child.skeleton.pose();
                 }
             });
 
-            currentModel.updateMatrixWorld(true);
-            currentModel.traverse((child) => {
+            AppState.currentModel.updateMatrixWorld(true);
+            AppState.currentModel.traverse((child) => {
                 if (child.isSkinnedMesh && child.skeleton) {
                     child.skeleton.update();
                 }
@@ -945,35 +294,35 @@
             updateJointSpheres();
             focusFullBody(true);
 
-            config.pose = getPoseData();
+            AppState.config.pose = getPoseData();
             notifyConfigChange();
             sendPoseToComfyUI();
         }
 
         function loadInitialPose() {
-            if (!config.modelName) return;
+            if (!AppState.config.modelName) return;
 
-            fetchDefaultPose(config.modelName, config.isDefaultModel).then((defaultConfig) => {
+            fetchDefaultPose(AppState.config.modelName, AppState.config.isDefaultModel).then((defaultConfig) => {
                 if (defaultConfig) {
-                    if (defaultConfig.rotationOffset) config.rotationOffset = defaultConfig.rotationOffset;
-                    if (defaultConfig.ambient !== undefined) config.ambient = defaultConfig.ambient;
-                    if (defaultConfig.direct !== undefined) config.direct = defaultConfig.direct;
-                    if (defaultConfig.modelColor !== undefined) config.modelColor = defaultConfig.modelColor;
-                    if (defaultConfig.jointSize !== undefined) config.jointSize = defaultConfig.jointSize;
-                    if (defaultConfig.gizmoSize !== undefined) config.gizmoSize = defaultConfig.gizmoSize;
+                    if (defaultConfig.rotationOffset) AppState.config.rotationOffset = defaultConfig.rotationOffset;
+                    if (defaultConfig.ambient !== undefined) AppState.config.ambient = defaultConfig.ambient;
+                    if (defaultConfig.direct !== undefined) AppState.config.direct = defaultConfig.direct;
+                    if (defaultConfig.modelColor !== undefined) AppState.config.modelColor = defaultConfig.modelColor;
+                    if (defaultConfig.jointSize !== undefined) AppState.config.jointSize = defaultConfig.jointSize;
+                    if (defaultConfig.gizmoSize !== undefined) AppState.config.gizmoSize = defaultConfig.gizmoSize;
 
                     updateUIFromConfig();
                     applyModelOffset();
 
                     if (defaultConfig.pose && defaultConfig.pose.length > 0) {
-                        config.pose = defaultConfig.pose;
+                        AppState.config.pose = defaultConfig.pose;
                         applyPoseData(defaultConfig.pose);
                     } else {
                         resetPose();
                     }
 
                     if (defaultConfig.camera) {
-                        config.camera = defaultConfig.camera;
+                        AppState.config.camera = defaultConfig.camera;
                         applyCameraData(defaultConfig.camera);
                     } else {
                         focusFullBody(true);
@@ -989,23 +338,23 @@
 
         function getCameraData() {
             return {
-                pos: [camera.position.x, camera.position.y, camera.position.z],
-                target: [controls.target.x, controls.target.y, controls.target.z]
+                pos: [AppState.camera.position.x, AppState.camera.position.y, AppState.camera.position.z],
+                target: [AppState.controls.target.x, AppState.controls.target.y, AppState.controls.target.z]
             };
         }
 
         function applyCameraData(camData) {
             if (!camData || !camData.pos || !camData.target) return;
-            camera.position.set(camData.pos[0], camData.pos[1], camData.pos[2]);
-            controls.target.set(camData.target[0], camData.target[1], camData.target[2]);
-            controls.update();
+            AppState.camera.position.set(camData.pos[0], camData.pos[1], camData.pos[2]);
+            AppState.controls.target.set(camData.target[0], camData.target[1], camData.target[2]);
+            AppState.controls.update();
         }
 
         function focusOnPosition(targetPos, distance = 0.3, resetAngle = false) {
-            const startCamPos = camera.position.clone();
-            const startTarget = controls.target.clone();
+            const startCamPos = AppState.camera.position.clone();
+            const startTarget = AppState.controls.target.clone();
 
-            let dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+            let dir = new THREE.Vector3().subVectors(AppState.camera.position, AppState.controls.target).normalize();
 
             if (resetAngle || dir.lengthSq() === 0) {
                 dir.set(0, 0, 1);
@@ -1022,14 +371,14 @@
                 const progress = Math.min(elapsed / duration, 1);
                 const ease = 1 - Math.pow(1 - progress, 3);
 
-                camera.position.lerpVectors(startCamPos, newCamPos, ease);
-                controls.target.lerpVectors(startTarget, targetPos, ease);
-                controls.update();
+                AppState.camera.position.lerpVectors(startCamPos, newCamPos, ease);
+                AppState.controls.target.lerpVectors(startTarget, targetPos, ease);
+                AppState.controls.update();
 
                 if (progress < 1) {
                     requestAnimationFrame(step);
                 } else {
-                    config.camera = getCameraData();
+                    AppState.config.camera = getCameraData();
                     notifyConfigChange();
                     sendPoseToComfyUI();
                 }
@@ -1038,17 +387,17 @@
         }
 
         function focusHand(isLeft = true) {
-            if (!currentModel) return;
+            if (!AppState.currentModel) return;
 
-            currentModel.updateMatrixWorld(true);
+            AppState.currentModel.updateMatrixWorld(true);
 
-            const box = computeExactWorldBoundingBox(currentModel);
+            const box = computeExactWorldBoundingBox(AppState.currentModel);
             const modelHeight = box.getSize(new THREE.Vector3()).y || 1.8;
             const dynamicDistance = Math.max(0.12, modelHeight * 0.20);
 
             let candidates = [];
 
-            currentModel.traverse((child) => {
+            AppState.currentModel.traverse((child) => {
                 if (child.isBone) {
                     const name = child.name.toLowerCase();
 
@@ -1077,13 +426,13 @@
         }
 
         function focusFullBody(resetAngle = false) {
-            if (!currentModel) return;
-            const box = computeExactWorldBoundingBox(currentModel);
+            if (!AppState.currentModel) return;
+            const box = computeExactWorldBoundingBox(AppState.currentModel);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
 
-            const fov = camera.fov * (Math.PI / 180);
-            const aspect = targetWidth / targetHeight;
+            const fov = AppState.camera.fov * (Math.PI / 180);
+            const aspect = AppState.targetWidth / AppState.targetHeight;
 
             const distV = (size.y / 2) / Math.tan(fov / 2);
             const fovH = 2 * Math.atan(Math.tan(fov / 2) * aspect);
@@ -1097,9 +446,9 @@
         }
 
         function getPoseData() {
-            if (!currentModel) return [];
+            if (!AppState.currentModel) return [];
             const pose = [];
-            currentModel.traverse((child) => {
+            AppState.currentModel.traverse((child) => {
                 if (child.isBone) {
                     pose.push({
                         name: child.name,
@@ -1113,14 +462,14 @@
         }
 
         function applyPoseData(poseArray) {
-            if (!currentModel || !poseArray || !Array.isArray(poseArray) || poseArray.length === 0) return;
+            if (!AppState.currentModel || !poseArray || !Array.isArray(poseArray) || poseArray.length === 0) return;
 
             const poseMap = new Map();
             poseArray.forEach(item => {
                 if (item && item.name) poseMap.set(item.name, item);
             });
 
-            currentModel.traverse((child) => {
+            AppState.currentModel.traverse((child) => {
                 if (child.isBone && poseMap.has(child.name)) {
                     const data = poseMap.get(child.name);
                     if (data.q) child.quaternion.set(data.q[0], data.q[1], data.q[2], data.q[3]);
@@ -1130,8 +479,8 @@
                 }
             });
 
-            currentModel.updateMatrixWorld(true);
-            currentModel.traverse((child) => {
+            AppState.currentModel.updateMatrixWorld(true);
+            AppState.currentModel.traverse((child) => {
                 if (child.isSkinnedMesh && child.skeleton) {
                     child.skeleton.update();
                 }
@@ -1149,12 +498,12 @@
             return false;
         }
 
-        transformControls.addEventListener('dragging-changed', function (event) {
-            controls.enabled = !event.value;
+        AppState.transformControls.addEventListener('dragging-changed', function (event) {
+            AppState.controls.enabled = !event.value;
             if (event.value) {
-                if (currentModel) currentModel.updateMatrixWorld(true);
+                if (AppState.currentModel) AppState.currentModel.updateMatrixWorld(true);
 
-                const activeBone = transformControls.object;
+                const activeBone = AppState.transformControls.object;
                 if (activeBone && activeBone.userData.groupBones) {
                     const group = activeBone.userData.groupBones;
                     const qTemp = new THREE.Quaternion();
@@ -1169,16 +518,16 @@
                     activeBone.userData.startWorldQInv = activeBone.userData.startWorldQ.clone().invert();
                 }
             } else {
-                config.pose = getPoseData();
-                config.camera = getCameraData();
+                AppState.config.pose = getPoseData();
+                AppState.config.camera = getCameraData();
                 notifyConfigChange();
                 sendPoseToComfyUI();
             }
         });
 
-        transformControls.addEventListener('change', () => {
-            if (currentModel) {
-                const activeBone = transformControls.object;
+        AppState.transformControls.addEventListener('change', () => {
+            if (AppState.currentModel) {
+                const activeBone = AppState.transformControls.object;
                 if (activeBone && activeBone.userData.groupBones && activeBone.userData.startWorldQInv) {
                     const activeCurrentWorldQ = activeBone.getWorldQuaternion(new THREE.Quaternion());
                     const worldDeltaQ = activeCurrentWorldQ.clone().multiply(activeBone.userData.startWorldQInv);
@@ -1193,8 +542,8 @@
                         }
                     });
 
-                    currentModel.updateMatrixWorld(true);
-                    currentModel.traverse((child) => {
+                    AppState.currentModel.updateMatrixWorld(true);
+                    AppState.currentModel.traverse((child) => {
                         if (child.isSkinnedMesh && child.skeleton) {
                             child.skeleton.update();
                         }
@@ -1204,19 +553,19 @@
             }
         });
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, config.ambient);
-        scene.add(ambientLight);
+        AppState.ambientLight = new THREE.AmbientLight(0xffffff, AppState.config.ambient);
+        AppState.scene.add(AppState.ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, config.direct);
-        directionalLight.position.set(5, 10, 7);
-        scene.add(directionalLight);
+        AppState.directionalLight = new THREE.DirectionalLight(0xffffff, AppState.config.direct);
+        AppState.directionalLight.position.set(5, 10, 7);
+        AppState.scene.add(AppState.directionalLight);
 
-        const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
-        backLight.position.set(-5, 5, -5);
-        scene.add(backLight);
+        AppState.backLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        AppState.backLight.position.set(-5, 5, -5);
+        AppState.scene.add(AppState.backLight);
 
         function notifyConfigChange() {
-            const exportConfig = { ...config };
+            const exportConfig = { ...AppState.config };
             delete exportConfig.modelUrl;
 
             window.parent.postMessage({
@@ -1225,42 +574,41 @@
             }, "*");
         }
 
-        // 更新 UI 介面與場景狀態
         function updateUIFromConfig() {
-            document.getElementById('opt-ambient').value = config.ambient;
-            document.getElementById('val-ambient').innerText = config.ambient;
-            document.getElementById('opt-direct').value = config.direct;
-            document.getElementById('val-direct').innerText = config.direct;
-            document.getElementById('opt-model').value = config.modelColor;
-            document.getElementById('val-model').innerText = config.modelColor;
-            document.getElementById('opt-bgcolor').value = currentBgColor;
+            document.getElementById('opt-ambient').value = AppState.config.ambient;
+            document.getElementById('val-ambient').innerText = AppState.config.ambient;
+            document.getElementById('opt-direct').value = AppState.config.direct;
+            document.getElementById('val-direct').innerText = AppState.config.direct;
+            document.getElementById('opt-model').value = AppState.config.modelColor;
+            document.getElementById('val-model').innerText = AppState.config.modelColor;
+            document.getElementById('opt-bgcolor').value = AppState.currentBgColor;
 
-            if (config.jointSize !== undefined) {
-                jointScale = config.jointSize;
-                document.getElementById('opt-jointsize').value = config.jointSize;
-                document.getElementById('val-jointsize').innerText = config.jointSize;
+            if (AppState.config.jointSize !== undefined) {
+                AppState.jointScale = AppState.config.jointSize;
+                document.getElementById('opt-jointsize').value = AppState.config.jointSize;
+                document.getElementById('val-jointsize').innerText = AppState.config.jointSize;
             }
-            if (config.gizmoSize !== undefined) {
-                transformControls.setSize(config.gizmoSize);
-                document.getElementById('opt-gizmosize').value = config.gizmoSize;
-                document.getElementById('val-gizmosize').innerText = config.gizmoSize;
+            if (AppState.config.gizmoSize !== undefined) {
+                AppState.transformControls.setSize(AppState.config.gizmoSize);
+                document.getElementById('opt-gizmosize').value = AppState.config.gizmoSize;
+                document.getElementById('val-gizmosize').innerText = AppState.config.gizmoSize;
             }
 
             updateLanguage();
 
-            const offset = config.rotationOffset || { x: 0, y: 0, z: 0 };
+            const offset = AppState.config.rotationOffset || { x: 0, y: 0, z: 0 };
             document.getElementById('opt-offset-x').value = offset.x || 0;
             document.getElementById('opt-offset-y').value = offset.y || 0;
             document.getElementById('opt-offset-z').value = offset.z || 0;
 
-            ambientLight.intensity = config.ambient;
-            directionalLight.intensity = config.direct;
-            scene.background.set(currentBgColor);
+            AppState.ambientLight.intensity = AppState.config.ambient;
+            AppState.directionalLight.intensity = AppState.config.direct;
+            AppState.scene.background.set(AppState.currentBgColor);
 
-            if (currentModel) {
+            if (AppState.currentModel) {
                 applyModelOffset();
-                const v = config.modelColor;
-                currentModel.traverse((child) => {
+                const v = AppState.config.modelColor;
+                AppState.currentModel.traverse((child) => {
                     if (child.isMesh && child.material) child.material.color.setRGB(v, v, v);
                 });
                 updateJointSpheres();
@@ -1268,12 +616,12 @@
         }
 
         function setupSkeleton(model) {
-            jointSpheres.forEach(s => scene.remove(s));
-            jointSpheres = [];
+            AppState.jointSpheres.forEach(s => AppState.scene.remove(s));
+            AppState.jointSpheres = [];
 
-            if (skeletonHelper) {
-                scene.remove(skeletonHelper);
-                skeletonHelper = null;
+            if (AppState.skeletonHelper) {
+                AppState.scene.remove(AppState.skeletonHelper);
+                AppState.skeletonHelper = null;
             }
 
             const targetBones = new Set();
@@ -1372,66 +720,64 @@
                 sphere.userData.bone = bones[0];
                 sphere.renderOrder = 999;
 
-                const r = baseJointRadius * jointScale;
+                const r = AppState.baseJointRadius * AppState.jointScale;
                 sphere.scale.set(r, r, r);
 
-                scene.add(sphere);
-                jointSpheres.push(sphere);
+                AppState.scene.add(sphere);
+                AppState.jointSpheres.push(sphere);
             });
 
-            skeletonHelper = new THREE.SkeletonHelper(model);
-            skeletonHelper.material.color.setHex(0x00d2ff);
-            skeletonHelper.material.depthTest = false;
-            skeletonHelper.material.transparent = true;
-            skeletonHelper.material.opacity = 0.8;
-            skeletonHelper.renderOrder = 998;
-            skeletonHelper.visible = showJoints;
-            scene.add(skeletonHelper);
+            AppState.skeletonHelper = new THREE.SkeletonHelper(model);
+            AppState.skeletonHelper.material.color.setHex(0x00d2ff);
+            AppState.skeletonHelper.material.depthTest = false;
+            AppState.skeletonHelper.material.transparent = true;
+            AppState.skeletonHelper.material.opacity = 0.8;
+            AppState.skeletonHelper.renderOrder = 998;
+            AppState.skeletonHelper.visible = AppState.showJoints;
+            AppState.scene.add(AppState.skeletonHelper);
         }
 
         function updateJointSpheres() {
-            jointSpheres.forEach(sphere => {
+            AppState.jointSpheres.forEach(sphere => {
                 if (sphere.userData.bone) {
                     const worldPos = new THREE.Vector3();
                     sphere.userData.bone.getWorldPosition(worldPos);
                     sphere.position.copy(worldPos);
-                    sphere.visible = showJoints;
+                    sphere.visible = AppState.showJoints;
 
-                    const r = baseJointRadius * jointScale;
+                    const r = AppState.baseJointRadius * AppState.jointScale;
                     sphere.scale.set(r, r, r);
                 }
             });
 
-            if (skeletonHelper) {
-                skeletonHelper.visible = showJoints;
+            if (AppState.skeletonHelper) {
+                AppState.skeletonHelper.visible = AppState.showJoints;
             }
         }
 
-        // 1. 修改原本的 pointerdown 事件 handlers
-        renderer.domElement.addEventListener('pointerdown', (event) => {
-            const rect = renderer.domElement.getBoundingClientRect();
-            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        AppState.renderer.domElement.addEventListener('pointerdown', (event) => {
+            const rect = AppState.renderer.domElement.getBoundingClientRect();
+            AppState.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            AppState.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-            // 右鍵邏輯保持不變
             if (event.button === 2) {
-                raycaster.setFromCamera(mouse, camera);
+                AppState.raycaster.setFromCamera(AppState.mouse, AppState.camera);
 
                 let hitBone = null;
 
-                if (showJoints) {
-                    const intersects = raycaster.intersectObjects(jointSpheres);
+                if (AppState.showJoints) {
+                    const intersects = AppState.raycaster.intersectObjects(AppState.jointSpheres);
                     if (intersects.length > 0) {
                         hitBone = intersects[0].object.userData.bone;
                     }
                 }
 
-                if (!hitBone && currentModel) {
-                    const modelIntersects = raycaster.intersectObject(currentModel, true);
+                if (!hitBone && AppState.currentModel) {
+                    const modelIntersects = AppState.raycaster.intersectObject(AppState.currentModel, true);
                     if (modelIntersects.length > 0) {
                         const hitPoint = modelIntersects[0].point;
                         let minDistance = Infinity;
-                        jointSpheres.forEach(sphere => {
+                        AppState.jointSpheres.forEach(sphere => {
                             if (sphere.userData.bone) {
                                 const boneWorldPos = new THREE.Vector3();
                                 sphere.userData.bone.getWorldPosition(boneWorldPos);
@@ -1445,99 +791,95 @@
                     }
                 }
 
-                if (!hitBone && transformControls.visible && transformControls.object) {
-                    hitBone = transformControls.object;
+                if (!hitBone && AppState.transformControls.visible && AppState.transformControls.object) {
+                    hitBone = AppState.transformControls.object;
                 }
 
                 const currentTime = Date.now();
-                if (currentTime - lastRightClickTime < 350 && hitBone && lastRightClickBone === hitBone) {
+                if (currentTime - AppState.lastRightClickTime < 350 && hitBone && AppState.lastRightClickBone === hitBone) {
                     resetBoneTransform(hitBone);
-                    lastRightClickTime = 0;
-                    lastRightClickBone = null;
+                    AppState.lastRightClickTime = 0;
+                    AppState.lastRightClickBone = null;
                 } else {
-                    lastRightClickTime = currentTime;
-                    lastRightClickBone = hitBone;
+                    AppState.lastRightClickTime = currentTime;
+                    AppState.lastRightClickBone = hitBone;
                 }
                 return;
             }
 
-            // 左鍵邏輯：記錄按下位置，不在此處直接取消選取
             if (event.button === 0) {
-                pointerDownPos = { x: event.clientX, y: event.clientY };
-                isPointerDownOnBlank = false;
+                AppState.pointerDownPos = { x: event.clientX, y: event.clientY };
+                AppState.isPointerDownOnBlank = false;
 
-                if (!showJoints) return;
+                if (!AppState.showJoints) return;
 
-                raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObjects(jointSpheres);
+                AppState.raycaster.setFromCamera(AppState.mouse, AppState.camera);
+                const intersects = AppState.raycaster.intersectObjects(AppState.jointSpheres);
 
                 if (intersects.length > 0) {
                     const hitSphere = intersects[0].object;
                     const targetBone = hitSphere.userData.bone;
 
-                    transformControls.attach(targetBone);
-                    transformControls.visible = true;
+                    AppState.transformControls.attach(targetBone);
+                    AppState.transformControls.visible = true;
 
                     const bonesCount = hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
                     const labelText = bonesCount > 1
-                        ? `${targetBone.name} (+${bonesCount - 1} ${i18n[currentLang].drivenBones})`
+                        ? `${targetBone.name} (+${bonesCount - 1} ${i18n[AppState.currentLang].drivenBones})`
                         : targetBone.name;
 
                     updateSelectedBoneLabel(labelText);
                 } else {
-                    const isClickingGizmo = transformControls.visible && transformControls.axis !== null;
+                    const isClickingGizmo = AppState.transformControls.visible && AppState.transformControls.axis !== null;
                     if (!isClickingGizmo) {
-                        // 標記目前點擊在空白處
-                        isPointerDownOnBlank = true;
+                        AppState.isPointerDownOnBlank = true;
                     }
                 }
             }
         });
 
-        // 2. 新增 pointerup 事件：判斷是拖曳畫面還是單純點擊
-        renderer.domElement.addEventListener('pointerup', (event) => {
-            if (event.button === 0 && isPointerDownOnBlank) {
-                // 計算按住到放開之間的移動距離
-                const moveDistance = Math.hypot(event.clientX - pointerDownPos.x, event.clientY - pointerDownPos.y);
+        AppState.renderer.domElement.addEventListener('pointerup', (event) => {
+            if (event.button === 0 && AppState.isPointerDownOnBlank) {
+                const moveDistance = Math.hypot(event.clientX - AppState.pointerDownPos.x, event.clientY - AppState.pointerDownPos.y);
 
-                // 位移小於 5 像素視為單純點擊空白處，才執行取消選取
                 if (moveDistance < 5) {
                     deselectCurrentBone();
                 }
-                isPointerDownOnBlank = false;
+                AppState.isPointerDownOnBlank = false;
             }
         });
-        renderer.domElement.addEventListener('dblclick', (event) => {
-            if (event.button !== 0 || !currentModel) return;
 
-            const rect = renderer.domElement.getBoundingClientRect();
-            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        AppState.renderer.domElement.addEventListener('dblclick', (event) => {
+            if (event.button !== 0 || !AppState.currentModel) return;
 
-            raycaster.setFromCamera(mouse, camera);
+            const rect = AppState.renderer.domElement.getBoundingClientRect();
+            AppState.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            AppState.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            AppState.raycaster.setFromCamera(AppState.mouse, AppState.camera);
 
             let targetBone = null;
             let hitPoint = null;
 
-            if (showJoints) {
-                const jointIntersects = raycaster.intersectObjects(jointSpheres);
+            if (AppState.showJoints) {
+                const jointIntersects = AppState.raycaster.intersectObjects(AppState.jointSpheres);
                 if (jointIntersects.length > 0) {
                     targetBone = jointIntersects[0].object.userData.bone;
-                } else if (transformControls.visible && transformControls.object) {
-                    const gizmoIntersects = raycaster.intersectObject(transformControls, true);
+                } else if (AppState.transformControls.visible && AppState.transformControls.object) {
+                    const gizmoIntersects = AppState.raycaster.intersectObject(AppState.transformControls, true);
                     if (gizmoIntersects.length > 0) {
-                        targetBone = transformControls.object;
+                        targetBone = AppState.transformControls.object;
                     }
                 }
             }
 
             if (!targetBone) {
-                const modelIntersects = raycaster.intersectObject(currentModel, true);
+                const modelIntersects = AppState.raycaster.intersectObject(AppState.currentModel, true);
                 if (modelIntersects.length > 0) {
                     hitPoint = modelIntersects[0].point;
 
                     let minDistance = Infinity;
-                    jointSpheres.forEach(sphere => {
+                    AppState.jointSpheres.forEach(sphere => {
                         if (sphere.userData.bone) {
                             const boneWorldPos = new THREE.Vector3();
                             sphere.userData.bone.getWorldPosition(boneWorldPos);
@@ -1552,24 +894,24 @@
             }
 
             if (targetBone) {
-                const wasJointsHidden = !showJoints;
+                const wasJointsHidden = !AppState.showJoints;
 
                 if (wasJointsHidden) {
-                    showJoints = true;
+                    AppState.showJoints = true;
                     updateLanguage();
                     updateJointSpheres();
                     sendPoseToComfyUI();
                 }
 
-                transformControls.attach(targetBone);
-                transformControls.visible = true;
+                AppState.transformControls.attach(targetBone);
+                AppState.transformControls.visible = true;
                 updateSelectedBoneLabel(targetBone.name);
 
                 if (!wasJointsHidden) {
                     const worldPos = new THREE.Vector3();
                     targetBone.getWorldPosition(worldPos);
 
-                    const box = computeExactWorldBoundingBox(currentModel);
+                    const box = computeExactWorldBoundingBox(AppState.currentModel);
                     const modelHeight = box.getSize(new THREE.Vector3()).y || 1.8;
 
                     const boneName = targetBone.name ? targetBone.name.toLowerCase() : '';
@@ -1592,7 +934,7 @@
         }
 
         function onOffsetInputChange() {
-            if (!config.rotationOffset) config.rotationOffset = { x: 0, y: 0, z: 0 };
+            if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
 
             const inputX = document.getElementById('opt-offset-x');
             const inputY = document.getElementById('opt-offset-y');
@@ -1606,11 +948,11 @@
             inputY.value = valY;
             inputZ.value = valZ;
 
-            config.rotationOffset.x = valX;
-            config.rotationOffset.y = valY;
-            config.rotationOffset.z = valZ;
+            AppState.config.rotationOffset.x = valX;
+            AppState.config.rotationOffset.y = valY;
+            AppState.config.rotationOffset.z = valZ;
 
-            if (currentModel) {
+            if (AppState.currentModel) {
                 applyModelOffset();
                 updateJointSpheres();
                 focusFullBody();
@@ -1642,7 +984,7 @@
                     modelSelect.appendChild(opt);
                 });
 
-                const targetName = selectedName || config.modelName;
+                const targetName = selectedName || AppState.config.modelName;
                 if (targetName) {
                     modelSelect.value = targetName;
                 }
@@ -1677,8 +1019,8 @@
             const filename = selectedOpt.value;
             const isDefault = selectedOpt.dataset.isDefault === "true";
 
-            config.modelName = filename;
-            config.isDefaultModel = isDefault;
+            AppState.config.modelName = filename;
+            AppState.config.isDefaultModel = isDefault;
 
             const url = getModelApiUrl(filename, isDefault);
             loadModelFromUrl(url, filename, false);
@@ -1692,11 +1034,11 @@
             const isDefault = selectedOpt.dataset.isDefault === "true";
 
             if (isDefault) {
-                alert(i18n[currentLang].cannotDeleteDefault);
+                alert(i18n[AppState.currentLang].cannotDeleteDefault);
                 return;
             }
 
-            if (!confirm(i18n[currentLang].confirmDeleteModel)) return;
+            if (!confirm(i18n[AppState.currentLang].confirmDeleteModel)) return;
 
             try {
                 const res = await fetch('/likejpose3d/delete_model', {
@@ -1706,17 +1048,16 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    // 刪除成功後重新整理模型清單，並自動切換至預設模型
                     await refreshModelList();
                     if (modelSelect.options.length > 0) {
                         modelSelect.selectedIndex = 0;
                         modelSelect.dispatchEvent(new Event('change'));
                     }
                 } else {
-                    alert(i18n[currentLang].msgDeleteModelFailed + (result.error || "Unknown Error"));
+                    alert(i18n[AppState.currentLang].msgDeleteModelFailed + (result.error || "Unknown Error"));
                 }
             } catch (err) {
-                alert(i18n[currentLang].msgDeleteModelFailed + err);
+                alert(i18n[AppState.currentLang].msgDeleteModelFailed + err);
             }
         });
 
@@ -1733,7 +1074,7 @@
 
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
-            loadingEl.innerText = `${i18n[currentLang].uploadingModel} '${file.name}'`;
+            loadingEl.innerText = `${i18n[AppState.currentLang].uploadingModel} '${file.name}'`;
 
             try {
                 const res = await fetch('/likejpose3d/upload_model', { method: 'POST', body: formData });
@@ -1741,14 +1082,14 @@
                 if (result.success) {
                     await refreshModelList(result.filename);
 
-                    config.modelName = result.filename;
-                    config.isDefaultModel = false;
+                    AppState.config.modelName = result.filename;
+                    AppState.config.isDefaultModel = false;
 
                     const url = getModelApiUrl(result.filename, false);
                     loadModelFromUrl(url, result.filename, false);
                 }
             } catch (err) {
-                alert(i18n[currentLang].msgUploadError + err);
+                alert(i18n[AppState.currentLang].msgUploadError + err);
             } finally {
                 fileInput.value = '';
             }
@@ -1762,19 +1103,18 @@
             loadInitialPose();
         });
 
-        // 儲存預設姿態
         document.getElementById('btn-save-default-pose').addEventListener('click', async () => {
-            if (!config.modelName) return;
+            if (!AppState.config.modelName) return;
 
             const defaultPoseData = {
-                rotationOffset: config.rotationOffset || { x: 0, y: 0, z: 0 },
+                rotationOffset: AppState.config.rotationOffset || { x: 0, y: 0, z: 0 },
                 pose: getPoseData(),
                 camera: getCameraData(),
-                ambient: config.ambient,
-                direct: config.direct,
-                modelColor: config.modelColor,
-                jointSize: config.jointSize !== undefined ? config.jointSize : jointScale,
-                gizmoSize: config.gizmoSize !== undefined ? config.gizmoSize : transformControls.size
+                ambient: AppState.config.ambient,
+                direct: AppState.config.direct,
+                modelColor: AppState.config.modelColor,
+                jointSize: AppState.config.jointSize !== undefined ? AppState.config.jointSize : AppState.jointScale,
+                gizmoSize: AppState.config.gizmoSize !== undefined ? AppState.config.gizmoSize : AppState.transformControls.size
             };
 
             try {
@@ -1782,339 +1122,20 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        filename: config.modelName,
-                        is_default: config.isDefaultModel,
+                        filename: AppState.config.modelName,
+                        is_default: AppState.config.isDefaultModel,
                         config: defaultPoseData
                     })
                 });
                 const result = await res.json();
                 if (result.success) {
-                    alert(`${i18n[currentLang].msgSaveSuccess}\r\n${result.filename}`);
+                    alert(`${i18n[AppState.currentLang].msgSaveSuccess}\r\n${result.filename}`);
                 } else {
-                    alert(i18n[currentLang].msgSaveFailed + (result.error || "Unknown Error"));
+                    alert(i18n[AppState.currentLang].msgSaveFailed + (result.error || "Unknown Error"));
                 }
             } catch (e) {
-                alert(i18n[currentLang].msgSaveFailed + e);
+                alert(i18n[AppState.currentLang].msgSaveFailed + e);
             }
-        });
-
-        // ================= 骨骼關節列表 Modal 邏輯 =================
-        const jointsListModal = document.getElementById('joints-list-modal');
-        const jointsContainer = document.getElementById('joints-list-container');
-        const btnJointsModal = document.getElementById('btn-joints-modal');
-        const btnCloseJointsModal = document.getElementById('btn-close-joints-modal');
-        const inputSearchJoints = document.getElementById('input-search-joints');
-        const btnCopyJoints = document.getElementById('btn-copy-joints');
-
-        function renderJointList(filterText = '') {
-            jointsContainer.innerHTML = '';
-
-            if (!jointSpheres || jointSpheres.length === 0) {
-                jointsContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 20px;">${i18n[currentLang].emptyJoints}</div>`;
-                return;
-            }
-
-            const activeTarget = (transformControls && transformControls.visible) ? transformControls.object : null;
-
-            let count = 0;
-            jointSpheres.forEach((sphere) => {
-                const bone = sphere.userData.bone;
-                if (!bone) return;
-
-                const boneName = bone.name || "Unnamed_Joint";
-
-                if (filterText && !boneName.toLowerCase().includes(filterText.toLowerCase())) {
-                    return;
-                }
-
-                count++;
-                const item = document.createElement('div');
-                item.className = 'joint-list-item';
-
-                const isSelected = activeTarget && (activeTarget === bone || (activeTarget.userData?.groupBones && activeTarget.userData.groupBones.includes(bone)));
-                if (isSelected) {
-                    item.classList.add('active');
-                }
-
-                const bonesCount = sphere.userData.bones ? sphere.userData.bones.length : 1;
-                const extraInfo = bonesCount > 1 ? `<span style="font-size: 10px; opacity: 0.8;">(+${bonesCount - 1})</span>` : '';
-
-                item.innerHTML = `<span>🔴 ${boneName}</span> ${extraInfo}`;
-
-                item.addEventListener('click', () => {
-                    if (!showJoints) {
-                        showJoints = true;
-                        updateLanguage();
-                        updateJointSpheres();
-                        sendPoseToComfyUI();
-                    }
-
-                    transformControls.attach(bone);
-                    transformControls.visible = true;
-
-                    const labelText = bonesCount > 1
-                        ? `${bone.name} (+${bonesCount - 1} ${i18n[currentLang].drivenBones})`
-                        : bone.name;
-
-                    updateSelectedBoneLabel(labelText);
-
-                    renderJointList(inputSearchJoints.value);
-                });
-
-                jointsContainer.appendChild(item);
-            });
-
-            if (count === 0) {
-                jointsContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 20px;">${i18n[currentLang].emptyJoints}</div>`;
-            }
-        }
-
-        btnJointsModal.addEventListener('click', () => {
-            inputSearchJoints.value = '';
-            renderJointList();
-            jointsListModal.classList.add('active');
-        });
-
-        btnCloseJointsModal.addEventListener('click', () => {
-            jointsListModal.classList.remove('active');
-        });
-
-        // 點擊背景遮罩關閉 Modal
-        jointsListModal.addEventListener('click', (e) => {
-            if (e.target === jointsListModal) {
-                jointsListModal.classList.remove('active');
-            }
-        });
-
-        // 雙擊 Modal 任意處自動關閉 (避開輸入框與按鈕)
-        jointsListModal.addEventListener('dblclick', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-            jointsListModal.classList.remove('active');
-        });
-
-        inputSearchJoints.addEventListener('input', (e) => {
-            renderJointList(e.target.value);
-        });
-
-        // 複製全部關節名稱
-        btnCopyJoints.addEventListener('click', async () => {
-            if (!jointSpheres || jointSpheres.length === 0) return;
-
-            const jointNames = [];
-            jointSpheres.forEach(sphere => {
-                if (sphere.userData && sphere.userData.bone && sphere.userData.bone.name) {
-                    jointNames.push(sphere.userData.bone.name);
-                }
-            });
-
-            if (jointNames.length === 0) return;
-
-            const textToCopy = jointNames.join('\n');
-            try {
-                await navigator.clipboard.writeText(textToCopy);
-                const originalText = btnCopyJoints.innerText;
-                btnCopyJoints.innerText = i18n[currentLang].msgCopySuccess || '已複製！';
-                setTimeout(() => {
-                    updateLanguage();
-                }, 1500);
-            } catch (err) {
-                console.error('複製關節名稱失敗:', err);
-            }
-        });
-
-        // ================= 儲存自訂姿態 Modal 邏輯 =================
-        const savePoseModal = document.getElementById('save-pose-modal');
-        const selectExistingPose = document.getElementById('select-existing-pose');
-        const inputPoseName = document.getElementById('input-pose-name');
-        const btnCloseSaveModal = document.getElementById('btn-close-save-modal');
-        const btnCancelSavePose = document.getElementById('btn-cancel-save-pose');
-        const btnConfirmSavePose = document.getElementById('btn-confirm-save-pose');
-
-        document.getElementById('btn-save-custom-pose').addEventListener('click', async () => {
-            if (!config.modelName) return;
-
-            const defaultName = "pose_" + new Date().toISOString().slice(0, 10).replace(/-/g, "");
-            inputPoseName.value = defaultName;
-
-            selectExistingPose.innerHTML = `<option value="">${i18n[currentLang].optNewPose}</option>`;
-
-            const currentModelFolder = config.modelName.replace(/\.(glb|gltf)$/i, '');
-
-            try {
-                const res = await fetch('/likejpose3d/list_saved_poses');
-                const data = await res.json();
-
-                if (data.success && data.poses) {
-                    const matchingPoses = data.poses.filter(p => {
-                        const folder = (p.model_folder || '').replace(/\.(glb|gltf)$/i, '');
-                        return folder === currentModelFolder || currentModelFolder.includes(folder) || folder.includes(currentModelFolder);
-                    });
-
-                    matchingPoses.forEach(item => {
-                        const opt = document.createElement('option');
-                        opt.value = item.pose_name;
-                        opt.innerText = item.pose_name;
-                        selectExistingPose.appendChild(opt);
-                    });
-                }
-            } catch (e) {
-                console.warn("無法取得已有姿態選單:", e);
-            }
-
-            savePoseModal.classList.add('active');
-        });
-
-        selectExistingPose.addEventListener('change', () => {
-            if (selectExistingPose.value) {
-                inputPoseName.value = selectExistingPose.value;
-            }
-        });
-
-        function closeSaveModal() {
-            savePoseModal.classList.remove('active');
-        }
-        btnCloseSaveModal.addEventListener('click', closeSaveModal);
-        btnCancelSavePose.addEventListener('click', closeSaveModal);
-        savePoseModal.addEventListener('click', (e) => {
-            if (e.target === savePoseModal) closeSaveModal();
-        });
-
-        btnConfirmSavePose.addEventListener('click', async () => {
-            const poseName = inputPoseName.value.trim();
-            if (!poseName) {
-                alert(i18n[currentLang].msgPleaseEnterPoseName);
-                return;
-            }
-
-            closeSaveModal();
-
-            const prevTCVis = transformControls.visible;
-            jointSpheres.forEach(s => s.visible = false);
-            if (skeletonHelper) skeletonHelper.visible = false;
-            transformControls.visible = false;
-
-            renderer.render(scene, camera);
-            const previewB64 = renderer.domElement.toDataURL("image/png");
-
-            jointSpheres.forEach(s => s.visible = showJoints);
-            if (skeletonHelper) skeletonHelper.visible = showJoints;
-            transformControls.visible = showJoints && prevTCVis && !!transformControls.object;
-
-            const poseData = {
-                rotationOffset: config.rotationOffset || { x: 0, y: 0, z: 0 },
-                pose: getPoseData(),
-                camera: getCameraData(),
-                ambient: config.ambient,
-                direct: config.direct,
-                modelColor: config.modelColor,
-                jointSize: config.jointSize !== undefined ? config.jointSize : jointScale,
-                gizmoSize: config.gizmoSize !== undefined ? config.gizmoSize : transformControls.size
-            };
-
-            try {
-                const res = await fetch('/likejpose3d/save_custom_pose', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model_filename: config.modelName,
-                        pose_name: poseName,
-                        is_default: config.isDefaultModel,
-                        config: poseData,
-                        preview_b64: previewB64
-                    })
-                });
-                const result = await res.json();
-                if (result.success) {
-                    alert(`${i18n[currentLang].msgSavePoseSuccess}\r\n${result.pose_name}.json (.png)`);
-                } else {
-                    alert(i18n[currentLang].msgSaveFailed + (result.error || "Unknown Error"));
-                }
-            } catch (e) {
-                alert(i18n[currentLang].msgSaveFailed + e);
-            }
-        });
-
-        // ================= Modal 彈窗與載入姿態邏輯 =================
-        const poseModal = document.getElementById('pose-modal');
-        const poseGallery = document.getElementById('pose-gallery');
-        const btnLoadPose = document.getElementById('btn-load-pose');
-        const btnCloseModal = document.getElementById('btn-close-modal');
-
-        btnLoadPose.addEventListener('click', async () => {
-            poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 20px;">Loading...</div>`;
-            poseModal.classList.add('active');
-
-            try {
-                const res = await fetch('/likejpose3d/list_saved_poses');
-                const data = await res.json();
-
-                if (data.success && data.poses && data.poses.length > 0) {
-                    poseGallery.innerHTML = '';
-                    data.poses.forEach(item => {
-                        const card = document.createElement('div');
-                        card.className = 'pose-card';
-
-                        const imgHTML = item.has_preview
-                            ? `<img class="pose-card-img" src="${item.preview_url}" alt="${item.pose_name}">`
-                            : `<div class="pose-card-placeholder">🧍</div>`;
-
-                        card.innerHTML = `
-            <button class="pose-card-delete" title="Delete Pose">✕</button>
-            <div class="pose-card-img-wrapper">${imgHTML}</div>
-            <div class="pose-card-info">
-                <div class="pose-card-title" title="${item.pose_name}">${item.pose_name}</div>
-                <div class="pose-card-model" title="${item.model_folder}">${item.model_folder}</div>
-            </div>
-        `;
-
-                        card.addEventListener('click', () => {
-                            loadPoseConfigAndModel(item);
-                            poseModal.classList.remove('active');
-                        });
-
-                        const btnDelete = card.querySelector('.pose-card-delete');
-                        btnDelete.addEventListener('click', async (e) => {
-                            e.stopPropagation();
-
-                            if (!confirm(i18n[currentLang].confirmDeletePose)) return;
-
-                            try {
-                                const res = await fetch('/likejpose3d/delete_pose', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        folder: item.model_folder,
-                                        pose_name: item.pose_name,
-                                        is_default: item.is_default
-                                    })
-                                });
-                                const result = await res.json();
-                                if (result.success) {
-                                    card.remove();
-                                    if (poseGallery.children.length === 0) {
-                                        poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 20px;">${i18n[currentLang].emptyPoses}</div>`;
-                                    }
-                                } else {
-                                    alert(i18n[currentLang].msgDeleteFailed + (result.error || "Unknown Error"));
-                                }
-                            } catch (err) {
-                                alert(i18n[currentLang].msgDeleteFailed + err);
-                            }
-                        });
-
-                        poseGallery.appendChild(card);
-                    });
-                } else {
-                    poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 20px;">${i18n[currentLang].emptyPoses}</div>`;
-                }
-            } catch (e) {
-                poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 20px;">Failed to load pose list: ${e}</div>`;
-            }
-        });
-
-        btnCloseModal.addEventListener('click', () => poseModal.classList.remove('active'));
-        poseModal.addEventListener('click', (e) => {
-            if (e.target === poseModal) poseModal.classList.remove('active');
         });
 
         async function loadPoseConfigAndModel(poseItem) {
@@ -2135,11 +1156,11 @@
                     isDefault = matchedOpt.dataset.isDefault === "true";
                 }
 
-                config = { ...config, ...loadedConfig };
-                config.modelName = targetModelName;
-                config.isDefaultModel = isDefault;
+                AppState.config = { ...AppState.config, ...loadedConfig };
+                AppState.config.modelName = targetModelName;
+                AppState.config.isDefaultModel = isDefault;
 
-                if (!config.rotationOffset) config.rotationOffset = { x: 0, y: 0, z: 0 };
+                if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
 
                 const targetUrl = getModelApiUrl(targetModelName, isDefault);
                 loadModelFromUrl(targetUrl, targetModelName, true);
@@ -2148,33 +1169,29 @@
                 alert("載入姿態失敗: " + e);
             }
         }
-        // =========================================================
 
-        // 關節點大小 Event Listener
         document.getElementById('opt-jointsize').addEventListener('input', (e) => {
-            jointScale = parseFloat(e.target.value);
-            config.jointSize = jointScale;
-            document.getElementById('val-jointsize').innerText = jointScale;
+            AppState.jointScale = parseFloat(e.target.value);
+            AppState.config.jointSize = AppState.jointScale;
+            document.getElementById('val-jointsize').innerText = AppState.jointScale;
             updateJointSpheres();
             notifyConfigChange();
             sendPoseToComfyUI();
         });
 
-        // 控制軸大小 Event Listener
         document.getElementById('opt-gizmosize').addEventListener('input', (e) => {
             const sz = parseFloat(e.target.value);
-            config.gizmoSize = sz;
-            transformControls.setSize(sz);
+            AppState.config.gizmoSize = sz;
+            AppState.transformControls.setSize(sz);
             document.getElementById('val-gizmosize').innerText = sz;
             notifyConfigChange();
             sendPoseToComfyUI();
         });
 
-        // 開關關節點
         document.getElementById('btn-toggle-joints').addEventListener('click', () => {
-            showJoints = !showJoints;
+            AppState.showJoints = !AppState.showJoints;
             updateLanguage();
-            if (!showJoints) {
+            if (!AppState.showJoints) {
                 deselectCurrentBone();
             }
             updateJointSpheres();
@@ -2182,34 +1199,33 @@
         });
 
         document.getElementById('opt-ambient').addEventListener('input', (e) => {
-            config.ambient = parseFloat(e.target.value);
+            AppState.config.ambient = parseFloat(e.target.value);
             updateUIFromConfig();
             notifyConfigChange();
             sendPoseToComfyUI();
         });
 
         document.getElementById('opt-direct').addEventListener('input', (e) => {
-            config.direct = parseFloat(e.target.value);
+            AppState.config.direct = parseFloat(e.target.value);
             updateUIFromConfig();
             notifyConfigChange();
             sendPoseToComfyUI();
         });
 
         document.getElementById('opt-model').addEventListener('input', (e) => {
-            config.modelColor = parseFloat(e.target.value);
+            AppState.config.modelColor = parseFloat(e.target.value);
             updateUIFromConfig();
             notifyConfigChange();
             sendPoseToComfyUI();
         });
 
-        // 背景顏色
         document.getElementById('opt-bgcolor').addEventListener('input', (e) => {
-            currentBgColor = e.target.value;
-            scene.background.set(currentBgColor);
+            AppState.currentBgColor = e.target.value;
+            AppState.scene.background.set(AppState.currentBgColor);
             sendPoseToComfyUI();
         });
 
-        const loader = new THREE.GLTFLoader();
+        AppState.loader = new THREE.GLTFLoader();
 
         function computeExactWorldBoundingBox(model) {
             const box = new THREE.Box3();
@@ -2292,47 +1308,47 @@
         }
 
         function sendPoseToComfyUI() {
-            if (!isModelLoaded) return;
+            if (!AppState.isModelLoaded) return;
 
-            if (currentModel) {
-                currentModel.updateMatrixWorld(true);
-                currentModel.traverse((child) => {
+            if (AppState.currentModel) {
+                AppState.currentModel.updateMatrixWorld(true);
+                AppState.currentModel.traverse((child) => {
                     if (child.isSkinnedMesh && child.skeleton) {
                         child.skeleton.update();
                     }
                 });
             }
 
-            const prevTCVis = transformControls.visible;
+            const prevTCVis = AppState.transformControls.visible;
 
-            jointSpheres.forEach(s => s.visible = false);
-            if (skeletonHelper) skeletonHelper.visible = false;
-            transformControls.visible = false;
+            AppState.jointSpheres.forEach(s => s.visible = false);
+            if (AppState.skeletonHelper) AppState.skeletonHelper.visible = false;
+            AppState.transformControls.visible = false;
 
             const currentW = container.clientWidth;
             const currentH = container.clientHeight;
-            const currentAspect = camera.aspect;
-            const currentPixelRatio = renderer.getPixelRatio();
+            const currentAspect = AppState.camera.aspect;
+            const currentPixelRatio = AppState.renderer.getPixelRatio();
 
-            renderer.setPixelRatio(1);
-            camera.aspect = targetWidth / targetHeight;
-            camera.updateProjectionMatrix();
+            AppState.renderer.setPixelRatio(1);
+            AppState.camera.aspect = AppState.targetWidth / AppState.targetHeight;
+            AppState.camera.updateProjectionMatrix();
 
-            renderer.setSize(targetWidth, targetHeight, false);
-            renderer.render(scene, camera);
+            AppState.renderer.setSize(AppState.targetWidth, AppState.targetHeight, false);
+            AppState.renderer.render(AppState.scene, AppState.camera);
 
-            const dataURL = renderer.domElement.toDataURL("image/png");
+            const dataURL = AppState.renderer.domElement.toDataURL("image/png");
 
-            renderer.setPixelRatio(currentPixelRatio);
-            camera.aspect = currentAspect;
-            camera.updateProjectionMatrix();
+            AppState.renderer.setPixelRatio(currentPixelRatio);
+            AppState.camera.aspect = currentAspect;
+            AppState.camera.updateProjectionMatrix();
 
-            renderer.setSize(currentW, currentH, false);
-            renderer.render(scene, camera);
+            AppState.renderer.setSize(currentW, currentH, false);
+            AppState.renderer.render(AppState.scene, AppState.camera);
 
-            jointSpheres.forEach(s => s.visible = showJoints);
-            if (skeletonHelper) skeletonHelper.visible = showJoints;
-            transformControls.visible = showJoints && prevTCVis && !!transformControls.object;
+            AppState.jointSpheres.forEach(s => s.visible = AppState.showJoints);
+            if (AppState.skeletonHelper) AppState.skeletonHelper.visible = AppState.showJoints;
+            AppState.transformControls.visible = AppState.showJoints && prevTCVis && !!AppState.transformControls.object;
 
             window.parent.postMessage({ type: "LIKEJ_POSE3D_UPDATE", image: dataURL }, "*");
         }
@@ -2353,20 +1369,20 @@
         function loadModelFromUrl(url, fileName = '', isRestoring = false) {
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
-            loadingEl.innerText = fileName ? `${i18n[currentLang].loadingModel} (${fileName})` : i18n[currentLang].loadingModel;
-            isModelLoaded = false;
+            loadingEl.innerText = fileName ? `${i18n[AppState.currentLang].loadingModel} (${fileName})` : i18n[AppState.currentLang].loadingModel;
+            AppState.isModelLoaded = false;
 
             if (!isRestoring) {
-                config.rotationOffset = { x: 0, y: 0, z: 0 };
+                AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
                 document.getElementById('opt-offset-x').value = 0;
                 document.getElementById('opt-offset-y').value = 0;
                 document.getElementById('opt-offset-z').value = 0;
             }
 
-            if (currentModel) {
+            if (AppState.currentModel) {
                 deselectCurrentBone();
-                scene.remove(currentModel);
-                currentModel.traverse((child) => {
+                AppState.scene.remove(AppState.currentModel);
+                AppState.currentModel.traverse((child) => {
                     if (child.isMesh) {
                         if (child.geometry) child.geometry.dispose();
                         if (child.material) {
@@ -2375,25 +1391,25 @@
                         }
                     }
                 });
-                currentModel = null;
+                AppState.currentModel = null;
             }
 
-            if (skeletonHelper) {
-                scene.remove(skeletonHelper);
-                skeletonHelper = null;
+            if (AppState.skeletonHelper) {
+                AppState.scene.remove(AppState.skeletonHelper);
+                AppState.skeletonHelper = null;
             }
 
-            loader.load(url, (gltf) => {
-                currentModel = gltf.scene;
+            AppState.loader.load(url, (gltf) => {
+                AppState.currentModel = gltf.scene;
 
-                config.modelName = fileName;
+                AppState.config.modelName = fileName;
 
                 if (modelSelect && fileName) {
                     modelSelect.value = fileName;
                 }
 
-                const cVal = config.modelColor;
-                currentModel.traverse((child) => {
+                const cVal = AppState.config.modelColor;
+                AppState.currentModel.traverse((child) => {
                     if (child.isMesh) {
                         child.material = new THREE.MeshStandardMaterial({
                             color: new THREE.Color(cVal, cVal, cVal),
@@ -2404,26 +1420,26 @@
                     }
                 });
 
-                scene.add(currentModel);
+                AppState.scene.add(AppState.currentModel);
 
-                const box = computeExactWorldBoundingBox(currentModel);
+                const box = computeExactWorldBoundingBox(AppState.currentModel);
                 const size = box.getSize(new THREE.Vector3());
-                baseJointRadius = Math.max(0.003, size.y * 0.004);
+                AppState.baseJointRadius = Math.max(0.003, size.y * 0.004);
 
-                setupSkeleton(currentModel);
+                setupSkeleton(AppState.currentModel);
 
                 loadingEl.style.display = 'none';
-                isModelLoaded = true;
+                AppState.isModelLoaded = true;
 
                 if (isRestoring) {
                     updateUIFromConfig();
                     applyModelOffset();
-                    if (config.pose && config.pose.length > 0) {
-                        applyPoseData(config.pose);
+                    if (AppState.config.pose && AppState.config.pose.length > 0) {
+                        applyPoseData(AppState.config.pose);
                     } else {
                         resetPose();
                     }
-                    if (config.camera) applyCameraData(config.camera);
+                    if (AppState.config.camera) applyCameraData(AppState.config.camera);
                     sendPoseToComfyUI();
                 } else {
                     loadInitialPose();
@@ -2431,7 +1447,7 @@
 
             }, undefined, (error) => {
                 console.error('Failed to load model:', error);
-                loadingEl.innerText = i18n[currentLang].msgLoadError;
+                loadingEl.innerText = i18n[AppState.currentLang].msgLoadError;
             });
         }
 
@@ -2439,8 +1455,8 @@
             if (!event.data) return;
 
             if (event.data.type === "LIKEJ_POSE3D_SET_SIZE") {
-                targetWidth = parseInt(event.data.width) || 512;
-                targetHeight = parseInt(event.data.height) || 512;
+                AppState.targetWidth = parseInt(event.data.width) || 512;
+                AppState.targetHeight = parseInt(event.data.height) || 512;
                 if (event.data.triggerSend) sendPoseToComfyUI();
             }
 
@@ -2451,11 +1467,11 @@
                         : event.data.configStr;
 
                     if (loadedConfig && Object.keys(loadedConfig).length > 0) {
-                        config = { ...config, ...loadedConfig };
-                        if (!config.rotationOffset) config.rotationOffset = { x: 0, y: 0, z: 0 };
+                        AppState.config = { ...AppState.config, ...loadedConfig };
+                        if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
 
-                        const modelName = config.modelName || 'female_body_base.glb';
-                        const isDefault = config.isDefaultModel !== undefined ? config.isDefaultModel : true;
+                        const modelName = AppState.config.modelName || 'female_body_base.glb';
+                        const isDefault = AppState.config.isDefaultModel !== undefined ? AppState.config.isDefaultModel : true;
 
                         const targetUrl = getModelApiUrl(modelName, isDefault);
 
@@ -2478,28 +1494,27 @@
             const width = container.clientWidth;
             const height = container.clientHeight;
 
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
+            AppState.camera.aspect = width / height;
+            AppState.camera.updateProjectionMatrix();
+            AppState.renderer.setSize(width, height);
 
-            renderer.render(scene, camera);
+            AppState.renderer.render(AppState.scene, AppState.camera);
         });
 
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
+            AppState.controls.update();
             updateJointSpheres();
-            renderer.render(scene, camera);
+            AppState.renderer.render(AppState.scene, AppState.camera);
         }
         animate();
 
-        controls.addEventListener('end', () => {
-            config.camera = getCameraData();
+        AppState.controls.addEventListener('end', () => {
+            AppState.config.camera = getCameraData();
             notifyConfigChange();
             sendPoseToComfyUI();
         });
 
-        // 初始化預設語言
         updateLanguage();
 
         window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
