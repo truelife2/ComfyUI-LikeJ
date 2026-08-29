@@ -118,10 +118,9 @@
 ## LikeJ Pose 3d Editor
 > idea from:
 > https://github.com/AHEKOT/ComfyUI_VNCCS_Utils
+<img width="880" height="620" alt="image" src="https://github.com/user-attachments/assets/5282d9e8-1553-42c1-9495-dbd4b23845c8" />
 
-> models from:
-> https://sketchfab.com/feed
-<img width="765" height="678" alt="image" src="https://github.com/user-attachments/assets/8fd36638-62f3-4f13-82fa-43958de8790a" />
+
 
 
 
