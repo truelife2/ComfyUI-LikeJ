@@ -280,12 +280,17 @@ canvas {
     align-items: center;
     justify-content: center;
     opacity: 0;
+    visibility: hidden;
+    /* 👈 加上這行：隱藏時強制切斷所有互動 */
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    /* 👈 順便加入 visibility 過渡 */
 }
 
 .modal-overlay.active {
     opacity: 1;
+    visibility: visible;
+    /* 👈 加上這行：開啟時恢復顯示 */
     pointer-events: auto;
 }
 
@@ -440,6 +445,7 @@ canvas {
 }
 
 /* 讓彈窗外層本身透明且預設滑鼠穿透 */
+
 #joints-list-modal {
     background: transparent;
     pointer-events: none;
@@ -447,7 +453,8 @@ canvas {
 
 #joints-list-modal.active {
     opacity: 1;
-    pointer-events: auto; /* 啟動時允許背景點擊，或讓內容自訂 */
+    pointer-events: auto;
+    /* 啟動時允許背景點擊，或讓內容自訂 */
 }
 
 /* 關節點彈窗內容預設為絕對定位、可拖曳且預設滑鼠穿透（開啟時才啟用） */
@@ -456,7 +463,8 @@ canvas {
     position: absolute;
     left: 20px;
     top: 80px;
-    width: 320px; /* 可依需求調整寬度 */
+    width: 320px;
+    /* 可依需求調整寬度 */
     max-height: 500px;
     transform: none;
 }
@@ -468,6 +476,41 @@ canvas {
 
 #joints-list-modal .modal-header:active {
     cursor: grabbing;
+}
+
+/* 骨骼關節清單項目樣式 */
+
+#joints-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.joint-list-item {
+    background: #ffffff;
+    padding: 4px 10px;
+    margin-bottom: 0px;
+    border-radius: 6px;
+    border: 1px solid #f1f5f9;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+    font-size: 12px;
+    color: #334155;
+}
+
+.joint-list-item:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.joint-list-item.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+    font-weight: 600;
 }
 
 /* Shape Keys 項目專屬樣式 */

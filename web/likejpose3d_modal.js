@@ -460,8 +460,7 @@ if (modalHeader) {
     btnResetAllShapeKeys.setAttribute('data-i18n-title', 'tooltipResetShapeKeys'); // 👈 綁定 title 語系 key
     btnResetAllShapeKeys.innerText = '🔄 ' + i18n[AppState.currentLang].btnResetAllShapeKeys;
     btnResetAllShapeKeys.title = i18n[AppState.currentLang].tooltipResetShapeKeys;
-    btnResetAllShapeKeys.style.cssText = 'padding: 3px 8px; font-size: 11px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer; color: #1d4ed8; font-weight: 600; margin-left: auto; margin-right: 6px; pointer-events: auto; transition: all 0.2s;';
-
+    btnResetAllShapeKeys.style.cssText = 'padding: 3px 8px; font-size: 11px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer; color: #1d4ed8; font-weight: 600; margin-left: auto; margin-right: 6px; transition: all 0.2s;';
     btnResetAllShapeKeys.addEventListener('mouseenter', () => {
         btnResetAllShapeKeys.style.background = '#dbeafe';
     });

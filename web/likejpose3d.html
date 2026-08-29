@@ -296,6 +296,11 @@
                 if (child.isSkinnedMesh && child.skeleton) {
                     child.skeleton.pose();
                 }
+                if (child.isMesh && child.morphTargetInfluences) {
+                    for (let i = 0; i < child.morphTargetInfluences.length; i++) {
+                        child.morphTargetInfluences[i] = 0;
+                    }
+                }
             });
 
             AppState.currentModel.updateMatrixWorld(true);
