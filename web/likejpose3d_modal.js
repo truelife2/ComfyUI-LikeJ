@@ -520,18 +520,17 @@ function renderShapeKeysList() {
             const currentValue = influences[index] !== undefined ? influences[index] : 0;
 
             const group = document.createElement('div');
-            group.className = 'control-group';
-            group.style.cssText = 'background: #ffffff; padding: 2px 2px; margin-bottom: 0px; border-radius: 3px; border: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;';
-
+            group.className = 'shapekey-item control-group';
+            
             group.addEventListener('mouseenter', () => group.style.background = '#f8fafc');
             group.addEventListener('mouseleave', () => group.style.background = '#ffffff');
 
             group.innerHTML = `
-                <label style="display: flex; justify-content: space-between; margin-bottom: 0px; font-size: 11px; color: #334155; font-weight: 500; pointer-events: none; line-height: 1.2;">
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px;" title="${keyName}">${keyName}</span>
-                    <span class="val-shapekey" style="font-family: monospace; color: #64748b;">${currentValue.toFixed(2)}</span>
+                <label class="shapekey-header">
+                    <span class="shapekey-name" title="${keyName}">${keyName}</span>
+                    <span class="val-shapekey shapekey-val">${currentValue.toFixed(2)}</span>
                 </label>
-                <input type="range" class="opt-shapekey-slider" min="-3" max="3" step="0.01" value="${currentValue}" style="width: 100%; height: 14px; cursor: pointer; accent-color: #2563eb; margin: 0; display: block;">
+                <input type="range" class="opt-shapekey-slider" min="-3" max="3" step="0.01" value="${currentValue}">
             `;
 
             const slider = group.querySelector('.opt-shapekey-slider');
