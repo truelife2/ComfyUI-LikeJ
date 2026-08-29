@@ -86,7 +86,7 @@ async def get_default_pose(request):
     if not filename:
         return web.json_response({"success": False, "error": "No filename provided"}, status=400)
 
-    # 將擴展名改為 .json，如 female_body_base.glb -> female_body_base.json
+    # 將擴展名改為 .json，如 default.glb -> female_body_base.json
     base_name = os.path.splitext(filename)[0]
     json_filename = f"{base_name}.json"
 
@@ -140,7 +140,7 @@ async def save_default_pose(request):
 async def save_custom_pose(request):
     try:
         data = await request.json()
-        model_filename = data.get("model_filename", "")  # 例如 female_body_base.glb
+        model_filename = data.get("model_filename", "")  # 例如 default.glb
         pose_name = data.get("pose_name", "").strip()  # 姿態檔名稱 (不含副檔名)
         is_default = data.get("is_default", False)
         config_data = data.get("config", {})

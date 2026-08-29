@@ -1561,20 +1561,20 @@
                             applyShapeKeysData(AppState.config.shapeKeys);
                         }
 
-                        const modelName = AppState.config.modelName || 'female_body_base.glb';
+                        const modelName = AppState.config.modelName || 'default.glb';
                         const isDefault = AppState.config.isDefaultModel !== undefined ? AppState.config.isDefaultModel : true;
 
                         const targetUrl = getModelApiUrl(modelName, isDefault);
 
                         loadModelFromUrl(targetUrl, modelName, true);
                     } else {
-                        const defaultName = 'female_body_base.glb';
+                        const defaultName = 'default.glb';
                         const targetUrl = getModelApiUrl(defaultName, true);
                         loadModelFromUrl(targetUrl, defaultName, false);
                     }
                 } catch (e) {
                     console.warn("Failed to parse Node configuration, loading default model", e);
-                    const defaultName = 'female_body_base.glb';
+                    const defaultName = 'default.glb';
                     const targetUrl = getModelApiUrl(defaultName, true);
                     loadModelFromUrl(targetUrl, defaultName, false);
                 }

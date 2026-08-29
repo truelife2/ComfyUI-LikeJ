@@ -10,6 +10,68 @@ const btnCloseJointsModal = document.getElementById('btn-close-joints-modal');
 const inputSearchJoints = document.getElementById('input-search-joints');
 const btnCopyJoints = document.getElementById('btn-copy-joints');
 
+const jointsModalContent = jointsListModal ? jointsListModal.querySelector('.modal-content') : null;
+const jointsModalHeader = jointsModalContent ? jointsModalContent.querySelector('.modal-header') : null;
+
+// 初始化彈窗為左側懸浮視窗，預設關閉時讓滑鼠事件完全穿透
+if (jointsListModal && jointsModalContent) {
+    jointsListModal.style.background = 'transparent';
+    jointsListModal.style.pointerEvents = 'none';
+
+    jointsModalContent.style.pointerEvents = 'none';
+    jointsModalContent.style.position = 'absolute';
+    jointsModalContent.style.left = '20px'; // 讓它跟 shape keys 錯開位置，或者依喜好調整
+    jointsModalContent.style.top = '80px';
+    jointsModalContent.style.transform = 'none';
+}
+
+// 實作關節點標題列拖曳功能
+if (jointsModalHeader && jointsModalContent) {
+    jointsModalHeader.style.cursor = 'grab';
+    let isJointsDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    jointsModalHeader.addEventListener('mousedown', (e) => {
+        // 點擊按鈕或輸入框時不觸發拖曳
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+
+        isJointsDragging = true;
+        jointsModalHeader.style.cursor = 'grabbing';
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const rect = jointsModalContent.getBoundingClientRect();
+        jointsModalContent.style.position = 'absolute';
+        jointsModalContent.style.left = rect.left + 'px';
+        jointsModalContent.style.top = rect.top + 'px';
+        jointsModalContent.style.right = 'auto';
+        jointsModalContent.style.bottom = 'auto';
+        jointsModalContent.style.transform = 'none';
+
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isJointsDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        jointsModalContent.style.left = (initialLeft + dx) + 'px';
+        jointsModalContent.style.top = (initialTop + dy) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isJointsDragging) {
+            isJointsDragging = false;
+            jointsModalHeader.style.cursor = 'grab';
+        }
+    });
+}
+
+// 渲染關節點清單邏輯（維持您原本的搜尋與點擊附加功能）
 function renderJointList(filterText = '') {
     if (!jointsContainer) return;
     jointsContainer.innerHTML = '';
@@ -76,30 +138,34 @@ function renderJointList(filterText = '') {
     }
 }
 
+// 關閉視窗的共用方法
+function closeJointsModal() {
+    if (jointsListModal) {
+        jointsListModal.classList.remove('active');
+        if (jointsModalContent) jointsModalContent.style.pointerEvents = 'none'; // 關閉時恢復滑鼠穿透
+    }
+}
+
 if (btnJointsModal) {
     btnJointsModal.addEventListener('click', () => {
         if (inputSearchJoints) inputSearchJoints.value = '';
         renderJointList();
-        if (jointsListModal) jointsListModal.classList.add('active');
+        if (jointsListModal) {
+            jointsListModal.classList.add('active');
+            if (jointsModalContent) jointsModalContent.style.pointerEvents = 'auto'; // 開啟時計點擊互動
+        }
     });
 }
 
 if (btnCloseJointsModal) {
-    btnCloseJointsModal.addEventListener('click', () => {
-        if (jointsListModal) jointsListModal.classList.remove('active');
-    });
+    btnCloseJointsModal.addEventListener('click', closeJointsModal);
 }
 
 if (jointsListModal) {
     jointsListModal.addEventListener('click', (e) => {
         if (e.target === jointsListModal) {
-            jointsListModal.classList.remove('active');
+            closeJointsModal();
         }
-    });
-
-    jointsListModal.addEventListener('dblclick', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-        jointsListModal.classList.remove('active');
     });
 }
 
@@ -521,7 +587,7 @@ function renderShapeKeysList() {
 
             const group = document.createElement('div');
             group.className = 'shapekey-item control-group';
-            
+
             group.addEventListener('mouseenter', () => group.style.background = '#f8fafc');
             group.addEventListener('mouseleave', () => group.style.background = '#ffffff');
 
