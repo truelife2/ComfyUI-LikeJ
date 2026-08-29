@@ -228,6 +228,7 @@ if (btnConfirmSavePose) {
         const poseData = {
             rotationOffset: AppState.config.rotationOffset || { x: 0, y: 0, z: 0 },
             pose: typeof getPoseData === 'function' ? getPoseData() : [],
+            shapeKeys: typeof getShapeKeysData === 'function' ? getShapeKeysData() : {},
             camera: typeof getCameraData === 'function' ? getCameraData() : null,
             ambient: AppState.config.ambient,
             direct: AppState.config.direct,
@@ -356,5 +357,202 @@ if (btnCloseModal) {
 if (poseModal) {
     poseModal.addEventListener('click', (e) => {
         if (e.target === poseModal) poseModal.classList.remove('active');
+    });
+}
+
+
+
+
+// --- 4. Shape Keys 彈窗與設定管理 (支援拖曳、懸浮、背景互動) ---
+const shapeKeysModal = document.getElementById('shapekeys-list-modal');
+const shapeKeysContainer = document.getElementById('shapekeys-list-container');
+const btnShapeKeysModal = document.getElementById('btn-shapekeys-modal');
+const btnCloseShapeKeysModal = document.getElementById('btn-close-shapekeys-modal');
+
+const modalContent = shapeKeysModal ? shapeKeysModal.querySelector('.modal-content') : null;
+const modalHeader = modalContent ? modalContent.querySelector('.modal-header') : null;
+
+// 初始化彈窗為右側懸浮視窗，預設關閉時讓滑鼠事件完全穿透
+if (shapeKeysModal && modalContent) {
+    shapeKeysModal.style.background = 'transparent'; // 移除半透明黑幕
+    shapeKeysModal.style.pointerEvents = 'none';     // 讓遮罩背景可穿透
+
+    modalContent.style.pointerEvents = 'none';       // 關鍵修正：預設未顯示時不攔截點擊
+    modalContent.style.position = 'absolute';
+    modalContent.style.right = '20px';               // 預設靠右，不擋住中間模型
+    modalContent.style.top = '80px';
+    modalContent.style.transform = 'none';
+}
+
+// 實作標題列拖曳功能
+if (modalHeader && modalContent) {
+    modalHeader.style.cursor = 'grab';
+    let isDragging = false;
+    let startX, startY, initialLeft, initialTop;
+
+    modalHeader.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        modalHeader.style.cursor = 'grabbing';
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const rect = modalContent.getBoundingClientRect();
+        modalContent.style.position = 'absolute';
+        modalContent.style.left = rect.left + 'px';
+        modalContent.style.top = rect.top + 'px';
+        modalContent.style.right = 'auto';
+        modalContent.style.bottom = 'auto';
+        modalContent.style.transform = 'none';
+
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        modalContent.style.left = (initialLeft + dx) + 'px';
+        modalContent.style.top = (initialTop + dy) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            modalHeader.style.cursor = 'grab';
+        }
+    });
+}
+
+function renderShapeKeysList() {
+    if (!shapeKeysContainer) return;
+    shapeKeysContainer.innerHTML = '';
+
+    let hasShapeKeys = false;
+    const meshesWithMorphs = [];
+
+    if (AppState.currentModel) {
+        AppState.currentModel.traverse((child) => {
+            if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+                meshesWithMorphs.push(child);
+            }
+        });
+    }
+
+    if (meshesWithMorphs.length === 0) {
+        shapeKeysContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 20px;">${i18n[AppState.currentLang].emptyShapeKeys}</div>`;
+        return;
+    }
+
+    meshesWithMorphs.forEach((mesh) => {
+        const dictionary = mesh.morphTargetDictionary;
+        const influences = mesh.morphTargetInfluences;
+
+        Object.keys(dictionary).forEach((keyName) => {
+            hasShapeKeys = true;
+            const index = dictionary[keyName];
+            const currentValue = influences[index] !== undefined ? influences[index] : 0;
+
+            const group = document.createElement('div');
+            group.className = 'control-group';
+            group.style.background = '#f8fafc';
+            group.style.padding = '8px 12px';
+            group.style.borderRadius = '6px';
+            group.style.border = '1px solid #cbd5e1';
+            group.style.cursor = 'pointer';
+            group.title = '雙擊此欄位可重設為 0';
+
+            group.innerHTML = `
+                <label style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; color: #334155; font-weight: 600; pointer-events: none;">
+                    <span>${keyName}</span>
+                    <span class="val-shapekey">${currentValue.toFixed(2)}</span>
+                </label>
+                <input type="range" class="opt-shapekey-slider" min="-1" max="2" step="0.01" value="${currentValue}" style="width: 100%; cursor: pointer; accent-color: #2563eb;">
+            `;
+
+            const slider = group.querySelector('.opt-shapekey-slider');
+            const valSpan = group.querySelector('.val-shapekey');
+
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                influences[index] = val;
+                valSpan.innerText = val.toFixed(2);
+
+                if (typeof getShapeKeysData === 'function') {
+                    AppState.config.shapeKeys = getShapeKeysData();
+                }
+                if (typeof notifyConfigChange === 'function') {
+                    notifyConfigChange();
+                }
+
+                if (AppState.renderer && AppState.scene && AppState.camera) {
+                    AppState.renderer.render(AppState.scene, AppState.camera);
+                }
+
+                if (typeof sendPoseToComfyUI === 'function') {
+                    sendPoseToComfyUI();
+                }
+            });
+
+            group.addEventListener('dblclick', () => {
+                slider.value = 0;
+                influences[index] = 0;
+                valSpan.innerText = (0).toFixed(2);
+
+                if (typeof getShapeKeysData === 'function') {
+                    AppState.config.shapeKeys = getShapeKeysData();
+                }
+                if (typeof notifyConfigChange === 'function') {
+                    notifyConfigChange();
+                }
+
+                if (AppState.renderer && AppState.scene && AppState.camera) {
+                    AppState.renderer.render(AppState.scene, AppState.camera);
+                }
+
+                if (typeof sendPoseToComfyUI === 'function') {
+                    sendPoseToComfyUI();
+                }
+            });
+
+            shapeKeysContainer.appendChild(group);
+        });
+    });
+
+    if (!hasShapeKeys) {
+        shapeKeysContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 20px;">${i18n[AppState.currentLang].emptyShapeKeys}</div>`;
+    }
+}
+
+// 關閉視窗的共用方法
+function closeShapeKeysModal() {
+    if (shapeKeysModal) {
+        shapeKeysModal.classList.remove('active');
+        if (modalContent) modalContent.style.pointerEvents = 'none'; // 關閉時恢復穿透
+    }
+}
+
+if (btnShapeKeysModal) {
+    btnShapeKeysModal.addEventListener('click', () => {
+        renderShapeKeysList();
+        if (shapeKeysModal) {
+            shapeKeysModal.classList.add('active');
+            if (modalContent) modalContent.style.pointerEvents = 'auto'; // 開啟時計點擊互動
+        }
+    });
+}
+
+if (btnCloseShapeKeysModal) {
+    btnCloseShapeKeysModal.addEventListener('click', closeShapeKeysModal);
+}
+
+if (shapeKeysModal) {
+    shapeKeysModal.addEventListener('click', (e) => {
+        if (e.target === shapeKeysModal) {
+            closeShapeKeysModal();
+        }
     });
 }

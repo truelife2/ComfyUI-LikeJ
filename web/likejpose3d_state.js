@@ -61,6 +61,9 @@ const i18n = {
         cannotDeleteDefault: "預設模型無法刪除！",
         msgDeleteModelFailed: "刪除模型失敗: ",
         titleDeleteModel: "刪除模型",
+        btnShapeKeyList: "😊 形變控制",
+        modalShapeKeysTitle: "😊 模型形變清單 (Shape Keys)",
+        emptyShapeKeys: "此模型沒有可用的 Shape Keys",
     },
     en: {
         titleModelFile: "📁 Model File",
@@ -119,6 +122,9 @@ const i18n = {
         cannotDeleteDefault: "Default models cannot be deleted!",
         msgDeleteModelFailed: "Failed to delete model: ",
         titleDeleteModel: "Delete Model",
+        btnShapeKeyList: "😊 Shape Keys",
+        modalShapeKeysTitle: "😊 Shape Keys List",
+        emptyShapeKeys: "No Shape Keys found in this model",
     }
 };
 

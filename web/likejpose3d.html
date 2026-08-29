@@ -53,6 +53,8 @@
                         List</button>
                     <button id="btn-toggle-joints" class="toggle-btn">Show Joints</button>
                 </div>
+                <button id="btn-shapekeys-modal" class="toggle-btn btn-info" data-i18n="btnShapeKeyList">😊 Shape
+                    Keys</button>
                 <label><span data-i18n="lblJointSize">Joint Size</span> <span id="val-jointsize">1.0</span></label>
                 <input type="range" id="opt-jointsize" min="0.2" max="5" step="0.1" value="1.0">
                 <label><span data-i18n="lblGizmoSize">Control Axis Size</span> <span
@@ -168,6 +170,18 @@
                     <button id="btn-confirm-save-pose" class="toggle-btn btn-success"
                         data-i18n="btnConfirmSave">Save</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="shapekeys-list-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px; height: 70%; max-height: 550px;">
+            <div class="modal-header">
+                <div class="modal-title" data-i18n="modalShapeKeysTitle">😊 Shape Keys List</div>
+                <button class="modal-close" id="btn-close-shapekeys-modal">✕</button>
+            </div>
+            <div id="shapekeys-list-container"
+                style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
             </div>
         </div>
     </div>
@@ -295,6 +309,7 @@
             focusFullBody(true);
 
             AppState.config.pose = getPoseData();
+            AppState.config.shapeKeys = getShapeKeysData();
             notifyConfigChange();
             sendPoseToComfyUI();
         }
@@ -314,10 +329,20 @@
                     updateUIFromConfig();
                     applyModelOffset();
 
-                    if (defaultConfig.pose && defaultConfig.pose.length > 0) {
+                    const hasPose = defaultConfig.pose && defaultConfig.pose.length > 0;
+                    const hasShapeKeys = defaultConfig.shapeKeys && Object.keys(defaultConfig.shapeKeys).length > 0;
+
+                    if (hasPose) {
                         AppState.config.pose = defaultConfig.pose;
                         applyPoseData(defaultConfig.pose);
-                    } else {
+                    }
+
+                    if (hasShapeKeys) {
+                        AppState.config.shapeKeys = defaultConfig.shapeKeys;
+                        applyShapeKeysData(defaultConfig.shapeKeys);
+                    }
+
+                    if (!hasPose && !hasShapeKeys) {
                         resetPose();
                     }
 
@@ -487,6 +512,53 @@
             });
 
             updateJointSpheres();
+        }
+
+        function getShapeKeysData() {
+            if (!AppState.currentModel) return {};
+            const shapeKeys = {};
+            let meshIndex = 0;
+            AppState.currentModel.traverse((child) => {
+                if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+                    // 結合索引與名稱，確保每一塊 Mesh 都有獨一無二的識別 key
+                    const identifier = child.name ? `${meshIndex}_${child.name}` : `mesh_${meshIndex}`;
+                    const data = {};
+                    for (const [keyName, index] of Object.entries(child.morphTargetDictionary)) {
+                        data[keyName] = child.morphTargetInfluences[index];
+                    }
+                    shapeKeys[identifier] = data;
+                    meshIndex++;
+                }
+            });
+            return shapeKeys;
+        }
+
+        function applyShapeKeysData(shapeKeysData) {
+            if (!AppState.currentModel || !shapeKeysData) return;
+
+            try {
+                let meshIndex = 0;
+                AppState.currentModel.traverse((child) => {
+                    if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+                        const identifier = child.name ? `${meshIndex}_${child.name}` : `mesh_${meshIndex}`;
+
+                        // 支援新格式識別碼，同時向下相容舊版的純名稱或 unnamed_mesh
+                        const meshData = shapeKeysData[identifier] || shapeKeysData[child.name] || shapeKeysData["unnamed_mesh"];
+
+                        if (meshData && typeof meshData === 'object') {
+                            for (const [keyName, val] of Object.entries(meshData)) {
+                                if (keyName in child.morphTargetDictionary) {
+                                    const index = child.morphTargetDictionary[keyName];
+                                    child.morphTargetInfluences[index] = val;
+                                }
+                            }
+                        }
+                        meshIndex++;
+                    }
+                });
+            } catch (e) {
+                console.warn("Shape keys application warning (Pose remains safe):", e);
+            }
         }
 
         function isAncestorOf(parent, child) {
@@ -1109,6 +1181,7 @@
             const defaultPoseData = {
                 rotationOffset: AppState.config.rotationOffset || { x: 0, y: 0, z: 0 },
                 pose: getPoseData(),
+                shapeKeys: getShapeKeysData(),
                 camera: getCameraData(),
                 ambient: AppState.config.ambient,
                 direct: AppState.config.direct,
@@ -1411,11 +1484,14 @@
                 const cVal = AppState.config.modelColor;
                 AppState.currentModel.traverse((child) => {
                     if (child.isMesh) {
+                        const hasMorphs = child.morphTargetDictionary && Object.keys(child.morphTargetDictionary).length > 0;
                         child.material = new THREE.MeshStandardMaterial({
                             color: new THREE.Color(cVal, cVal, cVal),
                             roughness: 0.6,
                             metalness: 0.1,
-                            skinning: child.isSkinnedMesh || false
+                            skinning: child.isSkinnedMesh || false,
+                            morphTargets: hasMorphs,
+                            morphNormals: hasMorphs && child.geometry && child.geometry.morphAttributes && child.geometry.morphAttributes.normal ? true : false
                         });
                     }
                 });
@@ -1434,11 +1510,22 @@
                 if (isRestoring) {
                     updateUIFromConfig();
                     applyModelOffset();
-                    if (AppState.config.pose && AppState.config.pose.length > 0) {
+
+                    const hasPose = AppState.config.pose && AppState.config.pose.length > 0;
+                    const hasShapeKeys = AppState.config.shapeKeys && Object.keys(AppState.config.shapeKeys).length > 0;
+
+                    if (hasPose) {
                         applyPoseData(AppState.config.pose);
-                    } else {
+                    }
+
+                    if (hasShapeKeys) {
+                        applyShapeKeysData(AppState.config.shapeKeys);
+                    }
+
+                    if (!hasPose && !hasShapeKeys) {
                         resetPose();
                     }
+
                     if (AppState.config.camera) applyCameraData(AppState.config.camera);
                     sendPoseToComfyUI();
                 } else {
@@ -1469,6 +1556,10 @@
                     if (loadedConfig && Object.keys(loadedConfig).length > 0) {
                         AppState.config = { ...AppState.config, ...loadedConfig };
                         if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
+
+                        if (AppState.config.shapeKeys) {
+                            applyShapeKeysData(AppState.config.shapeKeys);
+                        }
 
                         const modelName = AppState.config.modelName || 'female_body_base.glb';
                         const isDefault = AppState.config.isDefaultModel !== undefined ? AppState.config.isDefaultModel : true;
