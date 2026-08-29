@@ -362,7 +362,6 @@ if (poseModal) {
 
 
 
-
 // --- 4. Shape Keys 彈窗與設定管理 (支援拖曳、懸浮、背景互動) ---
 const shapeKeysModal = document.getElementById('shapekeys-list-modal');
 const shapeKeysContainer = document.getElementById('shapekeys-list-container');
@@ -372,16 +371,74 @@ const btnCloseShapeKeysModal = document.getElementById('btn-close-shapekeys-moda
 const modalContent = shapeKeysModal ? shapeKeysModal.querySelector('.modal-content') : null;
 const modalHeader = modalContent ? modalContent.querySelector('.modal-header') : null;
 
-// 初始化彈窗為右側懸浮視窗，預設關閉時讓滑鼠事件完全穿透
+// 初始化彈窗為左側懸浮視窗，預設關閉時讓滑鼠事件完全穿透
 if (shapeKeysModal && modalContent) {
-    shapeKeysModal.style.background = 'transparent'; // 移除半透明黑幕
-    shapeKeysModal.style.pointerEvents = 'none';     // 讓遮罩背景可穿透
+    shapeKeysModal.style.background = 'transparent';
+    shapeKeysModal.style.pointerEvents = 'none';
 
-    modalContent.style.pointerEvents = 'none';       // 關鍵修正：預設未顯示時不攔截點擊
+    modalContent.style.pointerEvents = 'none';
     modalContent.style.position = 'absolute';
-    modalContent.style.right = '20px';               // 預設靠右，不擋住中間模型
+    modalContent.style.left = '20px';
     modalContent.style.top = '80px';
     modalContent.style.transform = 'none';
+}
+
+// 將「全部重置」按鈕美化並放進標題列
+let btnResetAllShapeKeys = null;
+if (modalHeader) {
+    modalHeader.style.display = 'flex';
+    modalHeader.style.alignItems = 'center';
+
+    btnResetAllShapeKeys = document.createElement('button');
+    btnResetAllShapeKeys.setAttribute('data-i18n', 'btnResetAllShapeKeys');
+    btnResetAllShapeKeys.setAttribute('data-i18n-title', 'tooltipResetShapeKeys'); // 👈 綁定 title 語系 key
+    btnResetAllShapeKeys.innerText = '🔄 ' + i18n[AppState.currentLang].btnResetAllShapeKeys;
+    btnResetAllShapeKeys.title = i18n[AppState.currentLang].tooltipResetShapeKeys;
+    btnResetAllShapeKeys.style.cssText = 'padding: 3px 8px; font-size: 11px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer; color: #1d4ed8; font-weight: 600; margin-left: auto; margin-right: 6px; pointer-events: auto; transition: all 0.2s;';
+
+    btnResetAllShapeKeys.addEventListener('mouseenter', () => {
+        btnResetAllShapeKeys.style.background = '#dbeafe';
+    });
+    btnResetAllShapeKeys.addEventListener('mouseleave', () => {
+        btnResetAllShapeKeys.style.background = '#eff6ff';
+    });
+
+    // 點擊全部重置的邏輯
+    btnResetAllShapeKeys.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!AppState.currentModel) return;
+
+        AppState.currentModel.traverse((child) => {
+            if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+                const influences = child.morphTargetInfluences;
+                for (let i = 0; i < influences.length; i++) {
+                    influences[i] = 0;
+                }
+            }
+        });
+
+        // 重新渲染清單與畫面
+        renderShapeKeysList();
+
+        if (typeof getShapeKeysData === 'function') {
+            AppState.config.shapeKeys = getShapeKeysData();
+        }
+        if (typeof notifyConfigChange === 'function') {
+            notifyConfigChange();
+        }
+        if (AppState.renderer && AppState.scene && AppState.camera) {
+            AppState.renderer.render(AppState.scene, AppState.camera);
+        }
+        if (typeof sendPoseToComfyUI === 'function') {
+            sendPoseToComfyUI();
+        }
+    });
+
+    if (btnCloseShapeKeysModal) {
+        btnCloseShapeKeysModal.before(btnResetAllShapeKeys);
+    } else {
+        modalHeader.appendChild(btnResetAllShapeKeys);
+    }
 }
 
 // 實作標題列拖曳功能
@@ -391,6 +448,8 @@ if (modalHeader && modalContent) {
     let startX, startY, initialLeft, initialTop;
 
     modalHeader.addEventListener('mousedown', (e) => {
+        if (e.target === btnResetAllShapeKeys || e.target === btnCloseShapeKeysModal) return;
+
         isDragging = true;
         modalHeader.style.cursor = 'grabbing';
         startX = e.clientX;
@@ -429,6 +488,10 @@ if (modalHeader && modalContent) {
 
 function renderShapeKeysList() {
     if (!shapeKeysContainer) return;
+
+    shapeKeysContainer.style.display = 'flex';
+    shapeKeysContainer.style.flexDirection = 'column';
+    shapeKeysContainer.style.gap = '5px';
     shapeKeysContainer.innerHTML = '';
 
     let hasShapeKeys = false;
@@ -458,19 +521,17 @@ function renderShapeKeysList() {
 
             const group = document.createElement('div');
             group.className = 'control-group';
-            group.style.background = '#f8fafc';
-            group.style.padding = '8px 12px';
-            group.style.borderRadius = '6px';
-            group.style.border = '1px solid #cbd5e1';
-            group.style.cursor = 'pointer';
-            group.title = '雙擊此欄位可重設為 0';
+            group.style.cssText = 'background: #ffffff; padding: 2px 2px; margin-bottom: 0px; border-radius: 3px; border: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;';
+
+            group.addEventListener('mouseenter', () => group.style.background = '#f8fafc');
+            group.addEventListener('mouseleave', () => group.style.background = '#ffffff');
 
             group.innerHTML = `
-                <label style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; color: #334155; font-weight: 600; pointer-events: none;">
-                    <span>${keyName}</span>
-                    <span class="val-shapekey">${currentValue.toFixed(2)}</span>
+                <label style="display: flex; justify-content: space-between; margin-bottom: 0px; font-size: 11px; color: #334155; font-weight: 500; pointer-events: none; line-height: 1.2;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px;" title="${keyName}">${keyName}</span>
+                    <span class="val-shapekey" style="font-family: monospace; color: #64748b;">${currentValue.toFixed(2)}</span>
                 </label>
-                <input type="range" class="opt-shapekey-slider" min="-1" max="2" step="0.01" value="${currentValue}" style="width: 100%; cursor: pointer; accent-color: #2563eb;">
+                <input type="range" class="opt-shapekey-slider" min="-3" max="3" step="0.01" value="${currentValue}" style="width: 100%; height: 14px; cursor: pointer; accent-color: #2563eb; margin: 0; display: block;">
             `;
 
             const slider = group.querySelector('.opt-shapekey-slider');

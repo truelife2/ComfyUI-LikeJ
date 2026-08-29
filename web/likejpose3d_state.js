@@ -64,6 +64,8 @@ const i18n = {
         btnShapeKeyList: "😊 形變控制",
         modalShapeKeysTitle: "😊 模型形變清單 (Shape Keys)",
         emptyShapeKeys: "此模型沒有可用的 Shape Keys",
+        btnResetAllShapeKeys: "↺ 全部重置",
+        tooltipResetShapeKeys: "將所有 Shape Keys 歸零",
     },
     en: {
         titleModelFile: "📁 Model File",
@@ -125,6 +127,8 @@ const i18n = {
         btnShapeKeyList: "😊 Shape Keys",
         modalShapeKeysTitle: "😊 Shape Keys List",
         emptyShapeKeys: "No Shape Keys found in this model",
+        btnResetAllShapeKeys: "↺ Reset All",
+        tooltipResetShapeKeys: "Reset all Shape Keys to zero",
     }
 };
 
@@ -197,6 +201,13 @@ function updateLanguage() {
         const key = el.getAttribute('data-i18n-placeholder');
         if (langData[key]) {
             el.placeholder = langData[key];
+        }
+    });
+
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (langData[key]) {
+            el.title = langData[key];
         }
     });
 
