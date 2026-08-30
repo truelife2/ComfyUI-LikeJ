@@ -13,6 +13,32 @@ const btnCopyJoints = document.getElementById('btn-copy-joints');
 const jointsModalContent = jointsListModal ? jointsListModal.querySelector('.modal-content') : null;
 const jointsModalHeader = jointsModalContent ? jointsModalContent.querySelector('.modal-header') : null;
 
+let jointsModeBtnGroup = null;
+if (jointsModalHeader && !document.getElementById('modal-btn-mode-rotate')) {
+    // 1. 將原有的 header 內容包進第一行（左右對齊）
+    jointsModalHeader.style.cssText = 'display: flex; flex-direction: column; gap: 3px; align-items: stretch;padding: 8px 15px 6px 15px;';
+
+    const topRow = document.createElement('div');
+    topRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; width: 100%;';
+
+    while (jointsModalHeader.firstChild) {
+        topRow.appendChild(jointsModalHeader.firstChild);
+    }
+    jointsModalHeader.appendChild(topRow);
+
+    // 2. 建立下方置中的按鈕群組
+    jointsModeBtnGroup = document.createElement('div');
+    jointsModeBtnGroup.className = 'btn-group';
+    jointsModeBtnGroup.style.cssText = 'display: flex; justify-content: center; gap: 6px; width: 100%;';
+    jointsModeBtnGroup.innerHTML = `
+        <button id="modal-btn-mode-rotate" class="toggle-btn active" style="padding: 4px 16px; font-size: 12px;" onclick="setTransformMode('rotate')">Rotate</button>
+        <button id="modal-btn-mode-translate" class="toggle-btn" style="padding: 4px 16px; font-size: 12px;" onclick="setTransformMode('translate')">Move</button>
+        <button id="modal-btn-mode-scale" class="toggle-btn" style="padding: 4px 16px; font-size: 12px;" onclick="setTransformMode('scale')">Zoom</button>
+    `;
+
+    jointsModalHeader.appendChild(jointsModeBtnGroup);
+}
+
 // 初始化彈窗為左側懸浮視窗，預設關閉時讓滑鼠事件完全穿透
 if (jointsListModal && jointsModalContent) {
     jointsListModal.style.background = 'transparent';

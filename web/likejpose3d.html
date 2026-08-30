@@ -222,8 +222,10 @@
             if (!AppState.transformControls) return;
             AppState.transformControls.setMode(mode);
 
-            document.querySelectorAll('.btn-group .toggle-btn').forEach(btn => {
-                if (btn.id.startsWith('btn-mode-')) {
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                if (btn.id === `btn-mode-${mode}` || btn.id === `modal-btn-mode-${mode}`) {
+                    btn.classList.add('active');
+                } else if (btn.id.startsWith('btn-mode-') || btn.id.startsWith('modal-btn-mode-')) {
                     btn.classList.remove('active');
                 }
             });
