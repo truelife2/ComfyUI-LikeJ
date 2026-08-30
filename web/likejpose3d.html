@@ -1445,6 +1445,8 @@
         }
 
         function loadModelFromUrl(url, fileName = '', isRestoring = false) {
+            closeAllFloatModals();
+
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
             loadingEl.innerText = fileName ? `${i18n[AppState.currentLang].loadingModel} (${fileName})` : i18n[AppState.currentLang].loadingModel;

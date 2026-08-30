@@ -148,6 +148,8 @@ function closeJointsModal() {
 
 if (btnJointsModal) {
     btnJointsModal.addEventListener('click', () => {
+        closeShapeKeysModal();
+
         if (inputSearchJoints) inputSearchJoints.value = '';
         renderJointList();
         if (jointsListModal) {
@@ -662,6 +664,8 @@ function closeShapeKeysModal() {
 
 if (btnShapeKeysModal) {
     btnShapeKeysModal.addEventListener('click', () => {
+        closeJointsModal();
+
         renderShapeKeysList();
         if (shapeKeysModal) {
             shapeKeysModal.classList.add('active');
@@ -680,4 +684,12 @@ if (shapeKeysModal) {
             closeShapeKeysModal();
         }
     });
+}
+
+
+
+//關閉所有浮動視窗。
+function closeAllFloatModals() {
+    closeJointsModal();
+    closeShapeKeysModal();
 }
