@@ -116,8 +116,10 @@
    <img width="407" height="275" alt="image" src="https://github.com/user-attachments/assets/fd3ed553-73e6-4b15-93e0-19596ea4fa99" />
 
 ## LikeJ Pose 3d Editor
-> idea from:
-> https://github.com/AHEKOT/ComfyUI_VNCCS_Utils
+> design by: https://threejs.org/
+
+> idea from: https://github.com/AHEKOT/ComfyUI_VNCCS_Utils
+
 <img width="880" height="620" alt="image" src="https://github.com/user-attachments/assets/5282d9e8-1553-42c1-9495-dbd4b23845c8" />
 
 
