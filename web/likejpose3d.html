@@ -36,6 +36,9 @@
                         初始姿態</button>
                     <button id="btn-pose-reset" class="toggle-btn btn-danger" data-i18n="btnResetPose">↺ 重置姿態</button>
                 </div>
+                <button id="btn-load-vnccs" class="toggle-btn btn-info"
+                    style="background-color: #6366f1; color: white; display:none" data-i18n="btnLoadVnccs">📂 VNCCS
+                    Poses</button>
             </div>
 
             <div class="panel-title" data-i18n="titleTransform">🕹️ Transform Controls</div>
@@ -237,7 +240,7 @@
             if (AppState.transformControls && AppState.transformControls.visible) {
                 AppState.transformControls.detach();
                 AppState.transformControls.visible = false;
-                updateSelectedBoneLabel(null);
+                updateSelectedBoneLabel(null, null);
             }
         }
 
@@ -263,13 +266,45 @@
             sendPoseToComfyUI();
         }
 
-        function updateSelectedBoneLabel(boneName) {
+        function updateSelectedBoneLabel(targetBone, hitSphere) {
+
             const labelEl = document.getElementById('bone-label');
             const nameEl = document.getElementById('bone-label-name');
             if (!labelEl || !nameEl) return;
 
-            if (boneName) {
-                nameEl.innerText = boneName;
+            let labelText;
+
+            if (targetBone) {
+                // 1. 取得基本骨骼數量與名稱
+                const bonesCount = hitSphere && hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
+                const baseName = bonesCount > 1
+                    ? `${targetBone.name} (+${bonesCount - 1} ${i18n[AppState.currentLang].drivenBones})`
+                    : targetBone.name;
+
+                // 2. 擷取 Transform 資訊 (Position, Rotation, Scale)
+                const pos = targetBone.position;
+                const rot = targetBone.rotation;
+                const scale = targetBone.scale;
+
+                // 將旋轉弳度轉為人類好讀的角度 (Degrees)，並取到小數點後 1 位
+                const rotDeg = {
+                    x: THREE.MathUtils.radToDeg(rot.x).toFixed(1),
+                    y: THREE.MathUtils.radToDeg(rot.y).toFixed(1),
+                    z: THREE.MathUtils.radToDeg(rot.z).toFixed(1)
+                };
+
+                // 3. 組合字串 (若你的 UI 標籤支援換行，可用 \n 或 <br>)
+                const transformInfo = `
+Pos: X:${pos.x.toFixed(2)} Y:${pos.y.toFixed(2)} Z:${pos.z.toFixed(2)}
+Rot: X:${rotDeg.x}° Y:${rotDeg.y}° Z:${rotDeg.z}°
+Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
+`.trim();
+
+                labelText = `${baseName}\n${transformInfo}`;
+            }
+
+            if (labelText) {
+                nameEl.innerText = labelText;
                 labelEl.style.display = 'block';
             } else {
                 labelEl.style.display = 'none';
@@ -360,7 +395,8 @@
                         focusFullBody(true);
                     }
                 } else {
-                    focusFullBody(true);
+                    resetPose();
+                    // focusFullBody(true);
                 }
 
                 notifyConfigChange();
@@ -902,12 +938,7 @@
                     AppState.transformControls.attach(targetBone);
                     AppState.transformControls.visible = true;
 
-                    const bonesCount = hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
-                    const labelText = bonesCount > 1
-                        ? `${targetBone.name} (+${bonesCount - 1} ${i18n[AppState.currentLang].drivenBones})`
-                        : targetBone.name;
-
-                    updateSelectedBoneLabel(labelText);
+                    updateSelectedBoneLabel(targetBone, hitSphere);
                 } else {
                     const isClickingGizmo = AppState.transformControls.visible && AppState.transformControls.axis !== null;
                     if (!isClickingGizmo) {
@@ -938,12 +969,14 @@
             AppState.raycaster.setFromCamera(AppState.mouse, AppState.camera);
 
             let targetBone = null;
+            let hitSphere = null;
             let hitPoint = null;
 
             if (AppState.showJoints) {
                 const jointIntersects = AppState.raycaster.intersectObjects(AppState.jointSpheres);
                 if (jointIntersects.length > 0) {
-                    targetBone = jointIntersects[0].object.userData.bone;
+                    hitSphere = jointIntersects[0].object;
+                    targetBone = hitSphere.userData.bone;
                 } else if (AppState.transformControls.visible && AppState.transformControls.object) {
                     const gizmoIntersects = AppState.raycaster.intersectObject(AppState.transformControls, true);
                     if (gizmoIntersects.length > 0) {
@@ -966,6 +999,7 @@
                             if (dist < minDistance) {
                                 minDistance = dist;
                                 targetBone = sphere.userData.bone;
+                                hitSphere = sphere;
                             }
                         }
                     });
@@ -984,7 +1018,7 @@
 
                 AppState.transformControls.attach(targetBone);
                 AppState.transformControls.visible = true;
-                updateSelectedBoneLabel(targetBone.name);
+                updateSelectedBoneLabel(targetBone, hitSphere);
 
                 if (!wasJointsHidden) {
                     const worldPos = new THREE.Vector3();
@@ -1100,6 +1134,8 @@
 
             AppState.config.modelName = filename;
             AppState.config.isDefaultModel = isDefault;
+
+            if (typeof updateVnccsBtnVisibility === 'function') updateVnccsBtnVisibility();
 
             const url = getModelApiUrl(filename, isDefault);
             loadModelFromUrl(url, filename, false);
@@ -1449,6 +1485,8 @@
         function loadModelFromUrl(url, fileName = '', isRestoring = false) {
             closeAllFloatModals();
 
+            if (typeof updateVnccsBtnVisibility === 'function') updateVnccsBtnVisibility();
+
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
             loadingEl.innerText = fileName ? `${i18n[AppState.currentLang].loadingModel} (${fileName})` : i18n[AppState.currentLang].loadingModel;
@@ -1483,8 +1521,6 @@
 
             AppState.loader.load(url, (gltf) => {
                 AppState.currentModel = gltf.scene;
-
-                AppState.config.modelName = fileName;
 
                 if (modelSelect && fileName) {
                     modelSelect.value = fileName;
@@ -1534,8 +1570,9 @@
                     if (!hasPose && !hasShapeKeys) {
                         resetPose();
                     }
-
                     if (AppState.config.camera) applyCameraData(AppState.config.camera);
+
+                    notifyConfigChange();
                     sendPoseToComfyUI();
                 } else {
                     loadInitialPose();

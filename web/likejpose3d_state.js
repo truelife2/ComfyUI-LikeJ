@@ -66,6 +66,11 @@ const i18n = {
         emptyShapeKeys: "此模型沒有可用的 Shape Keys",
         btnResetAllShapeKeys: "↺ 全部重置",
         tooltipResetShapeKeys: "將所有 Shape Keys 歸零",
+        btnLoadVnccs: "📦 VNCCS 姿勢庫",
+        loadingVnccs: "載入 VNCCS 姿勢庫中...",
+        emptyVnccs: "未找到任何 VNCCS 姿勢檔",
+        errorLoadVnccs: "無法讀取 VNCCS 姿勢庫: ",
+        msgParseVnccsError: "無法解析 VNCCS 姿態檔",
     },
     en: {
         titleModelFile: "📁 Model File",
@@ -129,6 +134,11 @@ const i18n = {
         emptyShapeKeys: "No Shape Keys found in this model",
         btnResetAllShapeKeys: "↺ Reset All",
         tooltipResetShapeKeys: "Reset all Shape Keys to zero",
+        btnLoadVnccs: "📦 VNCCS Poses",
+        loadingVnccs: "Loading VNCCS Poses...",
+        emptyVnccs: "No VNCCS poses found.",
+        errorLoadVnccs: "Failed to load VNCCS poses: ",
+        msgParseVnccsError: "Failed to parse VNCCS pose file",
     }
 };
 
@@ -139,7 +149,7 @@ const AppState = {
     // 語系與設定
     currentLang: localStorage.getItem('likej_pose3d_lang') || 'en',
     config: {
-        modelName: 'female_body_base.glb',
+        modelName: 'default.glb',
         isDefaultModel: true,
         ambient: 0.4,
         direct: 0.6,

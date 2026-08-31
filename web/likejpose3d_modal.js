@@ -97,7 +97,7 @@ if (jointsModalHeader && jointsModalContent) {
     });
 }
 
-// 渲染關節點清單邏輯（維持您原本的搜尋與點擊附加功能）
+// 渲染關節點清單邏輯
 function renderJointList(filterText = '') {
     if (!jointsContainer) return;
     jointsContainer.innerHTML = '';
@@ -455,7 +455,6 @@ if (poseModal) {
 }
 
 
-
 // --- 4. Shape Keys 彈窗與設定管理 (支援拖曳、懸浮、背景互動) ---
 const shapeKeysModal = document.getElementById('shapekeys-list-modal');
 const shapeKeysContainer = document.getElementById('shapekeys-list-container');
@@ -485,7 +484,7 @@ if (modalHeader) {
 
     btnResetAllShapeKeys = document.createElement('button');
     btnResetAllShapeKeys.setAttribute('data-i18n', 'btnResetAllShapeKeys');
-    btnResetAllShapeKeys.setAttribute('data-i18n-title', 'tooltipResetShapeKeys'); // 👈 綁定 title 語系 key
+    btnResetAllShapeKeys.setAttribute('data-i18n-title', 'tooltipResetShapeKeys');
     btnResetAllShapeKeys.innerText = '🔄 ' + i18n[AppState.currentLang].btnResetAllShapeKeys;
     btnResetAllShapeKeys.title = i18n[AppState.currentLang].tooltipResetShapeKeys;
     btnResetAllShapeKeys.style.cssText = 'padding: 3px 8px; font-size: 11px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer; color: #1d4ed8; font-weight: 600; margin-left: auto; margin-right: 6px; transition: all 0.2s;';
@@ -496,7 +495,6 @@ if (modalHeader) {
         btnResetAllShapeKeys.style.background = '#eff6ff';
     });
 
-    // 點擊全部重置的邏輯
     btnResetAllShapeKeys.addEventListener('click', (e) => {
         e.stopPropagation();
         if (!AppState.currentModel) return;
@@ -510,7 +508,6 @@ if (modalHeader) {
             }
         });
 
-        // 重新渲染清單與畫面
         renderShapeKeysList();
 
         if (typeof getShapeKeysData === 'function') {
@@ -712,9 +709,341 @@ if (shapeKeysModal) {
     });
 }
 
+// ==========================================
+// --- 5. 瀏覽與載入 VNCCS 姿勢庫 ---
+// ==========================================
+
+// 5-1. VNCCS 骨骼名稱映射表 (補齊 root 對應)
+const VNCCS_BONE_MAP = {
+    "root": "Root",
+    "_rootJoint": "Root",
+    "pelvis": "pelvis",
+    "spine_01": "spine_01",
+    "spine_02": "spine_02",
+    "spine_03": "spine_03",
+    "neck_01": "neck_01",
+    "head": "head",
+
+    // 左手臂
+    "clavicle_l": "clavicle_l",
+    "upperarm_l": "upperarm_l",
+    "lowerarm_l": "lowerarm_l",
+    "hand_l": "hand_l",
+    "thumb_01_l": "thumb_01_l",
+    "thumb_02_l": "thumb_02_l",
+    "thumb_03_l": "thumb_03_l",
+    "index_01_l": "index_01_l",
+    "index_02_l": "index_02_l",
+    "index_03_l": "index_03_l",
+    "middle_01_l": "middle_01_l",
+    "middle_02_l": "middle_02_l",
+    "middle_03_l": "middle_03_l",
+    "ring_01_l": "ring_01_l",
+    "ring_02_l": "ring_02_l",
+    "ring_03_l": "ring_03_l",
+    "pinky_01_l": "pinky_01_l",
+    "pinky_02_l": "pinky_02_l",
+    "pinky_03_l": "pinky_03_l",
+
+    // 右手臂
+    "clavicle_r": "clavicle_r",
+    "upperarm_r": "upperarm_r",
+    "lowerarm_r": "lowerarm_r",
+    "hand_r": "hand_r",
+    "thumb_01_r": "thumb_01_r",
+    "thumb_02_r": "thumb_02_r",
+    "thumb_03_r": "thumb_03_r",
+    "index_01_r": "index_01_r",
+    "index_02_r": "index_02_r",
+    "index_03_r": "index_03_r",
+    "middle_01_r": "middle_01_r",
+    "middle_02_r": "middle_02_r",
+    "middle_03_r": "middle_03_r",
+    "ring_01_r": "ring_01_r",
+    "ring_02_r": "ring_02_r",
+    "ring_03_r": "ring_03_r",
+    "pinky_01_r": "pinky_01_r",
+    "pinky_02_r": "pinky_02_r",
+    "pinky_03_r": "pinky_03_r",
+
+    // 下半身
+    "thigh_l": "thigh_l",
+    "calf_l": "calf_l",
+    "foot_l": "foot_l",
+    "ball_l": "ball_l",
+    "thigh_r": "thigh_r",
+    "calf_r": "calf_r",
+    "foot_r": "foot_r",
+    "ball_r": "ball_r"
+};
+
+/**
+ * 5-2. 將 VNCCS 的 JSON 資料轉為系統內部的 PoseData 格式
+ * 正確對齊 Unity (左手系) 到 Three.js (右手系) 的旋轉軸向與正負號
+ */
+function convertVnccsToInternalPose(vnccsData, customOffsets = {}, ignoreHipPosition = false) {
+    if (!vnccsData || !vnccsData.bones) return null;
+    const poseArray = [];
+
+    resetPose();
+
+    const rootQuat = new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(1, 0, 0),
+        THREE.MathUtils.degToRad(-90)
+    );
+    poseArray.push({
+        name: "Root",
+        p: null,
+        q: [rootQuat.x, rootQuat.y, rootQuat.z, rootQuat.w],
+        s: [1, 1, 1]
+    });
+
+    {
+        for (const [vnccsBoneName, eulerDeg] of Object.entries(vnccsData.bones)) {
+            const targetBoneName = VNCCS_BONE_MAP[vnccsBoneName] || vnccsBoneName;
+            if (!targetBoneName) continue;
+
+            let targetBoneNode = null;
+
+            if (AppState.currentModel) {
+                AppState.currentModel.traverse((child) => {
+                    if (child.isBone && child.name === targetBoneName) {
+                        targetBoneNode = child;
+                    }
+                });
+            }
+
+            if (targetBoneNode) {
+                // 1. 取得骨骼「真正的世界四元數」與「父節點的世界四元數」
+                const qWorldOld = new THREE.Quaternion();
+                targetBoneNode.getWorldQuaternion(qWorldOld);
+
+                const qParentWorld = new THREE.Quaternion();
+                if (targetBoneNode.parent) {
+                    targetBoneNode.parent.getWorldQuaternion(qParentWorld);
+                }
+
+                // 2. 嚴格按原本的 [X, Y, Z] 世界軸設定（不翻轉、不換位）
+                const wx = THREE.MathUtils.degToRad(eulerDeg[0] || 0); // 世界 X 軸
+                const wy = THREE.MathUtils.degToRad(eulerDeg[1] || 0); // 世界 Y 軸
+                const wz = THREE.MathUtils.degToRad(eulerDeg[2] || 0); // 世界 Z 軸
+
+                const qWorldX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), wx);
+                const qWorldY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), wy);
+                const qWorldZ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), wz);
+
+                // 3. 在絕對世界空間中組合增量旋轉
+                // 若原始數據為 XYZ 順序：
+                const qWorldDelta = new THREE.Quaternion()
+                    .copy(qWorldX)
+                    .multiply(qWorldY)
+                    .multiply(qWorldZ);
+
+                // 4. 計算套用世界增量後的新世界姿態
+                const qWorldNew = qWorldDelta.multiply(qWorldOld);
+
+                // 5. 扣除父節點的影響，轉回這根骨骼專屬的 Local 四元數
+                const qFinal = qParentWorld.clone().invert().multiply(qWorldNew);
+
+                poseArray.push({
+                    name: targetBoneName,
+                    p: null,
+                    q: [qFinal.x, qFinal.y, qFinal.z, qFinal.w],
+                    s: [1, 1, 1]
+                });
+            }
+        }
+    }
+
+    const rotOffset = vnccsData.modelRotation ? {
+        x: THREE.MathUtils.degToRad(vnccsData.modelRotation[0] || 0),
+        y: THREE.MathUtils.degToRad(vnccsData.modelRotation[1] || 0),
+        z: THREE.MathUtils.degToRad(vnccsData.modelRotation[2] || 0)
+    } : { x: 0, y: 0, z: 0 };
+
+    return {
+        rotationOffset: rotOffset,
+        pose: poseArray,
+        shapeKeys: {},
+        camera: null
+    };
+}
 
 
-//關閉所有浮動視窗。
+
+/**
+ * 5-3. 獨立的 VNCCS 姿勢載入與套用函式
+ */
+async function loadVnccsPose(item) {
+    try {
+        const poseRes = await fetch(item.json_url);
+        const rawData = await poseRes.json();
+        if (!rawData) return;
+
+        let poseConfig;
+        if (rawData.pose && Array.isArray(rawData.pose)) {
+            poseConfig = rawData;
+        } else {
+            poseConfig = convertVnccsToInternalPose(rawData);
+        }
+        if (!poseConfig) {
+            console.error(i18n[AppState.currentLang].msgParseVnccsError);
+            return;
+        }
+
+        // 1. 套用模型骨骼姿態
+        if (typeof applyPoseData === 'function') {
+            applyPoseData(poseConfig.pose);
+        } else {
+            console.error("❌ 找不到 applyPoseData 函式！");
+            alert("套用失敗：全域找不到 applyPoseData 處理函式");
+            return;
+        }
+
+        // 2. 套用全域模型旋轉 (modelRotation)
+        if (poseConfig.rotationOffset && AppState.currentModel) {
+            AppState.config.rotationOffset = poseConfig.rotationOffset;
+            AppState.currentModel.rotation.set(
+                poseConfig.rotationOffset.x,
+                poseConfig.rotationOffset.y,
+                poseConfig.rotationOffset.z
+            );
+        }
+
+        // 3. 套用 Camera 視角與 Target 對齊
+        if (poseConfig.camera && AppState.camera) {
+            AppState.camera.position.set(
+                poseConfig.camera.pos[0],
+                poseConfig.camera.pos[1],
+                poseConfig.camera.pos[2]
+            );
+
+            if (AppState.controls) {
+                AppState.controls.target.set(
+                    poseConfig.camera.target[0],
+                    poseConfig.camera.target[1],
+                    poseConfig.camera.target[2]
+                );
+                AppState.controls.update();
+            } else {
+                AppState.camera.lookAt(
+                    poseConfig.camera.target[0],
+                    poseConfig.camera.target[1],
+                    poseConfig.camera.target[2]
+                );
+            }
+        }
+
+        if (poseConfig.shapeKeys && typeof applyShapeKeysData === 'function') {
+            applyShapeKeysData(poseConfig.shapeKeys);
+        }
+
+        if (poseConfig.pose) AppState.config.pose = poseConfig.pose;
+        if (poseConfig.camera) AppState.config.camera = poseConfig.camera;
+        if (poseConfig.shapeKeys) AppState.config.shapeKeys = poseConfig.shapeKeys;
+
+        if (typeof notifyConfigChange === 'function') {
+            notifyConfigChange();
+        }
+
+        if (typeof sendPoseToComfyUI === 'function') sendPoseToComfyUI();
+        if (AppState.renderer && AppState.scene && AppState.camera) {
+            AppState.renderer.render(AppState.scene, AppState.camera);
+        }
+
+        focusFullBody(true);
+
+    } catch (err) {
+        console.error("載入 VNCCS 姿態檔案失敗:", err);
+        alert(i18n[AppState.currentLang].errorLoadVnccs + err);
+    }
+}
+
+// 5-4. 按鈕事件綁定與畫廊渲染 (多語系化)
+const btnLoadVnccs = document.getElementById('btn-load-vnccs');
+
+if (btnLoadVnccs) {
+    btnLoadVnccs.addEventListener('click', async () => {
+        if (poseGallery) {
+            poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 20px;">${i18n[AppState.currentLang].loadingVnccs}</div>`;
+        }
+        if (poseModal) poseModal.classList.add('active');
+
+        try {
+            const res = await fetch('/likejpose3d/list_vnccs_poses');
+            const data = await res.json();
+
+            if (data.success && data.poses && data.poses.length > 0 && poseGallery) {
+                poseGallery.innerHTML = '';
+
+                poseGallery.style.display = 'grid';
+                poseGallery.style.gridTemplateColumns = 'repeat(auto-fill, minmax(140px, 1fr))';
+                poseGallery.style.gap = '12px';
+                poseGallery.style.padding = '10px';
+
+                data.poses.forEach(item => {
+                    const card = document.createElement('div');
+                    card.style.cssText = `
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        padding: 8px;
+                        background: #ffffff;
+                        cursor: pointer;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        transition: transform 0.1s ease, box-shadow 0.1s ease;
+                    `;
+                    card.onmouseover = () => { card.style.borderColor = '#6366f1'; card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; };
+                    card.onmouseout = () => { card.style.borderColor = '#e2e8f0'; card.style.boxShadow = 'none'; };
+
+                    const imgHTML = item.has_preview
+                        ? `<img src="${item.preview_url}" style="width: 100%; height: 140px; object-fit: contain; border-radius: 4px; background: #f8fafc;" onerror="this.onerror=null; this.src=''; this.parentElement.innerHTML='🧍';">`
+                        : `<div style="width: 100%; height: 140px; display: flex; align-items: center; justify-content: center; font-size: 32px; background: #f8fafc; border-radius: 4px;">🧍</div>`;
+
+                    card.innerHTML = `
+                        <div style="width: 100%; text-align: center; overflow: hidden;">${imgHTML}</div>
+                        <div style="margin-top: 6px; width: 100%; text-align: center;">
+                            <div style="font-size: 12px; font-weight: bold; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.pose_name}">${item.pose_name}</div>
+                            <div style="font-size: 10px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.folder}">${item.folder}</div>
+                        </div>
+                    `;
+
+                    card.addEventListener('click', async () => {
+                        await loadVnccsPose(item);
+                        if (poseModal) poseModal.classList.remove('active');
+                    });
+
+                    poseGallery.appendChild(card);
+                });
+            } else if (poseGallery) {
+                poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 20px;">${i18n[AppState.currentLang].emptyVnccs}</div>`;
+            }
+        } catch (e) {
+            if (poseGallery) {
+                poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 20px;">${i18n[AppState.currentLang].errorLoadVnccs}${e}</div>`;
+            }
+        }
+    });
+}
+
+// 判斷並控制 VNCCS 按鈕顯示/隱藏
+function updateVnccsBtnVisibility() {
+    const btnVnccs = document.getElementById('btn-load-vnccs');
+    if (!btnVnccs) return;
+
+    const isDefault = AppState.config.isDefaultModel === true;
+    const modelName = AppState.config.modelName;
+    const allowedModels = ['default.glb', 'default_faceless.glb'];
+
+    if (isDefault && allowedModels.includes(modelName)) {
+        btnVnccs.style.display = ''; // 恢復預設顯示
+    } else {
+        btnVnccs.style.display = 'none'; // 隱藏按鈕
+    }
+}
+
+// 關閉所有浮動視窗
 function closeAllFloatModals() {
     closeJointsModal();
     closeShapeKeysModal();

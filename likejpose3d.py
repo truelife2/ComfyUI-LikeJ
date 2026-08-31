@@ -7,8 +7,8 @@ import json
 from PIL import Image
 from server import PromptServer
 from aiohttp import web
-import json
-from aiohttp import web
+import shutil
+import urllib.parse
 
 CURRENT_NODE_DIR = os.path.dirname(os.path.realpath(__file__))
 CUSTOM_NODES_DIR = os.path.abspath(os.path.join(CURRENT_NODE_DIR, ".."))
@@ -276,9 +276,6 @@ async def delete_pose(request):
         return web.json_response({"success": False, "error": str(e)}, status=500)
 
 
-import shutil  # 請確保檔案頂部有匯入 shutil
-
-
 @PromptServer.instance.routes.post("/likejpose3d/delete_model")
 async def delete_model(request):
     """刪除自訂模型檔 (.glb/.gltf)、初始姿態檔 (.json) 以及同名的姿態資料夾與檔案"""
@@ -317,6 +314,87 @@ async def delete_model(request):
             shutil.rmtree(pose_folder_path)
 
         return web.json_response({"success": True, "filename": filename})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
+# 在 CUSTOM_NODES_DIR 設定下方新增 VNCCS 姿勢庫路徑
+VNCCS_POSE_LIB_DIR = os.path.join(CUSTOM_NODES_DIR, "ComfyUI_VNCCS_Utils", "PoseLibrary")
+
+
+@PromptServer.instance.routes.get("/likejpose3d/list_vnccs_poses")
+async def list_vnccs_poses(request):
+    try:
+        poses = []
+        real_base_dir = os.path.realpath(VNCCS_POSE_LIB_DIR)
+        if not os.path.exists(real_base_dir):
+            return web.json_response({"success": True, "poses": []})
+
+        for root, dirs, files in os.walk(real_base_dir):
+            rel_folder = os.path.relpath(root, real_base_dir)
+            # 修正 Windows 路徑分隔符問題
+            rel_folder_url = rel_folder.replace("\\", "/")
+
+            files_lowercase = {f.lower(): f for f in files}
+
+            for file_key, original_file_name in files_lowercase.items():
+                if file_key.endswith(".json"):
+                    # 取得 JSON 原始檔名與小寫比對用 ID
+                    pose_id_key = os.path.splitext(file_key)[0]
+                    pose_id_orig = os.path.splitext(original_file_name)[0]
+
+                    img_name = None
+                    for ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                        target_key = f"{pose_id_key}{ext}"
+                        if target_key in files_lowercase:
+                            # 關鍵：從字典取出「原始大小寫」的圖片檔名
+                            img_name = files_lowercase[target_key]
+                            break
+
+                    if not img_name:
+                        continue
+
+                    # 後續拼接路徑請使用 original_file_name（JSON）與 img_name（圖片）
+                    rel_json = (
+                        f"{rel_folder_url}/{original_file_name}"
+                        if rel_folder_url != "."
+                        else original_file_name
+                    )
+                    rel_img = (
+                        f"{rel_folder_url}/{img_name}" if rel_folder_url != "." else img_name
+                    )
+
+                    poses.append(
+                        {
+                            "pose_name": pose_id_orig,  # 顯示原始大小寫名稱
+                            "folder": rel_folder if rel_folder != "." else "Root",
+                            "has_preview": True,
+                            "preview_url": f"/likejpose3d/get_vnccs_file?file={urllib.parse.quote(rel_img)}",
+                            "json_url": f"/likejpose3d/get_vnccs_file?file={urllib.parse.quote(rel_json)}",
+                        }
+                    )
+
+        return web.json_response({"success": True, "poses": sorted(poses, key=lambda x: x["pose_name"])})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.get("/likejpose3d/get_vnccs_file")
+async def get_vnccs_file(request):
+    """讀取 VNCCS PoseLibrary 中的特定圖檔或 JSON 設定檔"""
+    try:
+        file_param = request.query.get("file", "")
+        if not file_param:
+            return web.Response(status=400)
+
+        real_base_dir = os.path.realpath(VNCCS_POSE_LIB_DIR)
+        target_path = os.path.realpath(os.path.join(real_base_dir, file_param))
+
+        # 安全防護：避免目錄穿越攻擊
+        if not target_path.startswith(real_base_dir) or not os.path.exists(target_path):
+            return web.Response(status=404)
+
+        return web.FileResponse(target_path)
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)}, status=500)
 
