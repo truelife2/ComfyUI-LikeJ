@@ -796,7 +796,7 @@ function convertVnccsToInternalPose(vnccsData, customOffsets = {}, ignoreHipPosi
     if (!vnccsData || !vnccsData.bones) return null;
     const poseArray = [];
 
-    resetPose();
+    resetPose({ skipSharpKeys: true });
 
     const rootQuat = new THREE.Quaternion().setFromAxisAngle(
         new THREE.Vector3(1, 0, 0),
@@ -875,7 +875,7 @@ function convertVnccsToInternalPose(vnccsData, customOffsets = {}, ignoreHipPosi
     return {
         rotationOffset: rotOffset,
         pose: poseArray,
-        shapeKeys: {},
+        shapeKeys: null,
         camera: null
     };
 }

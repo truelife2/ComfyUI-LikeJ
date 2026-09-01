@@ -333,8 +333,9 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             AppState.currentModel.updateMatrixWorld(true);
         }
 
-        function resetPose() {
+        function resetPose({ skipSharpKeys } = {}) {
             if (!AppState.currentModel) return;
+            console.log(skipSharpKeys);
 
             deselectCurrentBone();
             applyModelOffset();
@@ -343,7 +344,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 if (child.isSkinnedMesh && child.skeleton) {
                     child.skeleton.pose();
                 }
-                if (child.isMesh && child.morphTargetInfluences) {
+                if (!skipSharpKeys && child.isMesh && child.morphTargetInfluences) {
                     for (let i = 0; i < child.morphTargetInfluences.length; i++) {
                         child.morphTargetInfluences[i] = 0;
                     }
@@ -361,7 +362,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             focusFullBody(true);
 
             AppState.config.pose = getPoseData();
-            AppState.config.shapeKeys = getShapeKeysData();
+            if (!skipSharpKeys) AppState.config.shapeKeys = getShapeKeysData();
             notifyConfigChange();
             sendPoseToComfyUI();
         }
@@ -547,6 +548,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 if (item && item.name) poseMap.set(item.name, item);
             });
 
+            let updated_bones = 0;
             AppState.currentModel.traverse((child) => {
                 if (child.isBone && poseMap.has(child.name)) {
                     const data = poseMap.get(child.name);
@@ -554,6 +556,8 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     if (data.p) child.position.set(data.p[0], data.p[1], data.p[2]);
                     if (data.s) child.scale.set(data.s[0], data.s[1], data.s[2]);
                     child.updateMatrix();
+
+                    ++updated_bones;
                 }
             });
 
@@ -565,6 +569,8 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             });
 
             updateJointSpheres();
+
+            return updated_bones;
         }
 
         function getShapeKeysData() {
@@ -1269,6 +1275,10 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 const res = await fetch(poseItem.json_url);
                 const loadedConfig = await res.json();
 
+                if (keepCurrentModel && poseItem === AppState.config.modelName) keepCurrentModel = false;
+
+                const emptySharpKeys = isSharpKeysEmpty(loadedConfig.shapeKeys);
+
                 // 判斷是否「僅套用至目前模型」
                 if (keepCurrentModel && AppState.currentModel) {
                     // 1. 記錄當前模型名稱、預設屬性以及 XYZ 軸對齊/偏移設定
@@ -1292,12 +1302,13 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     applyModelOffset();
 
                     // 套用骨骼姿態 (Pose)
+                    let updated_bones = null;
                     if (loadedConfig.pose && typeof applyPoseData === 'function') {
-                        applyPoseData(loadedConfig.pose);
+                        updated_bones = applyPoseData(loadedConfig.pose);
                     }
 
                     // 套用 Shape Keys 表情
-                    if (loadedConfig.shapeKeys && typeof applyShapeKeysData === 'function') {
+                    if (!emptySharpKeys && typeof applyShapeKeysData === 'function') {
                         applyShapeKeysData(loadedConfig.shapeKeys);
                     }
 
@@ -1306,7 +1317,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                         applyCameraData(loadedConfig.camera);
                     }
 
-                    focusFullBody(false);
+                    if (!updated_bones || 3 >= updated_bones) focusFullBody(false);
 
                     // 發送變更通知與更新畫面
                     notifyConfigChange();
@@ -1342,6 +1353,37 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             } catch (e) {
                 alert("Failed to load pose: " + e);
             }
+        }
+
+        function isSharpKeysEmpty(sharpKeys) {
+            // 1. 檢查傳入的值是否存在 (null, undefined, false 等)
+            if (!sharpKeys || typeof sharpKeys !== 'object') {
+                return true;
+            }
+
+            // 2. 遍歷第一層物件 (例如 "0_Human")
+            for (const meshKey in sharpKeys) {
+                if (Object.prototype.hasOwnProperty.call(sharpKeys, meshKey)) {
+                    const subObj = sharpKeys[meshKey];
+
+                    if (subObj && typeof subObj === 'object') {
+                        // 3. 遍歷第二層的各個 key-value
+                        for (const paramKey in subObj) {
+                            if (Object.prototype.hasOwnProperty.call(subObj, paramKey)) {
+                                const val = subObj[paramKey];
+
+                                // 只要找到任何一個值不是 0 (且是數字)，代表「非空」，回傳 false
+                                if (val !== 0 && typeof val === 'number') {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 如果全部都是 0，或是空物件 {}，代表「為空」，回傳 true
+            return true;
         }
 
         document.getElementById('opt-jointsize').addEventListener('input', (e) => {

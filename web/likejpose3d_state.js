@@ -140,7 +140,7 @@ const i18n = {
         emptyVnccs: "No VNCCS poses found.",
         errorLoadVnccs: "Failed to load VNCCS poses: ",
         msgParseVnccsError: "Failed to parse VNCCS pose file",
-        chkApplyToCurrentModel: "Try apply to current model",
+        chkApplyToCurrentModel: "Try applying to current model",
     }
 };
 
