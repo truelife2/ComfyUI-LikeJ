@@ -19,60 +19,45 @@
                         title="Delete Model">✕</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-upload-trigger" class="toggle-btn btn-upload" data-i18n="btnUploadModel">📤 Upload
-                        Model</button>
+                    <button id="btn-upload-trigger" class="toggle-btn btn-upload" data-i18n="btnUploadModel">📤 Upload Model</button>
                     <input type="file" id="opt-model-file" accept=".glb,.gltf" style="display:none;">
                     <button id="btn-load-pose" class="toggle-btn btn-info" data-i18n="btnLoadPose">📂 Load Pose</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-save-default-pose" class="toggle-btn btn-success" data-i18n="btnSavePose">💾 Save as
-                        Initial Pose</button>
-                    <button id="btn-save-custom-pose" class="toggle-btn btn-success" data-i18n="btnSaveCustomPose">💾
-                        Save Pose</button>
+                    <button id="btn-save-default-pose" class="toggle-btn btn-success" data-i18n="btnSavePose">💾 Save as Initial Pose</button>
+                    <button id="btn-save-custom-pose" class="toggle-btn btn-success" data-i18n="btnSaveCustomPose">💾 Save Pose</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-load-initial-pose" class="toggle-btn btn-info" data-i18n="btnLoadInitialPose">↺
-                        初始姿態</button>
+                    <button id="btn-load-initial-pose" class="toggle-btn btn-info" data-i18n="btnLoadInitialPose">↺ 初始姿態</button>
                     <button id="btn-pose-reset" class="toggle-btn btn-danger" data-i18n="btnResetPose">↺ 重置姿態</button>
                 </div>
-                <button id="btn-load-vnccs" class="toggle-btn btn-info"
-                    style="background-color: #6366f1; color: white; display:none" data-i18n="btnLoadVnccs">📂 VNCCS
-                    Poses</button>
+                <button id="btn-load-vnccs" class="toggle-btn btn-info" style="background-color: #6366f1; color: white; display:none" data-i18n="btnLoadVnccs">📂 VNCCS Poses</button>
             </div>
 
             <div class="panel-title" data-i18n="titleTransform">🕹️ Transform Controls</div>
             <div class="control-group">
                 <div class="btn-group">
-                    <button id="btn-mode-rotate" class="toggle-btn active" onclick="setTransformMode('rotate')"
-                        data-i18n="btnRotate">Rotate</button>
-                    <button id="btn-mode-translate" class="toggle-btn" onclick="setTransformMode('translate')"
-                        data-i18n="btnTranslate">Move</button>
-                    <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')"
-                        data-i18n="btnScale">Zoom</button>
+                    <button id="btn-mode-rotate" class="toggle-btn active" onclick="setTransformMode('rotate')" data-i18n="btnRotate">Rotate</button>
+                    <button id="btn-mode-translate" class="toggle-btn" onclick="setTransformMode('translate')" data-i18n="btnTranslate">Move</button>
+                    <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')" data-i18n="btnScale">Zoom</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-joints-modal" class="toggle-btn btn-info" data-i18n="btnJointList">🦴 Joint
-                        List</button>
+                    <button id="btn-joints-modal" class="toggle-btn btn-info" data-i18n="btnJointList">🦴 Joint List</button>
                     <button id="btn-toggle-joints" class="toggle-btn">Show Joints</button>
                 </div>
-                <button id="btn-shapekeys-modal" class="toggle-btn btn-info" data-i18n="btnShapeKeyList">😊 Shape
-                    Keys</button>
+                <button id="btn-shapekeys-modal" class="toggle-btn btn-info" data-i18n="btnShapeKeyList">😊 Shape Keys</button>
                 <label><span data-i18n="lblJointSize">Joint Size</span> <span id="val-jointsize">1.0</span></label>
                 <input type="range" id="opt-jointsize" min="0.2" max="5" step="0.1" value="1.0">
-                <label><span data-i18n="lblGizmoSize">Control Axis Size</span> <span
-                        id="val-gizmosize">1.0</span></label>
+                <label><span data-i18n="lblGizmoSize">Control Axis Size</span> <span id="val-gizmosize">1.0</span></label>
                 <input type="range" id="opt-gizmosize" min="0.5" max="2.5" step="0.1" value="1.0">
             </div>
 
             <div class="panel-title" data-i18n="titleAxis">📐 Axis Alignment</div>
             <div class="control-group">
                 <div class="offset-group">
-                    <label class="offset-item">X <input type="number" id="opt-offset-x" class="num-input" value="0"
-                            step="90"></label>
-                    <label class="offset-item">Y <input type="number" id="opt-offset-y" class="num-input" value="0"
-                            step="90"></label>
-                    <label class="offset-item">Z <input type="number" id="opt-offset-z" class="num-input" value="0"
-                            step="90"></label>
+                    <label class="offset-item">X <input type="number" id="opt-offset-x" class="num-input" value="0" step="90"></label>
+                    <label class="offset-item">Y <input type="number" id="opt-offset-y" class="num-input" value="0" step="90"></label>
+                    <label class="offset-item">Z <input type="number" id="opt-offset-z" class="num-input" value="0" step="90"></label>
                 </div>
             </div>
 
@@ -95,8 +80,7 @@
                 <input type="range" id="opt-direct" min="0" max="2" step="0.05" value="0.6">
             </div>
             <div class="control-group">
-                <label><span data-i18n="lblModelBrightness">Model Brightness</span> <span
-                        id="val-model">0.5</span></label>
+                <label><span data-i18n="lblModelBrightness">Model Brightness</span> <span id="val-model">0.5</span></label>
                 <input type="range" id="opt-model" min="0.1" max="1" step="0.05" value="0.5">
             </div>
             <div class="control-group">
@@ -105,13 +89,11 @@
             </div>
 
             <button id="btn-toggle-lang" class="toggle-btn btn-lang" onclick="toggleLanguage()">🌐 English / 中文</button>
-
         </div>
 
         <div id="canvas-container">
             <div id="loading" data-i18n="loadingModel">The 3D Model is loading...</div>
-            <div id="bone-label"><span data-i18n="lblBonePrefix">🦴 Bone:</span> <span id="bone-label-name">-</span>
-            </div>
+            <div id="bone-label"><span data-i18n="lblBonePrefix">🦴 Bone:</span> <span id="bone-label-name">-</span></div>
         </div>
     </div>
 
@@ -129,9 +111,7 @@
                     style="width: auto; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap;"
                     data-i18n="btnCopyJoints">📋 複製名稱</button>
             </div>
-            <div id="joints-list-container"
-                style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
-            </div>
+            <div id="joints-list-container" style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
         </div>
     </div>
 
@@ -141,17 +121,13 @@
                 <div class="modal-title" data-i18n="modalPoseTitle">📂 Select Pose to Load</div>
                 <button class="modal-close" id="btn-close-modal">✕</button>
             </div>
-            <div
-                style="padding: 10px 16px 4px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; background: #fafafa;">
-                <label
-                    style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; color: #334155;">
-                    <input type="checkbox" id="chk-keep-current-model"
-                        style="cursor: pointer; width: 15px; height: 15px;">
+            <div style="padding: 10px 16px 4px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; background: #fafafa;">
+                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; color: #334155;">
+                    <input type="checkbox" id="chk-keep-current-model" style="cursor: pointer; width: 15px; height: 15px;">
                     <span data-i18n="chkApplyToCurrentModel">嘗試套用至目前模型</span>
                 </label>
             </div>
-            <div class="modal-body" id="pose-gallery">
-            </div>
+            <div class="modal-body" id="pose-gallery"></div>
         </div>
     </div>
 
@@ -164,8 +140,7 @@
             <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
                 <div class="control-group">
                     <label data-i18n="lblPoseName">Pose Name:</label>
-                    <input type="text" id="input-pose-name" class="num-input"
-                        style="text-align: left; height: 32px; padding: 0 8px; font-size: 12px;">
+                    <input type="text" id="input-pose-name" class="num-input" style="text-align: left; height: 32px; padding: 0 8px; font-size: 12px;">
 
                     <label data-i18n="lblSelectExistingPose">Overwrite Existing Pose (Optional):</label>
                     <select id="select-existing-pose" class="select-control">
@@ -174,8 +149,7 @@
                 </div>
                 <div class="btn-group">
                     <button id="btn-cancel-save-pose" class="toggle-btn" data-i18n="btnCancel">Cancel</button>
-                    <button id="btn-confirm-save-pose" class="toggle-btn btn-success"
-                        data-i18n="btnConfirmSave">Save</button>
+                    <button id="btn-confirm-save-pose" class="toggle-btn btn-success" data-i18n="btnConfirmSave">Save</button>
                 </div>
             </div>
         </div>
@@ -187,9 +161,7 @@
                 <div class="modal-title" data-i18n="modalShapeKeysTitle">😊 Shape Keys List</div>
                 <button class="modal-close" id="btn-close-shapekeys-modal">✕</button>
             </div>
-            <div id="shapekeys-list-container"
-                style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
-            </div>
+            <div id="shapekeys-list-container" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
         </div>
     </div>
 
@@ -204,6 +176,7 @@
     <script>
         const container = document.getElementById('canvas-container');
 
+        // 初始化 Scene, Camera, Renderer, Controls
         AppState.raycaster = new THREE.Raycaster();
         AppState.mouse = new THREE.Vector2();
 
@@ -225,23 +198,27 @@
         AppState.transformControls.setSize(1.0);
         AppState.scene.add(AppState.transformControls);
 
+        // 輔助函式：刷新當前模型的矩陣與骨架
+        function updateSkeleton(model = AppState.currentModel) {
+            if (!model) return;
+            model.updateMatrixWorld(true);
+            model.traverse(child => {
+                if (child.isSkinnedMesh && child.skeleton) child.skeleton.update();
+            });
+        }
+
         function setTransformMode(mode) {
             if (!AppState.transformControls) return;
             AppState.transformControls.setMode(mode);
-
-            document.querySelectorAll('.toggle-btn').forEach(btn => {
-                if (btn.id === `btn-mode-${mode}` || btn.id === `modal-btn-mode-${mode}`) {
-                    btn.classList.add('active');
-                } else if (btn.id.startsWith('btn-mode-') || btn.id.startsWith('modal-btn-mode-')) {
-                    btn.classList.remove('active');
-                }
+            ['rotate', 'translate', 'scale'].forEach(m => {
+                const active = m === mode;
+                document.getElementById(`btn-mode-${m}`)?.classList.toggle('active', active);
+                document.getElementById(`modal-btn-mode-${m}`)?.classList.toggle('active', active);
             });
-            const activeBtn = document.getElementById(`btn-mode-${mode}`);
-            if (activeBtn) activeBtn.classList.add('active');
         }
 
         function deselectCurrentBone() {
-            if (AppState.transformControls && AppState.transformControls.visible) {
+            if (AppState.transformControls?.visible) {
                 AppState.transformControls.detach();
                 AppState.transformControls.visible = false;
                 updateSelectedBoneLabel(null, null);
@@ -249,21 +226,14 @@
         }
 
         function resetBoneTransform(targetBone) {
-            if (!targetBone || !targetBone.isBone) return;
+            if (!targetBone?.isBone) return;
 
-            if (targetBone.userData.restPosition) targetBone.position.copy(targetBone.userData.restPosition);
-            if (targetBone.userData.restQuaternion) targetBone.quaternion.copy(targetBone.userData.restQuaternion);
-            if (targetBone.userData.restScale) targetBone.scale.copy(targetBone.userData.restScale);
+            const { restPosition, restQuaternion, restScale } = targetBone.userData;
+            if (restPosition) targetBone.position.copy(restPosition);
+            if (restQuaternion) targetBone.quaternion.copy(restQuaternion);
+            if (restScale) targetBone.scale.copy(restScale);
 
-            if (AppState.currentModel) {
-                AppState.currentModel.updateMatrixWorld(true);
-                AppState.currentModel.traverse((child) => {
-                    if (child.isSkinnedMesh && child.skeleton) {
-                        child.skeleton.update();
-                    }
-                });
-            }
-
+            updateSkeleton();
             updateJointSpheres();
             AppState.config.pose = getPoseData();
             notifyConfigChange();
@@ -275,39 +245,25 @@
             const nameEl = document.getElementById('bone-label-name');
             if (!labelEl || !nameEl) return;
 
-            let labelText;
-
-            if (targetBone) {
-                const bonesCount = hitSphere && hitSphere.userData.bones ? hitSphere.userData.bones.length : 1;
-                const baseName = bonesCount > 1
-                    ? `${targetBone.name} (+${bonesCount - 1} ${i18n[AppState.currentLang].drivenBones})`
-                    : targetBone.name;
-
-                const pos = targetBone.position;
-                const rot = targetBone.rotation;
-                const scale = targetBone.scale;
-
-                const rotDeg = {
-                    x: THREE.MathUtils.radToDeg(rot.x).toFixed(1),
-                    y: THREE.MathUtils.radToDeg(rot.y).toFixed(1),
-                    z: THREE.MathUtils.radToDeg(rot.z).toFixed(1)
-                };
-
-                const transformInfo = `
-Pos: X:${pos.x.toFixed(2)} Y:${pos.y.toFixed(2)} Z:${pos.z.toFixed(2)}
-Rot: X:${rotDeg.x}° Y:${rotDeg.y}° Z:${rotDeg.z}°
-Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
-`.trim();
-
-                labelText = `${baseName}\n${transformInfo}`;
-            }
-
-            if (labelText) {
-                nameEl.innerText = labelText;
-                labelEl.style.display = 'block';
-            } else {
+            if (!targetBone) {
                 labelEl.style.display = 'none';
+                return;
             }
+
+            const bonesCount = hitSphere?.userData.bones?.length || 1;
+            const baseName = bonesCount > 1
+                ? `${targetBone.name} (+${bonesCount - 1} ${i18n[AppState.currentLang].drivenBones})`
+                : targetBone.name;
+
+            const { x: px, y: py, z: pz } = targetBone.position;
+            const { x: rx, y: ry, z: rz } = targetBone.rotation;
+            const { x: sx, y: sy, z: sz } = targetBone.scale;
+
+            const toDeg = rad => THREE.MathUtils.radToDeg(rad).toFixed(1);
+            const transformInfo = `Pos: X:${px.toFixed(2)} Y:${py.toFixed(2)} Z:${pz.toFixed(2)}\nRot: X:${toDeg(rx)}° Y:${toDeg(ry)}° Z:${toDeg(rz)}°\nScale: X:${sx.toFixed(2)} Y:${sy.toFixed(2)} Z:${sz.toFixed(2)}`;
+
+            nameEl.innerText = `${baseName}\n${transformInfo}`;
+            labelEl.style.display = 'block';
         }
 
         function applyModelOffset() {
@@ -329,23 +285,13 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             applyModelOffset();
 
             AppState.currentModel.traverse((child) => {
-                if (child.isSkinnedMesh && child.skeleton) {
-                    child.skeleton.pose();
-                }
+                if (child.isSkinnedMesh && child.skeleton) child.skeleton.pose();
                 if (!skipSharpKeys && child.isMesh && child.morphTargetInfluences) {
-                    for (let i = 0; i < child.morphTargetInfluences.length; i++) {
-                        child.morphTargetInfluences[i] = 0;
-                    }
+                    child.morphTargetInfluences.fill(0);
                 }
             });
 
-            AppState.currentModel.updateMatrixWorld(true);
-            AppState.currentModel.traverse((child) => {
-                if (child.isSkinnedMesh && child.skeleton) {
-                    child.skeleton.update();
-                }
-            });
-
+            updateSkeleton();
             updateJointSpheres();
             focusFullBody(true);
 
@@ -360,32 +306,25 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
             fetchDefaultPose(AppState.config.modelName, AppState.config.isDefaultModel).then((defaultConfig) => {
                 if (defaultConfig) {
-                    if (defaultConfig.rotationOffset) AppState.config.rotationOffset = defaultConfig.rotationOffset;
-                    if (defaultConfig.ambient !== undefined) AppState.config.ambient = defaultConfig.ambient;
-                    if (defaultConfig.direct !== undefined) AppState.config.direct = defaultConfig.direct;
-                    if (defaultConfig.modelColor !== undefined) AppState.config.modelColor = defaultConfig.modelColor;
-                    if (defaultConfig.jointSize !== undefined) AppState.config.jointSize = defaultConfig.jointSize;
-                    if (defaultConfig.gizmoSize !== undefined) AppState.config.gizmoSize = defaultConfig.gizmoSize;
+                    ['rotationOffset', 'ambient', 'direct', 'modelColor', 'jointSize', 'gizmoSize'].forEach(key => {
+                        if (defaultConfig[key] !== undefined) AppState.config[key] = defaultConfig[key];
+                    });
 
                     updateUIFromConfig();
                     applyModelOffset();
 
-                    const hasPose = defaultConfig.pose && defaultConfig.pose.length > 0;
+                    const hasPose = defaultConfig.pose?.length > 0;
                     const hasShapeKeys = defaultConfig.shapeKeys && Object.keys(defaultConfig.shapeKeys).length > 0;
 
                     if (hasPose) {
                         AppState.config.pose = defaultConfig.pose;
                         applyPoseData(defaultConfig.pose);
                     }
-
                     if (hasShapeKeys) {
                         AppState.config.shapeKeys = defaultConfig.shapeKeys;
                         applyShapeKeysData(defaultConfig.shapeKeys);
                     }
-
-                    if (!hasPose && !hasShapeKeys) {
-                        resetPose();
-                    }
+                    if (!hasPose && !hasShapeKeys) resetPose();
 
                     if (defaultConfig.camera) {
                         AppState.config.camera = defaultConfig.camera;
@@ -403,16 +342,15 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
         }
 
         function getCameraData() {
-            return {
-                pos: [AppState.camera.position.x, AppState.camera.position.y, AppState.camera.position.z],
-                target: [AppState.controls.target.x, AppState.controls.target.y, AppState.controls.target.z]
-            };
+            const { x: px, y: py, z: pz } = AppState.camera.position;
+            const { x: tx, y: ty, z: tz } = AppState.controls.target;
+            return { pos: [px, py, pz], target: [tx, ty, tz] };
         }
 
         function applyCameraData(camData) {
-            if (!camData || !camData.pos || !camData.target) return;
-            AppState.camera.position.set(camData.pos[0], camData.pos[1], camData.pos[2]);
-            AppState.controls.target.set(camData.target[0], camData.target[1], camData.target[2]);
+            if (!camData?.pos || !camData?.target) return;
+            AppState.camera.position.set(...camData.pos);
+            AppState.controls.target.set(...camData.target);
             AppState.controls.update();
         }
 
@@ -421,20 +359,15 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             const startTarget = AppState.controls.target.clone();
 
             let dir = new THREE.Vector3().subVectors(AppState.camera.position, AppState.controls.target).normalize();
-
-            if (resetAngle || dir.lengthSq() === 0) {
-                dir.set(0, 0, 1);
-            }
+            if (resetAngle || dir.lengthSq() === 0) dir.set(0, 0, 1);
 
             const newCamPos = new THREE.Vector3().copy(targetPos).addScaledVector(dir, distance);
-
             let startTime = null;
             const duration = 350;
 
             function step(timestamp) {
                 if (!startTime) startTime = timestamp;
-                const elapsed = timestamp - startTime;
-                const progress = Math.min(elapsed / duration, 1);
+                const progress = Math.min((timestamp - startTime) / duration, 1);
                 const ease = 1 - Math.pow(1 - progress, 3);
 
                 AppState.camera.position.lerpVectors(startCamPos, newCamPos, ease);
@@ -454,36 +387,27 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
         function focusHand(isLeft = true) {
             if (!AppState.currentModel) return;
-
             AppState.currentModel.updateMatrixWorld(true);
 
             const box = computeExactWorldBoundingBox(AppState.currentModel);
             const modelHeight = box.getSize(new THREE.Vector3()).y || 1.8;
             const dynamicDistance = Math.max(0.12, modelHeight * 0.20);
 
-            let candidates = [];
-
+            const candidates = [];
             AppState.currentModel.traverse((child) => {
-                if (child.isBone) {
-                    const name = child.name.toLowerCase();
+                if (!child.isBone) return;
+                const name = child.name.toLowerCase();
+                const isHand = (name.includes('hand') || name.includes('wrist') || name.includes('palm')) &&
+                    !name.includes('forearm') && !name.includes('arm');
+                if (!isHand) return;
 
-                    const isHandKeyword = (name.includes('hand') || name.includes('wrist') || name.includes('palm'))
-                        && !name.includes('forearm') && !name.includes('arm');
-                    if (!isHandKeyword) return;
+                const isL = ['left', 'l_', '_l', '.l', 'lh'].some(k => name.includes(k));
+                const isR = ['right', 'r_', '_r', '.r', 'rh'].some(k => name.includes(k));
 
-                    const isL = name.includes('left') || name.includes('l_') || name.includes('_l') || name.includes('.l') || name.includes('lh');
-                    const isR = name.includes('right') || name.includes('r_') || name.includes('_r') || name.includes('.r') || name.includes('rh');
-
-                    if (isLeft && isL) candidates.push(child);
-                    if (!isLeft && isR) candidates.push(child);
-                }
+                if ((isLeft && isL) || (!isLeft && isR)) candidates.push(child);
             });
 
-            let handBone = null;
-            if (candidates.length > 0) {
-                handBone = candidates.find(b => b.name.toLowerCase().includes('hand')) || candidates[candidates.length - 1];
-            }
-
+            const handBone = candidates.find(b => b.name.toLowerCase().includes('hand')) || candidates[candidates.length - 1];
             if (handBone) {
                 const worldPos = new THREE.Vector3();
                 handBone.getWorldPosition(worldPos);
@@ -501,12 +425,10 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             const aspect = AppState.targetWidth / AppState.targetHeight;
 
             const distV = (size.y / 2) / Math.tan(fov / 2);
-            const fovH = 2 * Math.atan(Math.tan(fov / 2) * aspect);
-            const distH = (size.x / 2) / Math.tan(fovH / 2);
+            const distH = (size.x / 2) / Math.tan(2 * Math.atan(Math.tan(fov / 2) * aspect) / 2);
 
             let cameraDist = Math.max(distV, distH) + (size.z / 2);
-            if (!isFinite(cameraDist) || cameraDist <= 0) cameraDist = 5;
-            else cameraDist *= 1.05;
+            cameraDist = (!isFinite(cameraDist) || cameraDist <= 0) ? 5 : cameraDist * 1.05;
 
             focusOnPosition(center, cameraDist, resetAngle);
         }
@@ -528,35 +450,24 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
         }
 
         function applyPoseData(poseArray) {
-            if (!AppState.currentModel || !poseArray || !Array.isArray(poseArray) || poseArray.length === 0) return;
+            if (!AppState.currentModel || !Array.isArray(poseArray) || !poseArray.length) return 0;
 
-            const poseMap = new Map();
-            poseArray.forEach(item => {
-                if (item && item.name) poseMap.set(item.name, item);
-            });
-
+            const poseMap = new Map(poseArray.filter(i => i?.name).map(i => [i.name, i]));
             let updated_bones = 0;
+
             AppState.currentModel.traverse((child) => {
                 if (child.isBone && poseMap.has(child.name)) {
                     const data = poseMap.get(child.name);
-                    if (data.q) child.quaternion.set(data.q[0], data.q[1], data.q[2], data.q[3]);
-                    if (data.p) child.position.set(data.p[0], data.p[1], data.p[2]);
-                    if (data.s) child.scale.set(data.s[0], data.s[1], data.s[2]);
+                    if (data.q) child.quaternion.set(...data.q);
+                    if (data.p) child.position.set(...data.p);
+                    if (data.s) child.scale.set(...data.s);
                     child.updateMatrix();
-
-                    ++updated_bones;
+                    updated_bones++;
                 }
             });
 
-            AppState.currentModel.updateMatrixWorld(true);
-            AppState.currentModel.traverse((child) => {
-                if (child.isSkinnedMesh && child.skeleton) {
-                    child.skeleton.update();
-                }
-            });
-
+            updateSkeleton();
             updateJointSpheres();
-
             return updated_bones;
         }
 
@@ -580,19 +491,16 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
         function applyShapeKeysData(shapeKeysData) {
             if (!AppState.currentModel || !shapeKeysData) return;
-
             try {
                 let meshIndex = 0;
                 AppState.currentModel.traverse((child) => {
                     if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
                         const identifier = child.name ? `${meshIndex}_${child.name}` : `mesh_${meshIndex}`;
                         const meshData = shapeKeysData[identifier] || shapeKeysData[child.name] || shapeKeysData["unnamed_mesh"];
-
                         if (meshData && typeof meshData === 'object') {
                             for (const [keyName, val] of Object.entries(meshData)) {
                                 if (keyName in child.morphTargetDictionary) {
-                                    const index = child.morphTargetDictionary[keyName];
-                                    child.morphTargetInfluences[index] = val;
+                                    child.morphTargetInfluences[child.morphTargetDictionary[keyName]] = val;
                                 }
                             }
                         }
@@ -613,13 +521,13 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             return false;
         }
 
-        AppState.transformControls.addEventListener('dragging-changed', function (event) {
+        AppState.transformControls.addEventListener('dragging-changed', (event) => {
             AppState.controls.enabled = !event.value;
             if (event.value) {
                 if (AppState.currentModel) AppState.currentModel.updateMatrixWorld(true);
 
                 const activeBone = AppState.transformControls.object;
-                if (activeBone && activeBone.userData.groupBones) {
+                if (activeBone?.userData.groupBones) {
                     const group = activeBone.userData.groupBones;
                     const qTemp = new THREE.Quaternion();
 
@@ -641,33 +549,26 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
         });
 
         AppState.transformControls.addEventListener('change', () => {
-            if (AppState.currentModel) {
-                const activeBone = AppState.transformControls.object;
-                if (activeBone && activeBone.userData.groupBones && activeBone.userData.startWorldQInv) {
-                    const activeCurrentWorldQ = activeBone.getWorldQuaternion(new THREE.Quaternion());
-                    const worldDeltaQ = activeCurrentWorldQ.clone().multiply(activeBone.userData.startWorldQInv);
+            if (!AppState.currentModel) return;
+            const activeBone = AppState.transformControls.object;
+            if (activeBone?.userData.groupBones && activeBone.userData.startWorldQInv) {
+                const activeCurrentWorldQ = activeBone.getWorldQuaternion(new THREE.Quaternion());
+                const worldDeltaQ = activeCurrentWorldQ.clone().multiply(activeBone.userData.startWorldQInv);
+                const qTemp = new THREE.Quaternion();
 
-                    const qTemp = new THREE.Quaternion();
-                    activeBone.userData.groupBones.forEach(b => {
-                        if (b !== activeBone) {
-                            if (!b.userData.hasGroupAncestor) {
-                                qTemp.copy(worldDeltaQ).multiply(b.userData.startWorldQ);
-                                b.quaternion.copy(b.userData.parentWorldQInv).multiply(qTemp);
-                            }
-                        }
-                    });
+                activeBone.userData.groupBones.forEach(b => {
+                    if (b !== activeBone && !b.userData.hasGroupAncestor) {
+                        qTemp.copy(worldDeltaQ).multiply(b.userData.startWorldQ);
+                        b.quaternion.copy(b.userData.parentWorldQInv).multiply(qTemp);
+                    }
+                });
 
-                    AppState.currentModel.updateMatrixWorld(true);
-                    AppState.currentModel.traverse((child) => {
-                        if (child.isSkinnedMesh && child.skeleton) {
-                            child.skeleton.update();
-                        }
-                    });
-                }
-                updateJointSpheres();
+                updateSkeleton();
             }
+            updateJointSpheres();
         });
 
+        // 燈光設置
         AppState.ambientLight = new THREE.AmbientLight(0xffffff, AppState.config.ambient);
         AppState.scene.add(AppState.ambientLight);
 
@@ -690,41 +591,42 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
         }
 
         function updateUIFromConfig() {
-            document.getElementById('opt-ambient').value = AppState.config.ambient;
-            document.getElementById('val-ambient').innerText = AppState.config.ambient;
-            document.getElementById('opt-direct').value = AppState.config.direct;
-            document.getElementById('val-direct').innerText = AppState.config.direct;
-            document.getElementById('opt-model').value = AppState.config.modelColor;
-            document.getElementById('val-model').innerText = AppState.config.modelColor;
+            const { ambient, direct, modelColor, jointSize, gizmoSize, rotationOffset } = AppState.config;
+
+            document.getElementById('opt-ambient').value = ambient;
+            document.getElementById('val-ambient').innerText = ambient;
+            document.getElementById('opt-direct').value = direct;
+            document.getElementById('val-direct').innerText = direct;
+            document.getElementById('opt-model').value = modelColor;
+            document.getElementById('val-model').innerText = modelColor;
             document.getElementById('opt-bgcolor').value = AppState.currentBgColor;
 
-            if (AppState.config.jointSize !== undefined) {
-                AppState.jointScale = AppState.config.jointSize;
-                document.getElementById('opt-jointsize').value = AppState.config.jointSize;
-                document.getElementById('val-jointsize').innerText = AppState.config.jointSize;
+            if (jointSize !== undefined) {
+                AppState.jointScale = jointSize;
+                document.getElementById('opt-jointsize').value = jointSize;
+                document.getElementById('val-jointsize').innerText = jointSize;
             }
-            if (AppState.config.gizmoSize !== undefined) {
-                AppState.transformControls.setSize(AppState.config.gizmoSize);
-                document.getElementById('opt-gizmosize').value = AppState.config.gizmoSize;
-                document.getElementById('val-gizmosize').innerText = AppState.config.gizmoSize;
+            if (gizmoSize !== undefined) {
+                AppState.transformControls.setSize(gizmoSize);
+                document.getElementById('opt-gizmosize').value = gizmoSize;
+                document.getElementById('val-gizmosize').innerText = gizmoSize;
             }
 
             updateLanguage();
 
-            const offset = AppState.config.rotationOffset || { x: 0, y: 0, z: 0 };
+            const offset = rotationOffset || { x: 0, y: 0, z: 0 };
             document.getElementById('opt-offset-x').value = offset.x || 0;
             document.getElementById('opt-offset-y').value = offset.y || 0;
             document.getElementById('opt-offset-z').value = offset.z || 0;
 
-            AppState.ambientLight.intensity = AppState.config.ambient;
-            AppState.directionalLight.intensity = AppState.config.direct;
+            AppState.ambientLight.intensity = ambient;
+            AppState.directionalLight.intensity = direct;
             AppState.scene.background.set(AppState.currentBgColor);
 
             if (AppState.currentModel) {
                 applyModelOffset();
-                const v = AppState.config.modelColor;
                 AppState.currentModel.traverse((child) => {
-                    if (child.isMesh && child.material) child.material.color.setRGB(v, v, v);
+                    if (child.isMesh && child.material) child.material.color.setRGB(modelColor, modelColor, modelColor);
                 });
                 updateJointSpheres();
             }
@@ -740,66 +642,46 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             }
 
             const targetBones = new Set();
-            {
-                model.traverse((child) => {
-                    if (child.isSkinnedMesh && child.skeleton) {
-                        child.skeleton.pose();
+            model.traverse(c => { if (c.isSkinnedMesh && c.skeleton) c.skeleton.pose(); });
+            updateSkeleton(model);
+
+            const ikPattern = /^(ik|upik)|[^a-zA-Z0-9](ik|upik)|(ik|upik)$|(ik|upik)[^a-zA-Z0-9]/i;
+            const ctrlPattern = /^(target|pole|ctrl|control|handle|vis|wgt)|[^a-zA-Z0-9](target|pole|ctrl|control|handle|vis|wgt)|(target|pole|ctrl|control|handle|vis|wgt)$|(target|pole|ctrl|control|handle|vis|wgt)[^a-zA-Z0-9]/i;
+
+            const removeBones = new Set();
+            model.traverse((child) => {
+                if (child.isBone) {
+                    child.userData.restPosition = child.position.clone();
+                    child.userData.restQuaternion = child.quaternion.clone();
+                    child.userData.restScale = child.scale.clone();
+
+                    const pos = new THREE.Vector3();
+                    child.getWorldPosition(pos);
+
+                    if ((isuseless(child) || pos.lengthSq() < 0.0001) && isallchild_useless(child)) {
+                        removeBones.add(child);
+                        return;
                     }
-                });
-                model.updateMatrixWorld(true);
-                model.traverse((child) => {
-                    if (child.isSkinnedMesh && child.skeleton) {
-                        child.skeleton.update();
-                    }
-                });
+                    targetBones.add(child);
+                }
+            });
 
-                const ikPattern = /^(ik|upik)|[^a-zA-Z0-9](ik|upik)|(ik|upik)$|(ik|upik)[^a-zA-Z0-9]/i;
-                const ctrlPattern = /^(target|pole|ctrl|control|handle|vis|wgt)|[^a-zA-Z0-9](target|pole|ctrl|control|handle|vis|wgt)|(target|pole|ctrl|control|handle|vis|wgt)$|(target|pole|ctrl|control|handle|vis|wgt)[^a-zA-Z0-9]/i;
+            removeBones.forEach(bone => bone.parent?.remove(bone));
 
-                const removeBones = new Set();
-                model.traverse((child) => {
-                    if (child.isBone) {
-                        child.userData.restPosition = child.position.clone();
-                        child.userData.restQuaternion = child.quaternion.clone();
-                        child.userData.restScale = child.scale.clone();
-
+            function isuseless(child) {
+                const name = child.name || '';
+                return ikPattern.test(name) || ctrlPattern.test(name);
+            }
+            function isallchild_useless(child) {
+                for (const bone of child.children) {
+                    if (!isuseless(bone)) {
                         const pos = new THREE.Vector3();
-                        child.getWorldPosition(pos);
-
-                        const useless = isuseless(child);
-
-                        if (useless || pos.lengthSq() < 0.0001) {
-                            if (isallchild_useless(child)) {
-                                removeBones.add(child);
-                                return;
-                            }
-                        }
-
-                        targetBones.add(child);
+                        bone.getWorldPosition(pos);
+                        if (pos.lengthSq() >= 0.0001) return false;
                     }
-                });
-                removeBones.forEach((bone) => {
-                    if (bone.parent) {
-                        bone.parent.remove(bone);
-                    }
-                });
-
-                function isuseless(child) {
-                    const name = child.name || '';
-                    if (ikPattern.test(name) || ctrlPattern.test(name)) return true;
-                    return false;
+                    if (!isallchild_useless(bone)) return false;
                 }
-                function isallchild_useless(child) {
-                    for (const bone of child.children) {
-                        if (!isuseless(bone)) {
-                            const pos = new THREE.Vector3();
-                            bone.getWorldPosition(pos);
-                            if (pos.lengthSq() >= 0.0001) return false;
-                        }
-                        if (!isallchild_useless(bone)) return false;
-                    }
-                    return true;
-                }
+                return true;
             }
 
             const sphereGeo = new THREE.SphereGeometry(1, 10, 10);
@@ -812,23 +694,17 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             });
 
             const positionMap = new Map();
-
             targetBones.forEach((bone) => {
                 const pos = new THREE.Vector3();
                 bone.getWorldPosition(pos);
-
                 const key = `${pos.x.toFixed(3)},${pos.y.toFixed(3)},${pos.z.toFixed(3)}`;
 
-                if (!positionMap.has(key)) {
-                    positionMap.set(key, []);
-                }
+                if (!positionMap.has(key)) positionMap.set(key, []);
                 positionMap.get(key).push(bone);
             });
 
             positionMap.forEach((bones) => {
-                bones.forEach(b => {
-                    b.userData.groupBones = bones;
-                });
+                bones.forEach(b => { b.userData.groupBones = bones; });
 
                 const sphere = new THREE.Mesh(sphereGeo, sphereMat);
                 sphere.userData.bones = bones;
@@ -865,11 +741,10 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 }
             });
 
-            if (AppState.skeletonHelper) {
-                AppState.skeletonHelper.visible = AppState.showJoints;
-            }
+            if (AppState.skeletonHelper) AppState.skeletonHelper.visible = AppState.showJoints;
         }
 
+        // Pointer 與 Raycaster 事件監聽
         AppState.renderer.domElement.addEventListener('pointerdown', (event) => {
             const rect = AppState.renderer.domElement.getBoundingClientRect();
             AppState.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -877,14 +752,11 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
             if (event.button === 2) {
                 AppState.raycaster.setFromCamera(AppState.mouse, AppState.camera);
-
                 let hitBone = null;
 
                 if (AppState.showJoints) {
                     const intersects = AppState.raycaster.intersectObjects(AppState.jointSpheres);
-                    if (intersects.length > 0) {
-                        hitBone = intersects[0].object.userData.bone;
-                    }
+                    if (intersects.length > 0) hitBone = intersects[0].object.userData.bone;
                 }
 
                 if (!hitBone && AppState.currentModel) {
@@ -940,8 +812,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
                     updateSelectedBoneLabel(targetBone, hitSphere);
                 } else {
-                    const isClickingGizmo = AppState.transformControls.visible && AppState.transformControls.axis !== null;
-                    if (!isClickingGizmo) {
+                    if (!AppState.transformControls.visible || AppState.transformControls.axis === null) {
                         AppState.isPointerDownOnBlank = true;
                     }
                 }
@@ -951,10 +822,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
         AppState.renderer.domElement.addEventListener('pointerup', (event) => {
             if (event.button === 0 && AppState.isPointerDownOnBlank) {
                 const moveDistance = Math.hypot(event.clientX - AppState.pointerDownPos.x, event.clientY - AppState.pointerDownPos.y);
-
-                if (moveDistance < 5) {
-                    deselectCurrentBone();
-                }
+                if (moveDistance < 5) deselectCurrentBone();
                 AppState.isPointerDownOnBlank = false;
             }
         });
@@ -968,9 +836,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
             AppState.raycaster.setFromCamera(AppState.mouse, AppState.camera);
 
-            let targetBone = null;
-            let hitSphere = null;
-            let hitPoint = null;
+            let targetBone = null, hitSphere = null, hitPoint = null;
 
             if (AppState.showJoints) {
                 const jointIntersects = AppState.raycaster.intersectObjects(AppState.jointSpheres);
@@ -978,8 +844,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     hitSphere = jointIntersects[0].object;
                     targetBone = hitSphere.userData.bone;
                 } else if (AppState.transformControls.visible && AppState.transformControls.object) {
-                    const gizmoIntersects = AppState.raycaster.intersectObject(AppState.transformControls, true);
-                    if (gizmoIntersects.length > 0) {
+                    if (AppState.raycaster.intersectObject(AppState.transformControls, true).length > 0) {
                         targetBone = AppState.transformControls.object;
                     }
                 }
@@ -989,7 +854,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 const modelIntersects = AppState.raycaster.intersectObject(AppState.currentModel, true);
                 if (modelIntersects.length > 0) {
                     hitPoint = modelIntersects[0].point;
-
                     let minDistance = Infinity;
                     AppState.jointSpheres.forEach(sphere => {
                         if (sphere.userData.bone) {
@@ -1008,7 +872,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
             if (targetBone) {
                 const wasJointsHidden = !AppState.showJoints;
-
                 if (wasJointsHidden) {
                     AppState.showJoints = true;
                     updateLanguage();
@@ -1028,12 +891,8 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     const modelHeight = box.getSize(new THREE.Vector3()).y || 1.8;
 
                     const boneName = targetBone.name ? targetBone.name.toLowerCase() : '';
-                    const isFineDetail = boneName.includes('hand') || boneName.includes('finger') ||
-                        boneName.includes('thumb') || boneName.includes('index') ||
-                        boneName.includes('wrist');
-
-                    const ratio = isFineDetail ? 0.12 : 0.25;
-                    const dynamicDistance = modelHeight * ratio;
+                    const isFineDetail = ['hand', 'finger', 'thumb', 'index', 'wrist'].some(k => boneName.includes(k));
+                    const dynamicDistance = modelHeight * (isFineDetail ? 0.12 : 0.25);
 
                     focusOnPosition(worldPos, dynamicDistance);
                 }
@@ -1042,28 +901,19 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
         function normalizeDegree(val) {
             let num = parseFloat(val) || 0;
-            num = num % 360;
+            num %= 360;
             return num === 0 ? 0 : num;
         }
 
         function onOffsetInputChange() {
             if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
 
-            const inputX = document.getElementById('opt-offset-x');
-            const inputY = document.getElementById('opt-offset-y');
-            const inputZ = document.getElementById('opt-offset-z');
-
-            const valX = normalizeDegree(inputX.value);
-            const valY = normalizeDegree(inputY.value);
-            const valZ = normalizeDegree(inputZ.value);
-
-            inputX.value = valX;
-            inputY.value = valY;
-            inputZ.value = valZ;
-
-            AppState.config.rotationOffset.x = valX;
-            AppState.config.rotationOffset.y = valY;
-            AppState.config.rotationOffset.z = valZ;
+            ['x', 'y', 'z'].forEach(axis => {
+                const input = document.getElementById(`opt-offset-${axis}`);
+                const val = normalizeDegree(input.value);
+                input.value = val;
+                AppState.config.rotationOffset[axis] = val;
+            });
 
             if (AppState.currentModel) {
                 applyModelOffset();
@@ -1074,13 +924,14 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             sendPoseToComfyUI();
         }
 
-        document.getElementById('opt-offset-x').addEventListener('change', onOffsetInputChange);
-        document.getElementById('opt-offset-y').addEventListener('change', onOffsetInputChange);
-        document.getElementById('opt-offset-z').addEventListener('change', onOffsetInputChange);
+        ['x', 'y', 'z'].forEach(axis => {
+            document.getElementById(`opt-offset-${axis}`).addEventListener('change', onOffsetInputChange);
+        });
 
         const modelSelect = document.getElementById('opt-model-select');
         const btnUploadTrigger = document.getElementById('btn-upload-trigger');
         const fileInput = document.getElementById('opt-model-file');
+        const btnDeleteModel = document.getElementById('btn-delete-model');
 
         async function refreshModelList(selectedName = '') {
             try {
@@ -1088,7 +939,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 const models = await res.json();
 
                 modelSelect.innerHTML = '';
-
                 models.forEach(item => {
                     const opt = document.createElement('option');
                     opt.value = item.name;
@@ -1098,13 +948,10 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 });
 
                 const targetName = selectedName || AppState.config.modelName;
-                if (targetName) {
-                    modelSelect.value = targetName;
-                }
+                if (targetName) modelSelect.value = targetName;
             } catch (e) {
                 console.error("Failed to refresh model list", e);
             }
-
             updateDeleteBtnState();
         }
 
@@ -1112,22 +959,17 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             return `/likejpose3d/get_model_file?filename=${encodeURIComponent(filename)}&is_default=${isDefault ? 'true' : 'false'}`;
         }
 
-        const btnDeleteModel = document.getElementById('btn-delete-model');
-
         function updateDeleteBtnState() {
             if (!modelSelect || !modelSelect.options.length || modelSelect.selectedIndex < 0) {
                 btnDeleteModel.style.display = 'none';
                 return;
             }
-            const selectedOpt = modelSelect.options[modelSelect.selectedIndex];
-            const isDefault = selectedOpt.dataset.isDefault === "true";
-
+            const isDefault = modelSelect.options[modelSelect.selectedIndex].dataset.isDefault === "true";
             btnDeleteModel.style.display = isDefault ? 'none' : 'inline-flex';
         }
 
         modelSelect.addEventListener('change', (e) => {
             updateDeleteBtnState();
-
             const selectedOpt = e.target.options[e.target.selectedIndex];
             const filename = selectedOpt.value;
             const isDefault = selectedOpt.dataset.isDefault === "true";
@@ -1137,8 +979,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
             if (typeof updateVnccsBtnVisibility === 'function') updateVnccsBtnVisibility();
 
-            const url = getModelApiUrl(filename, isDefault);
-            loadModelFromUrl(url, filename, false);
+            loadModelFromUrl(getModelApiUrl(filename, isDefault), filename, false);
         });
 
         btnDeleteModel.addEventListener('click', async () => {
@@ -1146,9 +987,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             if (!selectedOpt) return;
 
             const filename = selectedOpt.value;
-            const isDefault = selectedOpt.dataset.isDefault === "true";
-
-            if (isDefault) {
+            if (selectedOpt.dataset.isDefault === "true") {
                 alert(i18n[AppState.currentLang].cannotDeleteDefault);
                 return;
             }
@@ -1159,7 +998,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 const res = await fetch('/likejpose3d/delete_model', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ filename: filename, is_default: false })
+                    body: JSON.stringify({ filename, is_default: false })
                 });
                 const result = await res.json();
                 if (result.success) {
@@ -1196,12 +1035,10 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 const result = await res.json();
                 if (result.success) {
                     await refreshModelList(result.filename);
-
                     AppState.config.modelName = result.filename;
                     AppState.config.isDefaultModel = false;
 
-                    const url = getModelApiUrl(result.filename, false);
-                    loadModelFromUrl(url, result.filename, false);
+                    loadModelFromUrl(getModelApiUrl(result.filename, false), result.filename, false);
                 }
             } catch (err) {
                 alert(i18n[AppState.currentLang].msgUploadError + err);
@@ -1210,13 +1047,12 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             }
         });
 
+        // 綁定基本按鈕事件
         document.getElementById('btn-focus-lhand').addEventListener('click', () => focusHand(true));
         document.getElementById('btn-focus-rhand').addEventListener('click', () => focusHand(false));
         document.getElementById('btn-focus-reset').addEventListener('click', () => focusFullBody(false));
         document.getElementById('btn-pose-reset').addEventListener('click', () => resetPose());
-        document.getElementById('btn-load-initial-pose').addEventListener('click', () => {
-            loadInitialPose();
-        });
+        document.getElementById('btn-load-initial-pose').addEventListener('click', () => loadInitialPose());
 
         document.getElementById('btn-save-default-pose').addEventListener('click', async () => {
             if (!AppState.config.modelName) return;
@@ -1229,8 +1065,8 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 ambient: AppState.config.ambient,
                 direct: AppState.config.direct,
                 modelColor: AppState.config.modelColor,
-                jointSize: AppState.config.jointSize !== undefined ? AppState.config.jointSize : AppState.jointScale,
-                gizmoSize: AppState.config.gizmoSize !== undefined ? AppState.config.gizmoSize : AppState.transformControls.size
+                jointSize: AppState.config.jointSize ?? AppState.jointScale,
+                gizmoSize: AppState.config.gizmoSize ?? AppState.transformControls.size
             };
 
             try {
@@ -1260,7 +1096,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 const loadedConfig = await res.json();
 
                 if (keepCurrentModel && poseItem === AppState.config.modelName) keepCurrentModel = false;
-
                 const emptySharpKeys = isSharpKeysEmpty(loadedConfig.shapeKeys);
 
                 if (keepCurrentModel && AppState.currentModel) {
@@ -1271,7 +1106,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                         : { x: 0, y: 0, z: 0 };
 
                     AppState.config = { ...AppState.config, ...loadedConfig };
-
                     AppState.config.modelName = currentModelName;
                     AppState.config.isDefaultModel = currentIsDefault;
                     AppState.config.rotationOffset = currentRotationOffset;
@@ -1280,25 +1114,15 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     applyModelOffset();
 
                     let updated_bones = null;
-                    if (loadedConfig.pose && typeof applyPoseData === 'function') {
-                        updated_bones = applyPoseData(loadedConfig.pose);
-                    }
+                    if (loadedConfig.pose) updated_bones = applyPoseData(loadedConfig.pose);
+                    if (!emptySharpKeys) applyShapeKeysData(loadedConfig.shapeKeys);
+                    if (loadedConfig.camera) applyCameraData(loadedConfig.camera);
 
-                    if (!emptySharpKeys && typeof applyShapeKeysData === 'function') {
-                        applyShapeKeysData(loadedConfig.shapeKeys);
-                    }
-
-                    if (loadedConfig.camera && typeof applyCameraData === 'function') {
-                        applyCameraData(loadedConfig.camera);
-                    }
-
-                    if (!updated_bones || 3 >= updated_bones) focusFullBody(false);
+                    if (!updated_bones || updated_bones <= 3) focusFullBody(false);
 
                     notifyConfigChange();
                     sendPoseToComfyUI();
-                    if (AppState.renderer && AppState.scene && AppState.camera) {
-                        AppState.renderer.render(AppState.scene, AppState.camera);
-                    }
+                    AppState.renderer?.render(AppState.scene, AppState.camera);
                 } else {
                     let targetModelName = poseItem.model_folder;
                     if (!targetModelName.endsWith('.glb') && !targetModelName.endsWith('.gltf')) {
@@ -1319,41 +1143,21 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
                     if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
 
-                    const targetUrl = getModelApiUrl(targetModelName, isDefault);
-                    loadModelFromUrl(targetUrl, targetModelName, true);
+                    loadModelFromUrl(getModelApiUrl(targetModelName, isDefault), targetModelName, true);
                 }
-
             } catch (e) {
                 alert("Failed to load pose: " + e);
             }
         }
 
         function isSharpKeysEmpty(sharpKeys) {
-            if (!sharpKeys || typeof sharpKeys !== 'object') {
-                return true;
-            }
-
-            for (const meshKey in sharpKeys) {
-                if (Object.prototype.hasOwnProperty.call(sharpKeys, meshKey)) {
-                    const subObj = sharpKeys[meshKey];
-
-                    if (subObj && typeof subObj === 'object') {
-                        for (const paramKey in subObj) {
-                            if (Object.prototype.hasOwnProperty.call(subObj, paramKey)) {
-                                const val = subObj[paramKey];
-
-                                if (val !== 0 && typeof val === 'number') {
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return true;
+            if (!sharpKeys || typeof sharpKeys !== 'object') return true;
+            return !Object.values(sharpKeys).some(subObj =>
+                subObj && typeof subObj === 'object' && Object.values(subObj).some(val => typeof val === 'number' && val !== 0)
+            );
         }
 
+        // 數值控制輸入框監聽綁定
         document.getElementById('opt-jointsize').addEventListener('input', (e) => {
             AppState.jointScale = parseFloat(e.target.value);
             AppState.config.jointSize = AppState.jointScale;
@@ -1375,32 +1179,19 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
         document.getElementById('btn-toggle-joints').addEventListener('click', () => {
             AppState.showJoints = !AppState.showJoints;
             updateLanguage();
-            if (!AppState.showJoints) {
-                deselectCurrentBone();
-            }
+            if (!AppState.showJoints) deselectCurrentBone();
             updateJointSpheres();
             sendPoseToComfyUI();
         });
 
-        document.getElementById('opt-ambient').addEventListener('input', (e) => {
-            AppState.config.ambient = parseFloat(e.target.value);
-            updateUIFromConfig();
-            notifyConfigChange();
-            sendPoseToComfyUI();
-        });
-
-        document.getElementById('opt-direct').addEventListener('input', (e) => {
-            AppState.config.direct = parseFloat(e.target.value);
-            updateUIFromConfig();
-            notifyConfigChange();
-            sendPoseToComfyUI();
-        });
-
-        document.getElementById('opt-model').addEventListener('input', (e) => {
-            AppState.config.modelColor = parseFloat(e.target.value);
-            updateUIFromConfig();
-            notifyConfigChange();
-            sendPoseToComfyUI();
+        ['ambient', 'direct', 'model'].forEach(type => {
+            document.getElementById(`opt-${type}`).addEventListener('input', (e) => {
+                const valKey = type === 'model' ? 'modelColor' : type;
+                AppState.config[valKey] = parseFloat(e.target.value);
+                updateUIFromConfig();
+                notifyConfigChange();
+                sendPoseToComfyUI();
+            });
         });
 
         document.getElementById('opt-bgcolor').addEventListener('input', (e) => {
@@ -1422,7 +1213,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 if (!child.isMesh || !child.visible) return;
 
                 const name = child.name.toLowerCase();
-                if (name.includes("floor") || name.includes("ground") || name.includes("plane")) return;
+                if (['floor', 'ground', 'plane'].some(k => name.includes(k))) return;
 
                 hasMesh = true;
 
@@ -1432,14 +1223,11 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     const posAttr = geom.attributes.position;
                     const skinIndex = geom.attributes.skinIndex;
                     const skinWeight = geom.attributes.skinWeight;
-                    const bones = child.skeleton.bones;
-                    const boneInverses = child.skeleton.boneInverses;
+                    const { bones, boneInverses } = child.skeleton;
 
                     const boneMatrices = bones.map((bone, idx) => {
                         const m = new THREE.Matrix4();
-                        if (bone && boneInverses[idx]) {
-                            m.multiplyMatrices(bone.matrixWorld, boneInverses[idx]);
-                        }
+                        if (bone && boneInverses[idx]) m.multiplyMatrices(bone.matrixWorld, boneInverses[idx]);
                         return m;
                     });
 
@@ -1453,7 +1241,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                             const indices = [skinIndex.getX(i), skinIndex.getY(i), skinIndex.getZ(i), skinIndex.getW(i)];
                             const weights = [skinWeight.getX(i), skinWeight.getY(i), skinWeight.getZ(i), skinWeight.getW(i)];
 
-                            skinMatrix.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                            skinMatrix.set(0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0);
 
                             for (let j = 0; j < 4; j++) {
                                 const w = weights[j];
@@ -1472,7 +1260,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     }
                 } else {
                     const geom = child.geometry;
-                    if (geom && geom.attributes.position) {
+                    if (geom?.attributes.position) {
                         const posAttr = geom.attributes.position;
                         const stride = Math.max(1, Math.floor(posAttr.count / 1500));
                         for (let i = 0; i < posAttr.count; i += stride) {
@@ -1484,27 +1272,16 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 }
             });
 
-            if (!hasMesh || box.isEmpty()) {
-                box.setFromObject(model);
-            }
-
+            if (!hasMesh || box.isEmpty()) box.setFromObject(model);
             return box;
         }
 
         function sendPoseToComfyUI() {
             if (!AppState.isModelLoaded) return;
 
-            if (AppState.currentModel) {
-                AppState.currentModel.updateMatrixWorld(true);
-                AppState.currentModel.traverse((child) => {
-                    if (child.isSkinnedMesh && child.skeleton) {
-                        child.skeleton.update();
-                    }
-                });
-            }
+            updateSkeleton();
 
             const prevTCVis = AppState.transformControls.visible;
-
             AppState.jointSpheres.forEach(s => s.visible = false);
             if (AppState.skeletonHelper) AppState.skeletonHelper.visible = false;
             AppState.transformControls.visible = false;
@@ -1552,7 +1329,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
         function loadModelFromUrl(url, fileName = '', isRestoring = false) {
             closeAllFloatModals();
-
             if (typeof updateVnccsBtnVisibility === 'function') updateVnccsBtnVisibility();
 
             const loadingEl = document.getElementById('loading');
@@ -1562,9 +1338,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
             if (!isRestoring) {
                 AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
-                document.getElementById('opt-offset-x').value = 0;
-                document.getElementById('opt-offset-y').value = 0;
-                document.getElementById('opt-offset-z').value = 0;
+                ['x', 'y', 'z'].forEach(axis => document.getElementById(`opt-offset-${axis}`).value = 0);
             }
 
             if (AppState.currentModel) {
@@ -1572,7 +1346,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 AppState.scene.remove(AppState.currentModel);
                 AppState.currentModel.traverse((child) => {
                     if (child.isMesh) {
-                        if (child.geometry) child.geometry.dispose();
+                        child.geometry?.dispose();
                         if (child.material) {
                             if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
                             else child.material.dispose();
@@ -1589,10 +1363,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
 
             AppState.loader.load(url, (gltf) => {
                 AppState.currentModel = gltf.scene;
-
-                if (modelSelect && fileName) {
-                    modelSelect.value = fileName;
-                }
+                if (modelSelect && fileName) modelSelect.value = fileName;
 
                 const cVal = AppState.config.modelColor;
                 AppState.currentModel.traverse((child) => {
@@ -1604,7 +1375,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                             metalness: 0.1,
                             skinning: child.isSkinnedMesh || false,
                             morphTargets: hasMorphs,
-                            morphNormals: hasMorphs && child.geometry && child.geometry.morphAttributes && child.geometry.morphAttributes.normal ? true : false
+                            morphNormals: hasMorphs && child.geometry?.morphAttributes?.normal ? true : false
                         });
                     }
                 });
@@ -1612,8 +1383,7 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 AppState.scene.add(AppState.currentModel);
 
                 const box = computeExactWorldBoundingBox(AppState.currentModel);
-                const size = box.getSize(new THREE.Vector3());
-                AppState.baseJointRadius = Math.max(0.003, size.y * 0.004);
+                AppState.baseJointRadius = Math.max(0.003, box.getSize(new THREE.Vector3()).y * 0.004);
 
                 setupSkeleton(AppState.currentModel);
 
@@ -1624,20 +1394,12 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     updateUIFromConfig();
                     applyModelOffset();
 
-                    const hasPose = AppState.config.pose && AppState.config.pose.length > 0;
+                    const hasPose = AppState.config.pose?.length > 0;
                     const hasShapeKeys = AppState.config.shapeKeys && Object.keys(AppState.config.shapeKeys).length > 0;
 
-                    if (hasPose) {
-                        applyPoseData(AppState.config.pose);
-                    }
-
-                    if (hasShapeKeys) {
-                        applyShapeKeysData(AppState.config.shapeKeys);
-                    }
-
-                    if (!hasPose && !hasShapeKeys) {
-                        resetPose();
-                    }
+                    if (hasPose) applyPoseData(AppState.config.pose);
+                    if (hasShapeKeys) applyShapeKeysData(AppState.config.shapeKeys);
+                    if (!hasPose && !hasShapeKeys) resetPose();
                     if (AppState.config.camera) applyCameraData(AppState.config.camera);
 
                     notifyConfigChange();
@@ -1645,13 +1407,13 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                 } else {
                     loadInitialPose();
                 }
-
             }, undefined, (error) => {
                 console.error('Failed to load model:', error);
                 loadingEl.innerText = i18n[AppState.currentLang].msgLoadError;
             });
         }
 
+        // Window Message 監聽
         window.addEventListener("message", (event) => {
             if (!event.data) return;
 
@@ -1670,27 +1432,19 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
                     if (loadedConfig && Object.keys(loadedConfig).length > 0) {
                         AppState.config = { ...AppState.config, ...loadedConfig };
                         if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
-
-                        if (AppState.config.shapeKeys) {
-                            applyShapeKeysData(AppState.config.shapeKeys);
-                        }
+                        if (AppState.config.shapeKeys) applyShapeKeysData(AppState.config.shapeKeys);
 
                         const modelName = AppState.config.modelName || 'default.glb';
-                        const isDefault = AppState.config.isDefaultModel !== undefined ? AppState.config.isDefaultModel : true;
-
-                        const targetUrl = getModelApiUrl(modelName, isDefault);
-
-                        loadModelFromUrl(targetUrl, modelName, true);
+                        const isDefault = AppState.config.isDefaultModel ?? true;
+                        loadModelFromUrl(getModelApiUrl(modelName, isDefault), modelName, true);
                     } else {
                         const defaultName = 'default.glb';
-                        const targetUrl = getModelApiUrl(defaultName, true);
-                        loadModelFromUrl(targetUrl, defaultName, false);
+                        loadModelFromUrl(getModelApiUrl(defaultName, true), defaultName, false);
                     }
                 } catch (e) {
                     console.warn("Failed to parse Node configuration, loading default model", e);
                     const defaultName = 'default.glb';
-                    const targetUrl = getModelApiUrl(defaultName, true);
-                    loadModelFromUrl(targetUrl, defaultName, false);
+                    loadModelFromUrl(getModelApiUrl(defaultName, true), defaultName, false);
                 }
             }
         });
@@ -1702,7 +1456,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             AppState.camera.aspect = width / height;
             AppState.camera.updateProjectionMatrix();
             AppState.renderer.setSize(width, height);
-
             AppState.renderer.render(AppState.scene, AppState.camera);
         });
 
@@ -1721,7 +1474,6 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
         });
 
         updateLanguage();
-
         window.parent.postMessage({ type: "LIKEJ_POSE3D_READY" }, "*");
     </script>
 </body>
