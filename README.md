@@ -121,6 +121,8 @@
 > idea from: https://github.com/AHEKOT/ComfyUI_VNCCS_Utils
 
 <img width="880" height="620" alt="image" src="https://github.com/user-attachments/assets/5282d9e8-1553-42c1-9495-dbd4b23845c8" />
+<img width="624" height="553" alt="image" src="https://github.com/user-attachments/assets/b85442dc-b08f-4fe5-b3f0-ca4bfdf4fcb7" />
+
 
 
 
