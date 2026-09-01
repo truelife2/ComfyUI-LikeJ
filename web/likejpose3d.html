@@ -145,6 +145,16 @@
                 <div class="modal-title" data-i18n="modalPoseTitle">📂 Select Pose to Load</div>
                 <button class="modal-close" id="btn-close-modal">✕</button>
             </div>
+            <!-- 新增 Checkbox 控制區塊 -->
+            <div
+                style="padding: 10px 16px 4px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; background: #fafafa;">
+                <label
+                    style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; color: #334155;">
+                    <input type="checkbox" id="chk-keep-current-model"
+                        style="cursor: pointer; width: 15px; height: 15px;">
+                    <span data-i18n="chkApplyToCurrentModel">嘗試套用至目前模型</span>
+                </label>
+            </div>
             <div class="modal-body" id="pose-gallery">
             </div>
         </div>
@@ -1254,35 +1264,83 @@ Scale: X:${scale.x.toFixed(2)} Y:${scale.y.toFixed(2)} Z:${scale.z.toFixed(2)}
             }
         });
 
-        async function loadPoseConfigAndModel(poseItem) {
+        async function loadPoseConfigAndModel(poseItem, keepCurrentModel = false) {
             try {
                 const res = await fetch(poseItem.json_url);
                 const loadedConfig = await res.json();
 
-                let targetModelName = poseItem.model_folder;
-                if (!targetModelName.endsWith('.glb') && !targetModelName.endsWith('.gltf')) {
-                    targetModelName += '.glb';
+                // 判斷是否「僅套用至目前模型」
+                if (keepCurrentModel && AppState.currentModel) {
+                    // 1. 記錄當前模型名稱、預設屬性以及 XYZ 軸對齊/偏移設定
+                    const currentModelName = AppState.config.modelName;
+                    const currentIsDefault = AppState.config.isDefaultModel;
+                    // 複製保存當前的 XYZ 軸旋轉對齊設定（避免被 loadedConfig 覆蓋）
+                    const currentRotationOffset = AppState.config.rotationOffset
+                        ? { ...AppState.config.rotationOffset }
+                        : { x: 0, y: 0, z: 0 };
+
+                    // 2. 合併 JSON 姿態設定
+                    AppState.config = { ...AppState.config, ...loadedConfig };
+
+                    // 3. 還原原本模型的名稱與 XYZ 軸對齊設定
+                    AppState.config.modelName = currentModelName;
+                    AppState.config.isDefaultModel = currentIsDefault;
+                    AppState.config.rotationOffset = currentRotationOffset; // 保留原本模型的 XYZ 軸對齊
+
+                    // 更新 UI 介面數值與維持當前模型的軸向偏移
+                    updateUIFromConfig();
+                    applyModelOffset();
+
+                    // 套用骨骼姿態 (Pose)
+                    if (loadedConfig.pose && typeof applyPoseData === 'function') {
+                        applyPoseData(loadedConfig.pose);
+                    }
+
+                    // 套用 Shape Keys 表情
+                    if (loadedConfig.shapeKeys && typeof applyShapeKeysData === 'function') {
+                        applyShapeKeysData(loadedConfig.shapeKeys);
+                    }
+
+                    // 套用相機角度
+                    if (loadedConfig.camera && typeof applyCameraData === 'function') {
+                        applyCameraData(loadedConfig.camera);
+                    }
+
+                    focusFullBody(false);
+
+                    // 發送變更通知與更新畫面
+                    notifyConfigChange();
+                    sendPoseToComfyUI();
+                    if (AppState.renderer && AppState.scene && AppState.camera) {
+                        AppState.renderer.render(AppState.scene, AppState.camera);
+                    }
+                } else {
+                    // 預設行為：連同 JSON 設定的模型與對齊設定一同載入
+                    let targetModelName = poseItem.model_folder;
+                    if (!targetModelName.endsWith('.glb') && !targetModelName.endsWith('.gltf')) {
+                        targetModelName += '.glb';
+                    }
+
+                    let matchedOpt = Array.from(modelSelect.options).find(opt => opt.value === targetModelName || opt.value.startsWith(poseItem.model_folder));
+                    let isDefault = poseItem.is_default;
+
+                    if (matchedOpt) {
+                        targetModelName = matchedOpt.value;
+                        isDefault = matchedOpt.dataset.isDefault === "true";
+                    }
+
+                    AppState.config = { ...AppState.config, ...loadedConfig };
+                    AppState.config.modelName = targetModelName;
+                    AppState.config.isDefaultModel = isDefault;
+
+                    if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
+
+                    const targetUrl = getModelApiUrl(targetModelName, isDefault);
+                    loadModelFromUrl(targetUrl, targetModelName, true);
                 }
-
-                let matchedOpt = Array.from(modelSelect.options).find(opt => opt.value === targetModelName || opt.value.startsWith(poseItem.model_folder));
-                let isDefault = poseItem.is_default;
-
-                if (matchedOpt) {
-                    targetModelName = matchedOpt.value;
-                    isDefault = matchedOpt.dataset.isDefault === "true";
-                }
-
-                AppState.config = { ...AppState.config, ...loadedConfig };
-                AppState.config.modelName = targetModelName;
-                AppState.config.isDefaultModel = isDefault;
-
-                if (!AppState.config.rotationOffset) AppState.config.rotationOffset = { x: 0, y: 0, z: 0 };
-
-                const targetUrl = getModelApiUrl(targetModelName, isDefault);
-                loadModelFromUrl(targetUrl, targetModelName, true);
 
             } catch (e) {
-                alert("載入姿態失敗: " + e);
+                alert("Failed to load pose: " + e);
             }
         }
 

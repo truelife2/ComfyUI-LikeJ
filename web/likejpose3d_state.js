@@ -71,6 +71,7 @@ const i18n = {
         emptyVnccs: "未找到任何 VNCCS 姿勢檔",
         errorLoadVnccs: "無法讀取 VNCCS 姿勢庫: ",
         msgParseVnccsError: "無法解析 VNCCS 姿態檔",
+        chkApplyToCurrentModel: "嘗試套用至目前模型",
     },
     en: {
         titleModelFile: "📁 Model File",
@@ -139,6 +140,7 @@ const i18n = {
         emptyVnccs: "No VNCCS poses found.",
         errorLoadVnccs: "Failed to load VNCCS poses: ",
         msgParseVnccsError: "Failed to parse VNCCS pose file",
+        chkApplyToCurrentModel: "Try apply to current model",
     }
 };
 

@@ -364,6 +364,13 @@ const btnCloseModal = document.getElementById('btn-close-modal');
 
 if (btnLoadPose) {
     btnLoadPose.addEventListener('click', async () => {
+        // 每次開啟彈窗時，重置 Checkbox 為未勾選
+        const chkKeepModel = document.getElementById('chk-keep-current-model');
+        if (chkKeepModel) {
+            chkKeepModel.checked = false;
+        }
+
+        if (poseModal) poseModal.classList.add('active');
         if (poseGallery) {
             poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 20px;">Loading...</div>`;
         }
@@ -393,8 +400,12 @@ if (btnLoadPose) {
                     `;
 
                     card.addEventListener('click', () => {
+                        // 讀取 Checkbox 是否被勾選
+                        const chkKeepModel = document.getElementById('chk-keep-current-model');
+                        const keepCurrentModel = chkKeepModel ? chkKeepModel.checked : false;
+
                         if (typeof loadPoseConfigAndModel === 'function') {
-                            loadPoseConfigAndModel(item);
+                            loadPoseConfigAndModel(item, keepCurrentModel);
                         }
                         if (poseModal) poseModal.classList.remove('active');
                     });
