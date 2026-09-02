@@ -123,6 +123,11 @@
 <img width="880" height="620" alt="image" src="https://github.com/user-attachments/assets/5282d9e8-1553-42c1-9495-dbd4b23845c8" />
 <img width="624" height="553" alt="image" src="https://github.com/user-attachments/assets/b85442dc-b08f-4fe5-b3f0-ca4bfdf4fcb7" />
 
+## LikeJ Output Trigger
+
+   > Only to force trigger the output of all linked nodes.
+ 
+<img width="281" height="180" alt="image" src="https://github.com/user-attachments/assets/55392fc9-7f2d-4aeb-aff4-04d7eeaebe36" />
 
 
 
