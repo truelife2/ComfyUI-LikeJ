@@ -125,7 +125,7 @@
 
 ## LikeJ Output Trigger
 
-   > Used only to force trigger the output of all linked nodes.
+   > Only to force trigger the output of all linked nodes.
  
 <img width="281" height="180" alt="image" src="https://github.com/user-attachments/assets/55392fc9-7f2d-4aeb-aff4-04d7eeaebe36" />
 
