@@ -23,4 +23,4 @@ class LikeJOutputTrigger:
     CATEGORY = "LikeJ"
 
     def sync_and_trigger(self, **kwargs):
-        pass
+        return ()
