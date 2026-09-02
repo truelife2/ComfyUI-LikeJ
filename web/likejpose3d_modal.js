@@ -1,4 +1,3 @@
-
 // 初始化彈窗為懸浮視窗，預設關閉時讓滑鼠事件穿透
 function initFloatingModal(modal, content, left = '20px', top = '80px') {
     if (!modal || !content) return;
@@ -68,6 +67,11 @@ function triggerShapeKeyUpdate() {
     if (typeof sendPoseToComfyUI === 'function') sendPoseToComfyUI();
 }
 
+function closeAllFloatModals() {
+    closeJointsModal();
+    closeShapeKeysModal();
+    closePartsModal();
+}
 
 // ==========================================
 // --- 1. 骨骼關節列表彈窗 Modal ---
@@ -170,6 +174,7 @@ function closeJointsModal() {
 
 btnJointsModal?.addEventListener('click', () => {
     closeShapeKeysModal();
+    closePartsModal();
     if (inputSearchJoints) inputSearchJoints.value = '';
     renderJointList();
     if (jointsListModal) {
@@ -190,10 +195,10 @@ btnCopyJoints?.addEventListener('click', async () => {
 
     try {
         await navigator.clipboard.writeText(jointNames.join('\n'));
-        btnCopyJoints.innerText = i18n[AppState.currentLang].msgCopySuccess || '已複製！';
+        btnCopyJoints.innerText = i18n[AppState.currentLang].msgCopySuccess || 'Joint names copied!';
         setTimeout(() => updateLanguage(), 1500);
     } catch (err) {
-        console.error('複製關節名稱失敗:', err);
+        console.error('Failed to copy the joint names:', err);
     }
 });
 
@@ -279,6 +284,7 @@ btnConfirmSavePose?.addEventListener('click', async () => {
         rotationOffset: AppState.config.rotationOffset || { x: 0, y: 0, z: 0 },
         pose: typeof getPoseData === 'function' ? getPoseData() : [],
         shapeKeys: typeof getShapeKeysData === 'function' ? getShapeKeysData() : {},
+        hiddenParts: getHiddenPartsData(),
         camera: typeof getCameraData === 'function' ? getCameraData() : null,
         ambient: AppState.config.ambient,
         direct: AppState.config.direct,
@@ -521,6 +527,7 @@ function closeShapeKeysModal() {
 
 btnShapeKeysModal?.addEventListener('click', () => {
     closeJointsModal();
+    closePartsModal();
     renderShapeKeysList();
     if (shapeKeysModal) {
         shapeKeysModal.classList.add('active');
@@ -532,7 +539,136 @@ bindModalCloseEvents(shapeKeysModal, btnCloseShapeKeysModal, closeShapeKeysModal
 
 
 // ==========================================
-// --- 5. 瀏覽與載入 VNCCS 姿勢庫 ---
+// --- 5. 模型部件選擇彈窗 Modal ---
+// ==========================================
+const partsListModal = document.getElementById('parts-list-modal');
+const partsContainer = document.getElementById('parts-list-container');
+const btnPartsModal = document.getElementById('btn-parts-modal');
+const btnClosePartsModal = document.getElementById('btn-close-parts-modal');
+const btnPartsShowAll = document.getElementById('btn-parts-show-all');
+const btnPartsHideAll = document.getElementById('btn-parts-hide-all');
+
+const partsModalContent = partsListModal?.querySelector('.modal-content');
+const partsModalHeader = partsModalContent?.querySelector('.modal-header');
+
+initFloatingModal(partsListModal, partsModalContent, '20px', '120px');
+makeDraggable(partsModalHeader, partsModalContent, (e) => e.target.tagName === 'BUTTON');
+
+function closePartsModal() {
+    if (partsListModal) {
+        partsListModal.classList.remove('active');
+        if (partsModalContent) partsModalContent.style.pointerEvents = 'none';
+    }
+}
+
+function renderPartsList() {
+    if (!partsContainer) return;
+    partsContainer.innerHTML = '';
+
+    const meshes = [];
+    AppState.currentModel?.traverse((child) => {
+        if (child.isMesh) meshes.push(child);
+    });
+
+    if (!meshes.length) {
+        partsContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 20px;">None Model Parts</div>`;
+        return;
+    }
+
+    meshes.forEach((mesh, index) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px;';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; font-weight: 500; color: #334155;';
+        nameSpan.innerText = mesh.name || `Part_${index + 1}`;
+        nameSpan.title = mesh.name || `Part_${index + 1}`;
+
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = mesh.visible;
+        chk.style.cssText = 'cursor: pointer; width: 16px; height: 16px;';
+
+        chk.addEventListener('change', () => {
+            mesh.visible = chk.checked;
+            AppState.config.hiddenParts = getHiddenPartsData();
+            notifyConfigChange();
+            sendPoseToComfyUI();
+            if (AppState.renderer && AppState.scene && AppState.camera) {
+                AppState.renderer.render(AppState.scene, AppState.camera);
+            }
+        });
+
+        item.appendChild(nameSpan);
+        item.appendChild(chk);
+        partsContainer.appendChild(item);
+    });
+}
+
+function getHiddenPartsData() {
+    if (!AppState.currentModel) return [];
+    const hiddenParts = [];
+    AppState.currentModel.traverse((child) => {
+        if (child.isMesh && child.visible === false) {
+            if (child.name) hiddenParts.push(child.name);
+        }
+    });
+    return hiddenParts;
+}
+
+function applyHiddenPartsData(hiddenParts) {
+    
+    if (!AppState.currentModel || !Array.isArray(hiddenParts)) return;
+
+    const hiddenSet = new Set(hiddenParts);
+    AppState.currentModel.traverse((child) => {
+        if (child.isMesh && child.name) {
+            child.visible = !hiddenSet.has(child.name);
+        }
+    });
+    renderPartsList();
+}
+
+btnPartsModal?.addEventListener('click', () => {
+    closeJointsModal();
+    closeShapeKeysModal();
+
+    renderPartsList();
+    if (partsListModal) {
+        partsListModal.classList.add('active');
+        if (partsModalContent) partsModalContent.style.pointerEvents = 'auto';
+    }
+});
+
+bindModalCloseEvents(partsListModal, btnClosePartsModal, closePartsModal);
+
+btnPartsShowAll?.addEventListener('click', () => {
+    AppState.currentModel?.traverse((child) => {
+        if (child.isMesh) child.visible = true;
+    });
+    AppState.config.hiddenParts = getHiddenPartsData();
+
+    notifyConfigChange();
+    sendPoseToComfyUI();
+
+    renderPartsList();
+});
+
+btnPartsHideAll?.addEventListener('click', () => {
+    AppState.currentModel?.traverse((child) => {
+        if (child.isMesh) child.visible = false;
+    });
+    AppState.config.hiddenParts = getHiddenPartsData();
+
+    notifyConfigChange();
+    sendPoseToComfyUI();
+
+    renderPartsList();
+});
+
+
+// ==========================================
+// --- 6. 瀏覽與載入 VNCCS 姿勢庫 ---
 // ==========================================
 const VNCCS_BONE_MAP = {
     "root": "Root", "_rootJoint": "Root", "pelvis": "pelvis",
@@ -686,58 +822,35 @@ btnLoadVnccs?.addEventListener('click', async () => {
 
         if (data.success && data.poses?.length > 0 && poseGallery) {
             poseGallery.innerHTML = '';
-            Object.assign(poseGallery.style, {
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                gap: '12px',
-                padding: '10px'
-            });
-
             data.poses.forEach(item => {
                 const card = document.createElement('div');
-                card.style.cssText = 'border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; background: #ffffff; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: transform 0.1s ease, box-shadow 0.1s ease;';
-                card.onmouseover = () => { card.style.borderColor = '#6366f1'; card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; };
-                card.onmouseout = () => { card.style.borderColor = '#e2e8f0'; card.style.boxShadow = 'none'; };
+                card.className = 'pose-card';
 
                 const imgHTML = item.has_preview
-                    ? `<img src="${item.preview_url}" style="width: 100%; height: 140px; object-fit: contain; border-radius: 4px; background: #f8fafc;" onerror="this.onerror=null; this.src=''; this.parentElement.innerHTML='🧍';">`
-                    : `<div style="width: 100%; height: 140px; display: flex; align-items: center; justify-content: center; font-size: 32px; background: #f8fafc; border-radius: 4px;">🧍</div>`;
+                    ? `<img class="pose-card-img" src="${item.preview_url}" alt="${item.pose_name}">`
+                    : `<div class="pose-card-placeholder">🧍</div>`;
 
                 card.innerHTML = `
-                    <div style="width: 100%; text-align: center; overflow: hidden;">${imgHTML}</div>
-                    <div style="margin-top: 6px; width: 100%; text-align: center;">
-                        <div style="font-size: 12px; font-weight: bold; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.pose_name}">${item.pose_name}</div>
-                        <div style="font-size: 10px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.folder}">${item.folder}</div>
+                    <div class="pose-card-img-wrapper">${imgHTML}</div>
+                    <div class="pose-card-info">
+                        <div class="pose-card-title" title="${item.pose_name}">${item.pose_name}</div>
+                        <div class="pose-card-model" title="${item.model_folder}">${item.model_folder}</div>
                     </div>
                 `;
 
-                card.addEventListener('click', async () => {
-                    await loadVnccsPose(item);
+                card.addEventListener('click', () => {
+                    loadVnccsPose(item);
                     poseModal?.classList.remove('active');
                 });
 
                 poseGallery.appendChild(card);
             });
         } else if (poseGallery) {
-            poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 20px;">${i18n[AppState.currentLang].emptyVnccs}</div>`;
+            poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 20px;">${i18n[AppState.currentLang].emptyPoses}</div>`;
         }
     } catch (e) {
         if (poseGallery) {
-            poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 20px;">${i18n[AppState.currentLang].errorLoadVnccs}${e}</div>`;
+            poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 20px;">Failed to load VNCCS list: ${e}</div>`;
         }
     }
 });
-
-function updateVnccsBtnVisibility() {
-    const btnVnccs = document.getElementById('btn-load-vnccs');
-    if (!btnVnccs) return;
-
-    const isDefault = AppState.config.isDefaultModel === true;
-    const allowedModels = ['default.glb', 'default_faceless.glb'];
-    btnVnccs.style.display = (isDefault && allowedModels.includes(AppState.config.modelName)) ? '' : 'none';
-}
-
-function closeAllFloatModals() {
-    closeJointsModal();
-    closeShapeKeysModal();
-}

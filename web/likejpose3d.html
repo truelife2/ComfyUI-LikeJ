@@ -19,45 +19,64 @@
                         title="Delete Model">✕</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-upload-trigger" class="toggle-btn btn-upload" data-i18n="btnUploadModel">📤 Upload Model</button>
+                    <button id="btn-upload-trigger" class="toggle-btn btn-upload" data-i18n="btnUploadModel">📤 Upload
+                        Model</button>
                     <input type="file" id="opt-model-file" accept=".glb,.gltf" style="display:none;">
                     <button id="btn-load-pose" class="toggle-btn btn-info" data-i18n="btnLoadPose">📂 Load Pose</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-save-default-pose" class="toggle-btn btn-success" data-i18n="btnSavePose">💾 Save as Initial Pose</button>
-                    <button id="btn-save-custom-pose" class="toggle-btn btn-success" data-i18n="btnSaveCustomPose">💾 Save Pose</button>
+                    <button id="btn-save-default-pose" class="toggle-btn btn-success" data-i18n="btnSavePose">💾 Save as
+                        Initial Pose</button>
+                    <button id="btn-save-custom-pose" class="toggle-btn btn-success" data-i18n="btnSaveCustomPose">💾
+                        Save Pose</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-load-initial-pose" class="toggle-btn btn-info" data-i18n="btnLoadInitialPose">↺ 初始姿態</button>
+                    <button id="btn-load-initial-pose" class="toggle-btn btn-info" data-i18n="btnLoadInitialPose">↺
+                        初始姿態</button>
                     <button id="btn-pose-reset" class="toggle-btn btn-danger" data-i18n="btnResetPose">↺ 重置姿態</button>
                 </div>
-                <button id="btn-load-vnccs" class="toggle-btn btn-info" style="background-color: #6366f1; color: white; display:none" data-i18n="btnLoadVnccs">📂 VNCCS Poses</button>
+                <button id="btn-load-vnccs" class="toggle-btn btn-info"
+                    style="background-color: #6366f1; color: white; display:none" data-i18n="btnLoadVnccs">📂 VNCCS
+                    Poses</button>
             </div>
 
             <div class="panel-title" data-i18n="titleTransform">🕹️ Transform Controls</div>
             <div class="control-group">
                 <div class="btn-group">
-                    <button id="btn-mode-rotate" class="toggle-btn active" onclick="setTransformMode('rotate')" data-i18n="btnRotate">Rotate</button>
-                    <button id="btn-mode-translate" class="toggle-btn" onclick="setTransformMode('translate')" data-i18n="btnTranslate">Move</button>
-                    <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')" data-i18n="btnScale">Zoom</button>
+                    <button id="btn-mode-rotate" class="toggle-btn active" onclick="setTransformMode('rotate')"
+                        data-i18n="btnRotate">Rotate</button>
+                    <button id="btn-mode-translate" class="toggle-btn" onclick="setTransformMode('translate')"
+                        data-i18n="btnTranslate">Move</button>
+                    <button id="btn-mode-scale" class="toggle-btn" onclick="setTransformMode('scale')"
+                        data-i18n="btnScale">Zoom</button>
                 </div>
                 <div class="btn-group">
-                    <button id="btn-joints-modal" class="toggle-btn btn-info" data-i18n="btnJointList">🦴 Joint List</button>
+                    <button id="btn-joints-modal" class="toggle-btn btn-info" data-i18n="btnJointList">🦴 Joint
+                        List</button>
                     <button id="btn-toggle-joints" class="toggle-btn">Show Joints</button>
                 </div>
-                <button id="btn-shapekeys-modal" class="toggle-btn btn-info" data-i18n="btnShapeKeyList">😊 Shape Keys</button>
+
+                <div class="btn-group">
+                    <button id="btn-parts-modal" class="toggle-btn btn-info" data-i18n="btnPartsSelect">🧩 部件選擇</button>
+                    <button id="btn-shapekeys-modal" class="toggle-btn btn-info" data-i18n="btnShapeKeyList">😊 Shape
+                        Keys</button>
+                </div>
                 <label><span data-i18n="lblJointSize">Joint Size</span> <span id="val-jointsize">1.0</span></label>
                 <input type="range" id="opt-jointsize" min="0.2" max="5" step="0.1" value="1.0">
-                <label><span data-i18n="lblGizmoSize">Control Axis Size</span> <span id="val-gizmosize">1.0</span></label>
+                <label><span data-i18n="lblGizmoSize">Control Axis Size</span> <span
+                        id="val-gizmosize">1.0</span></label>
                 <input type="range" id="opt-gizmosize" min="0.5" max="2.5" step="0.1" value="1.0">
             </div>
 
             <div class="panel-title" data-i18n="titleAxis">📐 Axis Alignment</div>
             <div class="control-group">
                 <div class="offset-group">
-                    <label class="offset-item">X <input type="number" id="opt-offset-x" class="num-input" value="0" step="90"></label>
-                    <label class="offset-item">Y <input type="number" id="opt-offset-y" class="num-input" value="0" step="90"></label>
-                    <label class="offset-item">Z <input type="number" id="opt-offset-z" class="num-input" value="0" step="90"></label>
+                    <label class="offset-item">X <input type="number" id="opt-offset-x" class="num-input" value="0"
+                            step="90"></label>
+                    <label class="offset-item">Y <input type="number" id="opt-offset-y" class="num-input" value="0"
+                            step="90"></label>
+                    <label class="offset-item">Z <input type="number" id="opt-offset-z" class="num-input" value="0"
+                            step="90"></label>
                 </div>
             </div>
 
@@ -80,7 +99,8 @@
                 <input type="range" id="opt-direct" min="0" max="2" step="0.05" value="0.6">
             </div>
             <div class="control-group">
-                <label><span data-i18n="lblModelBrightness">Model Brightness</span> <span id="val-model">0.5</span></label>
+                <label><span data-i18n="lblModelBrightness">Model Brightness</span> <span
+                        id="val-model">0.5</span></label>
                 <input type="range" id="opt-model" min="0.1" max="1" step="0.05" value="0.5">
             </div>
             <div class="control-group">
@@ -93,7 +113,8 @@
 
         <div id="canvas-container">
             <div id="loading" data-i18n="loadingModel">The 3D Model is loading...</div>
-            <div id="bone-label"><span data-i18n="lblBonePrefix">🦴 Bone:</span> <span id="bone-label-name">-</span></div>
+            <div id="bone-label"><span data-i18n="lblBonePrefix">🦴 Bone:</span> <span id="bone-label-name">-</span>
+            </div>
         </div>
     </div>
 
@@ -111,7 +132,9 @@
                     style="width: auto; height: 32px; padding: 0 10px; font-size: 12px; white-space: nowrap;"
                     data-i18n="btnCopyJoints">📋 複製名稱</button>
             </div>
-            <div id="joints-list-container" style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+            <div id="joints-list-container"
+                style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+            </div>
         </div>
     </div>
 
@@ -121,9 +144,12 @@
                 <div class="modal-title" data-i18n="modalPoseTitle">📂 Select Pose to Load</div>
                 <button class="modal-close" id="btn-close-modal">✕</button>
             </div>
-            <div style="padding: 10px 16px 4px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; background: #fafafa;">
-                <label style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; color: #334155;">
-                    <input type="checkbox" id="chk-keep-current-model" style="cursor: pointer; width: 15px; height: 15px;">
+            <div
+                style="padding: 10px 16px 4px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; background: #fafafa;">
+                <label
+                    style="font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none; color: #334155;">
+                    <input type="checkbox" id="chk-keep-current-model"
+                        style="cursor: pointer; width: 15px; height: 15px;">
                     <span data-i18n="chkApplyToCurrentModel">嘗試套用至目前模型</span>
                 </label>
             </div>
@@ -140,7 +166,8 @@
             <div style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
                 <div class="control-group">
                     <label data-i18n="lblPoseName">Pose Name:</label>
-                    <input type="text" id="input-pose-name" class="num-input" style="text-align: left; height: 32px; padding: 0 8px; font-size: 12px;">
+                    <input type="text" id="input-pose-name" class="num-input"
+                        style="text-align: left; height: 32px; padding: 0 8px; font-size: 12px;">
 
                     <label data-i18n="lblSelectExistingPose">Overwrite Existing Pose (Optional):</label>
                     <select id="select-existing-pose" class="select-control">
@@ -149,7 +176,8 @@
                 </div>
                 <div class="btn-group">
                     <button id="btn-cancel-save-pose" class="toggle-btn" data-i18n="btnCancel">Cancel</button>
-                    <button id="btn-confirm-save-pose" class="toggle-btn btn-success" data-i18n="btnConfirmSave">Save</button>
+                    <button id="btn-confirm-save-pose" class="toggle-btn btn-success"
+                        data-i18n="btnConfirmSave">Save</button>
                 </div>
             </div>
         </div>
@@ -161,7 +189,25 @@
                 <div class="modal-title" data-i18n="modalShapeKeysTitle">😊 Shape Keys List</div>
                 <button class="modal-close" id="btn-close-shapekeys-modal">✕</button>
             </div>
-            <div id="shapekeys-list-container" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
+            <div id="shapekeys-list-container"
+                style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
+            </div>
+        </div>
+    </div>
+
+    <div id="parts-list-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px; height: 70%; max-height: 550px;">
+            <div class="modal-header">
+                <div class="modal-title" data-i18n="titlePartsSelect">🧩 模型部件選擇</div>
+                <button class="modal-close" id="btn-close-parts-modal">✕</button>
+            </div>
+            <div style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px;">
+                <button id="btn-parts-show-all" class="toggle-btn btn-info" style="font-size: 12px;" data-i18n="lblSeletAll">顯示全部</button>
+                <button id="btn-parts-hide-all" class="toggle-btn" style="font-size: 12px;" data-i18n="lblHideAll">隱藏全部</button>
+            </div>
+            <div id="parts-list-container"
+                style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            </div>
         </div>
     </div>
 
@@ -286,10 +332,14 @@
 
             AppState.currentModel.traverse((child) => {
                 if (child.isSkinnedMesh && child.skeleton) child.skeleton.pose();
-                if (!skipSharpKeys && child.isMesh && child.morphTargetInfluences) {
-                    child.morphTargetInfluences.fill(0);
+                if (!skipSharpKeys && child.isMesh) {
+                    if (child.morphTargetInfluences) child.morphTargetInfluences.fill(0);
+                    // child.visible = true;
                 }
             });
+
+            // AppState.config.hiddenParts=[];
+            // if (typeof renderPartsList === 'function')  renderPartsList();
 
             updateSkeleton();
             updateJointSpheres();
@@ -312,6 +362,11 @@
 
                     updateUIFromConfig();
                     applyModelOffset();
+
+                    {
+                        AppState.config.hiddenParts = defaultConfig.hiddenParts;
+                        applyHiddenPartsData(defaultConfig.hiddenParts || []);
+                    }
 
                     const hasPose = defaultConfig.pose?.length > 0;
                     const hasShapeKeys = defaultConfig.shapeKeys && Object.keys(defaultConfig.shapeKeys).length > 0;
@@ -1061,6 +1116,7 @@
                 rotationOffset: AppState.config.rotationOffset || { x: 0, y: 0, z: 0 },
                 pose: getPoseData(),
                 shapeKeys: getShapeKeysData(),
+                hiddenParts: getHiddenPartsData(),
                 camera: getCameraData(),
                 ambient: AppState.config.ambient,
                 direct: AppState.config.direct,
@@ -1241,7 +1297,7 @@
                             const indices = [skinIndex.getX(i), skinIndex.getY(i), skinIndex.getZ(i), skinIndex.getW(i)];
                             const weights = [skinWeight.getX(i), skinWeight.getY(i), skinWeight.getZ(i), skinWeight.getW(i)];
 
-                            skinMatrix.set(0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0);
+                            skinMatrix.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
                             for (let j = 0; j < 4; j++) {
                                 const w = weights[j];
@@ -1399,6 +1455,7 @@
 
                     if (hasPose) applyPoseData(AppState.config.pose);
                     if (hasShapeKeys) applyShapeKeysData(AppState.config.shapeKeys);
+                    applyHiddenPartsData(AppState.config.hiddenParts || []);
                     if (!hasPose && !hasShapeKeys) resetPose();
                     if (AppState.config.camera) applyCameraData(AppState.config.camera);
 

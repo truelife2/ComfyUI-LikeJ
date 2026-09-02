@@ -72,6 +72,10 @@ const i18n = {
         errorLoadVnccs: "無法讀取 VNCCS 姿勢庫: ",
         msgParseVnccsError: "無法解析 VNCCS 姿態檔",
         chkApplyToCurrentModel: "嘗試套用至目前模型",
+        btnPartsSelect: "🧩 部件",
+        lblSeletAll: "顯示全部",
+        lblHideAll: "隱藏全部",
+        titlePartsSelect: "🧩 模型部件選擇",
     },
     en: {
         titleModelFile: "📁 Model File",
@@ -141,6 +145,10 @@ const i18n = {
         errorLoadVnccs: "Failed to load VNCCS poses: ",
         msgParseVnccsError: "Failed to parse VNCCS pose file",
         chkApplyToCurrentModel: "Try applying to current model",
+        btnPartsSelect: "🧩 Parts",
+        lblSeletAll: "Show All",
+        lblHideAll: "Hide All",
+        titlePartsSelect: "🧩 Model Parts Select",
     }
 };
 
