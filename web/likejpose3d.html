@@ -202,8 +202,10 @@
                 <button class="modal-close" id="btn-close-parts-modal">✕</button>
             </div>
             <div style="padding: 10px 16px; border-bottom: 1px solid #e2e8f0; display: flex; gap: 8px;">
-                <button id="btn-parts-show-all" class="toggle-btn btn-info" style="font-size: 12px;" data-i18n="lblSeletAll">顯示全部</button>
-                <button id="btn-parts-hide-all" class="toggle-btn" style="font-size: 12px;" data-i18n="lblHideAll">隱藏全部</button>
+                <button id="btn-parts-show-all" class="toggle-btn btn-info" style="font-size: 12px;"
+                    data-i18n="lblSeletAll">顯示全部</button>
+                <button id="btn-parts-hide-all" class="toggle-btn" style="font-size: 12px;"
+                    data-i18n="lblHideAll">隱藏全部</button>
             </div>
             <div id="parts-list-container"
                 style="flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
@@ -1024,15 +1026,12 @@
         }
 
         modelSelect.addEventListener('change', (e) => {
-            updateDeleteBtnState();
             const selectedOpt = e.target.options[e.target.selectedIndex];
             const filename = selectedOpt.value;
             const isDefault = selectedOpt.dataset.isDefault === "true";
 
             AppState.config.modelName = filename;
             AppState.config.isDefaultModel = isDefault;
-
-            if (typeof updateVnccsBtnVisibility === 'function') updateVnccsBtnVisibility();
 
             loadModelFromUrl(getModelApiUrl(filename, isDefault), filename, false);
         });
@@ -1381,11 +1380,10 @@
                 console.warn("Failed to read model initial pose:", e);
             }
             return null;
+            
         }
-
         function loadModelFromUrl(url, fileName = '', isRestoring = false) {
             closeAllFloatModals();
-            if (typeof updateVnccsBtnVisibility === 'function') updateVnccsBtnVisibility();
 
             const loadingEl = document.getElementById('loading');
             loadingEl.style.display = 'block';
@@ -1464,6 +1462,9 @@
                 } else {
                     loadInitialPose();
                 }
+                
+                updateDeleteBtnState();
+                if (typeof updateVnccsBtnVisibility === 'function') updateVnccsBtnVisibility();
             }, undefined, (error) => {
                 console.error('Failed to load model:', error);
                 loadingEl.innerText = i18n[AppState.currentLang].msgLoadError;

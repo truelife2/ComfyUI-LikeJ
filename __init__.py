@@ -14,6 +14,7 @@ from . import likejswitchtoflowin
 from . import likejimageresize
 from . import likejpose3d
 from . import likejoutputtrigger
+from . import likejnoderepo
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -33,6 +34,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJImageResize": likejimageresize.LikeJImageResize,
     "LikeJPose3d": likejpose3d.LikeJPose3d,
     "LikeJOutputTrigger": likejoutputtrigger.LikeJOutputTrigger,
+    "LikeJNodeRepo": likejnoderepo.LikeJNodeRepo,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -53,6 +55,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJImageResize": "LikeJ Image Resize (Outpaint)",
     "LikeJPose3d": "LikeJ 3D Pose Editor",
     "LikeJOutputTrigger": "LikeJ Output Trigger",
+    "LikeJNodeRepo": "LikeJ Node Repo",
 }
 
 WEB_DIRECTORY = "./web"

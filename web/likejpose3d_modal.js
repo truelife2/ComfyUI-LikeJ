@@ -854,3 +854,19 @@ btnLoadVnccs?.addEventListener('click', async () => {
         }
     }
 });
+
+
+function updateVnccsBtnVisibility() {
+    const btnVnccs = document.getElementById('btn-load-vnccs');
+    if (!btnVnccs) return;
+
+    const isDefault = AppState.config.isDefaultModel === true;
+    const modelName = AppState.config.modelName;
+    const allowedModels = ['default.glb', 'default_faceless.glb'];
+
+    if (isDefault && allowedModels.includes(modelName)) {
+        btnVnccs.style.display = ''; // 恢復預設顯示
+    } else {
+        btnVnccs.style.display = 'none'; // 隱藏按鈕
+    }
+}
