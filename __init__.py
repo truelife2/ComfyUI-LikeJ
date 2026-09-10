@@ -15,6 +15,7 @@ from . import likejimageresize
 from . import likejpose3d
 from . import likejoutputtrigger
 from . import likejnoderepo
+from . import likejvideoloop
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -35,6 +36,8 @@ NODE_CLASS_MAPPINGS = {
     "LikeJPose3d": likejpose3d.LikeJPose3d,
     "LikeJOutputTrigger": likejoutputtrigger.LikeJOutputTrigger,
     "LikeJNodeRepo": likejnoderepo.LikeJNodeRepo,
+    "LikeJVideoLoopLoad": likejvideoloop.LikeJVideoLoopLoad,
+    "LikeJVideoLoopSave": likejvideoloop.LikeJVideoLoopSave,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -56,6 +59,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJPose3d": "LikeJ 3D Pose Editor",
     "LikeJOutputTrigger": "LikeJ Output Trigger",
     "LikeJNodeRepo": "LikeJ Node Repo",
+    "LikeJVideoLoopLoad": "LikeJ Video Loop Load",
+    "LikeJVideoLoopSave": "LikeJ Video Loop Save",
 }
 
 WEB_DIRECTORY = "./web"
