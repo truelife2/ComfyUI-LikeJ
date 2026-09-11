@@ -327,6 +327,7 @@ class LikeJVideoLoopSave:
         next_start_frame = loop_flow["next_start_frame"]
         load_node_id = loop_flow["load_node_id"]
         is_first_chunk = loop_flow.get("is_first_chunk", False)
+        total_frames = loop_flow.get("total_frames", 0)
 
         output_dir = folder_paths.get_output_directory()
         clean_name = output_filename.strip().strip('"').strip("'")
@@ -394,6 +395,17 @@ class LikeJVideoLoopSave:
         except Exception as e:
             print(f"[LikeJ Loop] FFmpeg 管道寫入失敗: {e}")
 
+        # 計算當前已處理進度（幀數）
+        processed_frames = min(next_start_frame, total_frames) if total_frames > 0 else next_start_frame
+
+        if node_id is not None:
+            PromptServer.instance.send_sync("likej_save_info", {
+                "save_node_id": node_id,
+                "processed_frames": processed_frames,
+                "total_frames": total_frames,
+                "fps": float(fps)
+            })
+
         final_path = ""
         if is_finished:
             final_path = finalize_encoder_session(node_id) or session["final_path"]
@@ -407,7 +419,14 @@ class LikeJVideoLoopSave:
         })
 
         return {
-            "ui": {"images": self._tensor_to_preview(valid_images[-1:])},
+            "ui": {
+                "images": self._tensor_to_preview(valid_images[-1:]),
+                "save_info": [{
+                    "processed_frames": processed_frames,
+                    "total_frames": total_frames,
+                    "fps": float(fps)
+                }]
+            },
             "result": (final_path or session["final_path"],)
         }
 
@@ -423,3 +442,4 @@ class LikeJVideoLoopSave:
         file_name = "preview_last_frame.png"
         img.save(os.path.join(full_output_folder, file_name))
         return [{"filename": file_name, "subfolder": subfolder, "type": "temp"}]
+    

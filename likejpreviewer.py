@@ -24,16 +24,27 @@ class LikeJPreviewer:
     CATEGORY = "LikeJ"
 
     def preview_data(self, anything):
-        # 當 INPUT_IS_LIST = True 時，anything 會被 ComfyUI 自動包成一個 Python list
-        # 例如：['file1', 'file2', 'file3']
-        try:
-            if isinstance(anything, (dict, list)):
-                text_val = json.dumps(anything, ensure_ascii=False, indent=2)
-            else:
-                text_val = str(anything)
-        except Exception as e:
-            text_val = f"<ex: {str(e)}>"
+        lines = []
+        
+        # 確保為 list 結構處理
+        items = anything if isinstance(anything, list) else [anything]
+        count = len(items)
 
-        # 將完整包含所有項目的文字傳給前端預覽 Widget，並將原始 list 原封不動傳給下個節點
+        # 1 筆以上（多於 1 筆）時才在首行加入 Count 標示
+        if count > 1:
+            lines.append(f"[Count: {count}]")
+
+        for item in items:
+            try:
+                if isinstance(item, (dict, list)):
+                    # 特殊物件（dict/list）轉為單行 JSON 格式，確保維持一行文本
+                    lines.append(json.dumps(item, ensure_ascii=False))
+                else:
+                    lines.append(str(item))
+            except Exception as e:
+                lines.append(f"<ex: {str(e)}>")
+
+        text_val = "\n".join(lines)
+
+        # 將格式化後的字串傳給前端預覽 Widget，並將原始 list 原封不動傳給下個節點
         return {"ui": {"text": [text_val]}, "result": (anything,)}
-
