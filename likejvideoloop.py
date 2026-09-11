@@ -157,7 +157,11 @@ class LikeJVideoLoopLoad:
                 "node_id": "UNIQUE_ID"
             }
         }
-
+    
+    @classmethod
+    def IS_CHANGED(s, video_path, start_frame, chunk_size, overlap_padding=0, looping_frame=-1, node_id=None):
+        return float("NaN")
+    
     RETURN_TYPES = ("LOOP_FLOW", "IMAGE", "AUDIO", "FLOAT", "STRING", "INT")
     RETURN_NAMES = ("loop_flow", "images", "audio", "fps", "filename", "total_frames")
     FUNCTION = "load_chunk"
