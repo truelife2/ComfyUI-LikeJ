@@ -24,7 +24,6 @@ def get_unique_path(output_dir, filename_prefix, ext=".mp4"):
         counter += 1
 
 
-# 處理 FFmpeg 封裝歸檔的通用函式
 def finalize_encoder_session(node_id):
     if node_id not in ENCODER_SESSIONS:
         return None
@@ -35,6 +34,8 @@ def finalize_encoder_session(node_id):
     temp_video_only = session["temp_video"]
     audio = session.get("audio")
     output_dir = session.get("output_dir")
+    initial_start_frame = session.get("initial_start_frame", 0)
+    fps = session.get("fps", 30.0)
 
     try:
         if proc.stdin and not proc.stdin.closed:
@@ -43,7 +44,6 @@ def finalize_encoder_session(node_id):
     except Exception as e:
         print(f"[LikeJ Loop] 關閉 FFmpeg 管道失敗: {e}")
 
-    # 音訊合成與歸檔
     if audio is not None and "waveform" in audio and os.path.exists(temp_video_only):
         temp_audio_path = os.path.join(output_dir, f"likej_temp_audio_{node_id}.wav")
         try:
@@ -53,9 +53,12 @@ def finalize_encoder_session(node_id):
                 waveform = waveform.squeeze(0)
             torchaudio.save(temp_audio_path, waveform, sample_rate)
 
+            start_time = initial_start_frame / fps if fps > 0 else 0.0
+
             cmd_audio = [
                 'ffmpeg', '-y',
                 '-i', temp_video_only,
+                '-ss', f'{start_time:.4f}',
                 '-i', temp_audio_path,
                 '-c:v', 'copy',
                 '-c:a', 'aac', '-b:a', '192k',
@@ -81,13 +84,51 @@ def finalize_encoder_session(node_id):
     return final_output_path
 
 
-# API 路由：當在靜止（非執行中）狀態下勾選 force_finish 時觸發
+# API 1：即時獲取影片資訊
+@PromptServer.instance.routes.post("/likej/get_video_info")
+async def get_video_info_api(request):
+    try:
+        data = await request.json()
+        video_path = data.get("video_path", "")
+        clean_path = video_path.strip().strip('"').strip("'")
+
+        if not os.path.isabs(clean_path) or not os.path.exists(clean_path):
+            input_dir_path = os.path.join(folder_paths.get_input_directory(), clean_path)
+            if os.path.exists(input_dir_path):
+                clean_path = input_dir_path
+
+        if not clean_path or not os.path.exists(clean_path):
+            return web.json_response({"status": "error", "message": "File not found"})
+
+        cap = cv2.VideoCapture(clean_path)
+        if not cap.isOpened():
+            return web.json_response({"status": "error", "message": "Cannot open video"})
+
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        cap.release()
+
+        if total_frames <= 0 or fps <= 0 or np.isnan(fps):
+            fps = 30.0
+
+        duration = total_frames / fps if fps > 0 else 0.0
+
+        return web.json_response({
+            "status": "success",
+            "total_frames": total_frames,
+            "duration": float(duration),
+            "fps": float(fps)
+        })
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)})
+
+
+# API 2：靜止狀態下的強行歸檔
 @PromptServer.instance.routes.post("/likej/force_finish_idle")
 async def force_finish_idle_api(request):
     data = await request.json()
     node_id = str(data.get("node_id"))
     
-    # 嘗試尋找對應的 session (考慮 int 或 str 類型的 node_id)
     target_node_id = None
     if node_id in ENCODER_SESSIONS:
         target_node_id = node_id
@@ -152,6 +193,10 @@ class LikeJVideoLoopLoad:
         is_first_chunk = (looping_frame < 0)
         effective_start = looping_frame if looping_frame >= 0 else start_frame
 
+        if effective_start >= total_frames:
+            cap.release()
+            raise ValueError(f"[LikeJ Loop] 讀取位置 ({effective_start}) 超過影片總幀數 ({total_frames})")
+
         actual_start = max(0, effective_start - overlap_padding)
         crop_offset = effective_start - actual_start
         read_count = crop_offset + chunk_size
@@ -174,9 +219,10 @@ class LikeJVideoLoopLoad:
 
         out_tensor = torch.stack(frames)
         next_start = effective_start + chunk_size
-        is_finished = next_start >= total_frames
+        is_finished = (next_start >= total_frames) or (len(frames) < read_count)
 
         audio_data = self._extract_audio(clean_path)
+        duration = total_frames / fps if fps > 0 else 0.0
 
         loop_flow = {
             "crop_offset": crop_offset,
@@ -184,17 +230,28 @@ class LikeJVideoLoopLoad:
             "next_start_frame": next_start,
             "load_node_id": node_id,
             "is_first_chunk": is_first_chunk,
-            "total_frames": total_frames
+            "effective_start": effective_start,
+            "total_frames": total_frames,
+            "fps": fps
         }
 
         if node_id is not None:
             PromptServer.instance.send_sync("likej_video_info", {
                 "load_node_id": node_id,
-                "total_frames": total_frames
+                "total_frames": total_frames,
+                "duration": duration,
+                "fps": float(fps)
             })
 
         return {
-            "ui": {"images": self._tensor_to_preview(out_tensor[0:1])},
+            "ui": {
+                "images": self._tensor_to_preview(out_tensor[0:1]),
+                "video_info": [{
+                    "total_frames": total_frames,
+                    "duration": float(duration),
+                    "fps": float(fps)
+                }]
+            },
             "result": (loop_flow, out_tensor, audio_data, float(fps), filename_without_ext, total_frames)
         }
 
@@ -298,6 +355,7 @@ class LikeJVideoLoopSave:
                 '-c:v', 'libx264',
                 '-crf', '17',
                 '-preset', 'superfast',
+                '-r', str(fps),
                 '-movflags', 'frag_keyframe+empty_moov',
                 '-pix_fmt', 'yuv420p',
                 temp_video_only
@@ -311,7 +369,9 @@ class LikeJVideoLoopSave:
                 "final_path": final_output_path,
                 "temp_video": temp_video_only,
                 "audio": audio,
-                "output_dir": output_dir
+                "output_dir": output_dir,
+                "initial_start_frame": loop_flow.get("effective_start", 0),
+                "fps": fps
             }
         else:
             ENCODER_SESSIONS[node_id]["audio"] = audio
@@ -359,4 +419,3 @@ class LikeJVideoLoopSave:
         file_name = "preview_last_frame.png"
         img.save(os.path.join(full_output_folder, file_name))
         return [{"filename": file_name, "subfolder": subfolder, "type": "temp"}]
-

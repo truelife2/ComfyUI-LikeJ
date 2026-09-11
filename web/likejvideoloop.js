@@ -1,9 +1,147 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
+function formatDuration(sec) {
+    if (!sec || isNaN(sec)) return "00:00.0";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    const ms = Math.floor((sec % 1) * 10);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${ms}`;
+}
+
+function formatFPS(fps) {
+    if (!fps || isNaN(fps)) return "0";
+    return Number.isInteger(fps) ? fps.toString() : fps.toFixed(2);
+}
+
+function findNodeById(id) {
+    if (id === null || id === undefined) return null;
+    return app.graph?.getNodeById(id)
+        || app.graph?.getNodeById(Number(id))
+        || app.graph?.getNodeById(String(id));
+}
+
+function ensureInfoWidget(node) {
+    let widget = node.widgets?.find(w => w.name === "video_info_display");
+
+    node.properties = node.properties || {};
+    if (node.properties.video_info_text === undefined) {
+        node.properties.video_info_text = "Frames: -  |  Duration: --:--  |  FPS: -";
+    }
+
+    const currentText = node.properties.video_info_text;
+
+    if (!widget) {
+        if (typeof node.addDOMWidget === "function") {
+            const container = document.createElement("div");
+            container.className = "comfy-video-info-widget";
+            container.style.display = "flex";
+            container.style.width = "100%";
+            container.style.height = "22px";
+            container.style.justifyContent = "center";
+            container.style.fontSize = "12px";
+            container.style.color = "#A0A0A0";
+
+            const valueSpan = document.createElement("span");
+            valueSpan.className = "value-text";
+            valueSpan.innerText = currentText;
+            container.appendChild(valueSpan);
+
+            widget = node.addDOMWidget("video_info_display", "Video Info", container, {
+                serialize: false,
+                hideLabel: true,
+                computeSize: () => [220, 26]
+            });
+            widget.valueSpan = valueSpan;
+        } else {
+            widget = {
+                name: "video_info_display",
+                type: "text",
+                value: currentText,
+                options: { serialize: false }
+            };
+            if (!node.widgets) node.widgets = [];
+            node.widgets.push(widget);
+        }
+    } else {
+        if (widget.valueSpan) {
+            widget.valueSpan.innerText = currentText;
+        }
+        widget.value = currentText;
+    }
+
+    return widget;
+}
+function updateWidgetText(node, totalFrames, duration, fps) {
+    const activeText = (totalFrames && duration !== undefined && fps)
+        ? `Frames: ${totalFrames}  |  Duration: ${formatDuration(duration)}  |  FPS: ${formatFPS(fps)}`
+        : "Frames: -  |  Duration: --:--  |  FPS: -";
+
+    node.properties = node.properties || {};
+    node.properties.video_info_text = activeText;
+
+    const widget = ensureInfoWidget(node);
+    if (widget) {
+        widget.value = activeText;
+        if (widget.valueSpan) {
+            widget.valueSpan.innerText = activeText;
+        }
+        if (typeof node.setDirtyCanvas === "function") {
+            node.setDirtyCanvas(true, true);
+        }
+    }
+}
+
+let isQueuing = false;
+
 app.registerExtension({
     name: "LikeJ.VideoLoop",
     nodeCreated(node) {
+        if (node.comfyClass === "LikeJVideoLoopLoad") {
+            ensureInfoWidget(node);
+
+            // 監聽 video_path 異動事件
+            const pathWidget = node.widgets?.find(w => w.name === "video_path");
+            if (pathWidget) {
+                const origCallback = pathWidget.callback;
+                pathWidget.callback = async function (value) {
+                    if (origCallback) origCallback.apply(this, arguments);
+
+                    // 1. 立即重置 Label 文字與 looping_frame 狀態
+                    updateWidgetText(node);
+                    const loopWidget = node.widgets?.find(w => w.name === "looping_frame");
+                    if (loopWidget) {
+                        loopWidget.value = -1;
+                        node.setDirtyCanvas(true, true);
+                    }
+
+                    // 2. 若有新路徑，非同步請求後端 API 取得最新影片資訊並更新
+                    if (value && typeof value === "string" && value.trim() !== "") {
+                        try {
+                            const res = await api.fetchApi("/likej/get_video_info", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ video_path: value })
+                            });
+                            const data = await res.json();
+                            if (data?.status === "success") {
+                                updateWidgetText(node, data.total_frames, data.duration, data.fps);
+                            }
+                        } catch (err) {
+                            console.error("[LikeJ Loop] Failed to fetch video info:", err);
+                        }
+                    }
+                };
+            }
+
+            node.onExecuted = function (message) {
+                if (message?.video_info?.[0]) {
+                    const info = message.video_info[0];
+                    updateWidgetText(node, info.total_frames, info.duration, info.fps);
+                }
+            };
+        }
+
         if (node.comfyClass === "LikeJVideoLoopSave") {
             const forceWidget = node.widgets?.find(w => w.name === "force_finish");
             if (forceWidget) {
@@ -11,29 +149,22 @@ app.registerExtension({
                 forceWidget.callback = async function (value) {
                     if (origCallback) origCallback.apply(this, arguments);
 
-                    // 1. 如果是在靜止狀態下直接勾選強制完成，手動觸發歸檔 API
                     if (value && !app.runningNodeId) {
                         try {
-                            const res = await api.fetchApi("/likej/force_finish_idle", {
+                            await api.fetchApi("/likej/force_finish_idle", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ node_id: node.id })
                             });
-                            const data = await res.json();
-                            if (data.status === "success") {
-                                console.log("[LikeJ Loop] 靜止狀態下已成功歸檔影片:", data.final_path);
-                            }
                         } catch (err) {
-                            console.error("[LikeJ Loop] 強制歸檔請求失敗:", err);
+                            console.error("[LikeJ Loop] Force finish request failed:", err);
                         } finally {
                             forceWidget.value = false;
-                            
-                            const loadNode = app.graph.nodes.find(n => n.comfyClass === "LikeJVideoLoopLoad");
-                            if (loadNode) {
-                                const loopWidget = loadNode.widgets?.find(w => w.name === "looping_frame");
+                            const loadNode = app.graph?.nodes?.find(n => n.comfyClass === "LikeJVideoLoopLoad");
+                            if (loadNode?.widgets) {
+                                const loopWidget = loadNode.widgets.find(w => w.name === "looping_frame");
                                 if (loopWidget) {
                                     loopWidget.value = -1;
-                                    if (typeof loopWidget.callback === "function") loopWidget.callback(-1);
                                     loadNode.setDirtyCanvas(true, true);
                                 }
                             }
@@ -46,88 +177,80 @@ app.registerExtension({
     },
     async setup() {
         api.addEventListener("likej_video_info", (event) => {
-            const { load_node_id, total_frames } = event.detail;
-            const loadNode = app.graph.getNodeById(load_node_id) || app.graph.getNodeById(Number(load_node_id));
+            const { load_node_id, total_frames, duration, fps } = event.detail;
+            const loadNode = findNodeById(load_node_id);
             if (loadNode) {
-                let widget = loadNode.widgets?.find(w => w.name === "total_frames_display");
-                if (!widget) {
-                    widget = loadNode.addCustomWidget({
-                        name: "total_frames_display",
-                        type: "text",
-                        value: `總幀數: ${total_frames}`,
-                        options: { serialize: false }
-                    });
-                } else {
-                    widget.value = `總幀數: ${total_frames}`;
-                }
-                loadNode.setDirtyCanvas(true, true);
+                updateWidgetText(loadNode, total_frames, duration, fps);
             }
         });
 
         api.addEventListener("likej_loop_next", async (event) => {
             const { load_node_id, save_node_id, next_start_frame, is_finished, auto_queue } = event.detail;
 
-            const saveNode = app.graph.getNodeById(save_node_id) 
-                          || app.graph.getNodeById(Number(save_node_id)) 
-                          || app.graph.getNodeById(String(save_node_id));
+            const saveNode = findNodeById(save_node_id);
+            const loadNode = findNodeById(load_node_id);
 
             let isForceFinishActive = false;
             let isAutoQueueActive = Boolean(auto_queue);
 
-            if (saveNode && saveNode.widgets) {
+            if (saveNode?.widgets) {
                 const forceWidget = saveNode.widgets.find(w => w.name === "force_finish");
-                if (forceWidget) {
-                    isForceFinishActive = Boolean(forceWidget.value);
-                    if (isForceFinishActive) {
+                if (forceWidget) isForceFinishActive = Boolean(forceWidget.value);
+
+                const autoQueueWidget = saveNode.widgets.find(w => w.name === "auto_queue");
+                if (autoQueueWidget !== undefined) isAutoQueueActive = Boolean(autoQueueWidget.value);
+            }
+
+            const shouldStop = is_finished || isForceFinishActive;
+
+            if (shouldStop) {
+                if (isForceFinishActive && !is_finished && saveNode) {
+                    try {
+                        await api.fetchApi("/likej/force_finish_idle", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ node_id: saveNode.id })
+                        });
+                    } catch (err) {
+                        console.error("[LikeJ Loop] Force finish API call failed:", err);
+                    }
+                }
+
+                if (saveNode?.widgets) {
+                    const forceWidget = saveNode.widgets.find(w => w.name === "force_finish");
+                    if (forceWidget) {
                         forceWidget.value = false;
                         saveNode.setDirtyCanvas(true, true);
                     }
                 }
 
-                const autoQueueWidget = saveNode.widgets.find(w => w.name === "auto_queue");
-                if (autoQueueWidget !== undefined) {
-                    isAutoQueueActive = Boolean(autoQueueWidget.value);
+                if (loadNode?.widgets) {
+                    const loopWidget = loadNode.widgets.find(w => w.name === "looping_frame");
+                    if (loopWidget) {
+                        loopWidget.value = -1;
+                        loadNode.setDirtyCanvas(true, true);
+                    }
                 }
+
+                isQueuing = false;
+                return;
             }
 
-            const shouldStop = is_finished || isForceFinishActive;
-
-            // 2.【關鍵修復】如果判定要停止，但當前 Chunk Python 沒機會收尾（例如手動卡斷或特殊中斷），主動呼叫 API 強制封裝歸檔
-            if (shouldStop) {
-                try {
-                    await api.fetchApi("/likej/force_finish_idle", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ node_id: save_node_id })
-                    });
-                    console.log("[LikeJ Loop] 觸發停止，已確保背景 FFmpeg 順利完成歸檔。");
-                } catch (e) {
-                    console.error("[LikeJ Loop] 停止時歸檔請求發生錯誤:", e);
-                }
-            }
-
-            // 3. 更新 Load 節點數值（若結束則重置為 -1）
-            const loadNode = app.graph.getNodeById(load_node_id) || app.graph.getNodeById(Number(load_node_id));
-            if (loadNode) {
-                const widget = loadNode.widgets?.find(w => w.name === "looping_frame");
-                if (widget) {
-                    widget.value = shouldStop ? -1 : next_start_frame;
-                    if (typeof widget.callback === "function") widget.callback(widget.value);
+            if (loadNode?.widgets) {
+                const loopWidget = loadNode.widgets.find(w => w.name === "looping_frame");
+                if (loopWidget) {
+                    loopWidget.value = next_start_frame;
                     loadNode.setDirtyCanvas(true, true);
                 }
             }
 
-            if (shouldStop) {
-                console.log("[LikeJ Loop] 迴圈已正式停止。");
-                return;
-            }
-
-            // 4. 正常推進下一輪
-            if (isAutoQueueActive) {
-                console.log("[LikeJ Loop] 觸發下一輪 Queue");
-                await app.queuePrompt(0);
-            } else {
-                console.log("[LikeJ Loop] auto_queue 已關閉，暫停自動排隊");
+            if (isAutoQueueActive && !isQueuing) {
+                isQueuing = true;
+                try {
+                    await app.queuePrompt(0);
+                } finally {
+                    setTimeout(() => { isQueuing = false; }, 300);
+                }
             }
         });
     }
