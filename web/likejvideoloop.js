@@ -1,6 +1,15 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
+// Global variable to track which Graph (Tab) the Loop is running in
+let runningGraphInstance = null;
+let isQueuing = false;
+
+// Record current Graph instance when execution starts
+api.addEventListener("execution_start", () => {
+    runningGraphInstance = app.graph;
+});
+
 function formatDuration(sec) {
     if (!sec || isNaN(sec)) return "00:00.0";
     const m = Math.floor(sec / 60);
@@ -48,8 +57,9 @@ function addDividerWidget(node, targetWidgetName) {
         node.widgets.splice(targetIdx, 0, node.widgets.splice(dividerIdx, 1)[0]);
     }
 }
+
 // ---------------------------------------------------------------------
-// 僅針對特定節點綁定 MutationObserver，自動防禦 Vue 的 Style 覆蓋
+// Bind MutationObserver to specific nodes to prevent Vue style override
 // ---------------------------------------------------------------------
 function setupAutoFlexFix(node) {
     requestAnimationFrame(() => {
@@ -73,7 +83,7 @@ function setupAutoFlexFix(node) {
 }
 
 // ---------------------------------------------------------------------
-// 通用 DOM Widget 建立與更新邏輯（固定高度版）
+// Generic DOM Widget Creation and Update Logic (Fixed Height)
 // ---------------------------------------------------------------------
 function ensureDisplayWidget(node, widgetName, propName, defaultText) {
     let widget = node.widgets?.find(w => w.name === widgetName);
@@ -90,7 +100,6 @@ function ensureDisplayWidget(node, widgetName, propName, defaultText) {
         container.className = `comfy-${widgetName}-widget`;
         container.style.display = "flex";
         container.style.width = "100%";
-        // 強制固定高度與邊框設定
         container.style.height = "22px";
         container.style.boxSizing = "border-box";
         container.style.overflow = "hidden";
@@ -102,7 +111,6 @@ function ensureDisplayWidget(node, widgetName, propName, defaultText) {
         const valueSpan = document.createElement("span");
         valueSpan.className = "value-text";
         valueSpan.innerText = currentText;
-        // 防止文字換行造成動態高度擴張
         valueSpan.style.whiteSpace = "nowrap";
         valueSpan.style.overflow = "hidden";
         valueSpan.style.textOverflow = "ellipsis";
@@ -140,7 +148,7 @@ function updateDisplayWidget(node, widgetName, propName, text) {
 }
 
 // ---------------------------------------------------------------------
-// Load / Save 專屬 Label 更新封裝
+// Load / Save Label Update Wrappers
 // ---------------------------------------------------------------------
 const LOAD_WIDGET_NAME = "video_info_display";
 const LOAD_PROP_NAME = "video_info_text";
@@ -167,19 +175,17 @@ function updateSaveWidget(node, processedFrames, totalFrames, fps) {
 // ---------------------------------------------------------------------
 // Main Extension
 // ---------------------------------------------------------------------
-let isQueuing = false;
-
 app.registerExtension({
     name: "LikeJ.VideoLoop",
     nodeCreated(node) {
-        // --- 1. Load Node 初始化 ---
+        // --- 1. Load Node Initialization ---
         if (node.comfyClass === "LikeJVideoLoopLoad") {
             ensureDisplayWidget(node, LOAD_WIDGET_NAME, LOAD_PROP_NAME, LOAD_DEFAULT_TEXT);
             setupAutoFlexFix(node);
 
             const pathWidget = node.widgets?.find(w => w.name === "video_path");
 
-            // === 新增：影片上傳按鈕 Widget ===
+            // === Video Upload Button Widget ===
             const uploadBtn = node.addWidget("button", "Upload Video", "upload", () => {
                 const fileInput = document.createElement("input");
                 fileInput.type = "file";
@@ -191,7 +197,7 @@ app.registerExtension({
                     const file = e.target.files[0];
 
                     const formData = new FormData();
-                    formData.append("image", file); // ComfyUI 上傳 API 統一接收 'image'
+                    formData.append("image", file);
                     formData.append("overwrite", "true");
                     formData.append("type", "input");
 
@@ -203,22 +209,20 @@ app.registerExtension({
 
                         if (response.status === 200) {
                             const data = await response.json();
-                            // 取得相對 input 資料夾的檔名/子資料夾路徑
                             const uploadedPath = data.subfolder ? `${data.subfolder}/${data.name}` : data.name;
 
                             if (pathWidget) {
                                 pathWidget.value = uploadedPath;
-                                // 主動觸發原有 callback 以更新影片資訊
                                 if (pathWidget.callback) {
                                     pathWidget.callback(uploadedPath);
                                 }
                             }
                         } else {
-                            alert("影片上傳失敗: " + response.statusText);
+                            alert("Video upload failed: " + response.statusText);
                         }
                     } catch (err) {
-                        console.error("[LikeJ Loop] 影片上傳錯誤:", err);
-                        alert("影片上傳失敗！");
+                        console.error("[LikeJ Loop] Video upload error:", err);
+                        alert("Video upload failed!");
                     } finally {
                         fileInput.remove();
                     }
@@ -228,7 +232,6 @@ app.registerExtension({
                 fileInput.click();
             });
 
-            // 將上傳按鈕排列至 video_path 的正下方
             if (pathWidget && uploadBtn) {
                 const pathIdx = node.widgets.indexOf(pathWidget);
                 const btnIdx = node.widgets.indexOf(uploadBtn);
@@ -275,12 +278,11 @@ app.registerExtension({
             };
         }
 
-        // --- 2. Save Node 初始化 ---
+        // --- 2. Save Node Initialization ---
         if (node.comfyClass === "LikeJVideoLoopSave") {
             ensureDisplayWidget(node, SAVE_WIDGET_NAME, SAVE_PROP_NAME, SAVE_DEFAULT_TEXT);
             setupAutoFlexFix(node);
 
-            // 在 auto_queue 開關上方插入分隔線
             addDividerWidget(node, "auto_queue");
 
             node.onExecuted = function (message) {
@@ -343,8 +345,34 @@ app.registerExtension({
         api.addEventListener("likej_loop_next", async (event) => {
             const { load_node_id, save_node_id, next_start_frame, is_finished, auto_queue } = event.detail;
 
+            // [Guard 1]: Check if user switched workflow tabs
+            if (runningGraphInstance && app.graph !== runningGraphInstance) {
+                console.warn("[LikeJ Loop] Detected workflow tab switch. Auto-Queue has been stopped.");
+                isQueuing = false;
+                runningGraphInstance = null;
+                return;
+            }
+
             const saveNode = findNodeById(save_node_id);
             const loadNode = findNodeById(load_node_id);
+
+            // [Guard 2]: Load node not found, stop Auto-Queue
+            if (!loadNode) {
+                console.warn(`[LikeJ Loop] Corresponding Load node (${load_node_id}) not found. Auto-Queue stopped.`);
+                isQueuing = false;
+                runningGraphInstance = null;
+                return;
+            }
+
+            const loopWidget = loadNode.widgets?.find(w => w.name === "looping_frame");
+
+            // [Guard 3]: looping_frame widget missing, stop Auto-Queue
+            if (!loopWidget) {
+                console.warn(`[LikeJ Loop] Load node is missing 'looping_frame' widget, cannot update progress. Auto-Queue stopped.`);
+                isQueuing = false;
+                runningGraphInstance = null;
+                return;
+            }
 
             let isForceFinishActive = false;
             let isAutoQueueActive = Boolean(auto_queue);
@@ -380,26 +408,20 @@ app.registerExtension({
                     }
                 }
 
-                if (loadNode?.widgets) {
-                    const loopWidget = loadNode.widgets.find(w => w.name === "looping_frame");
-                    if (loopWidget) {
-                        loopWidget.value = -1;
-                        loadNode.setDirtyCanvas(true, true);
-                    }
-                }
+                // Reset status
+                loopWidget.value = -1;
+                loadNode.setDirtyCanvas(true, true);
 
                 isQueuing = false;
+                runningGraphInstance = null;
                 return;
             }
 
-            if (loadNode?.widgets) {
-                const loopWidget = loadNode.widgets.find(w => w.name === "looping_frame");
-                if (loopWidget) {
-                    loopWidget.value = next_start_frame;
-                    loadNode.setDirtyCanvas(true, true);
-                }
-            }
+            // Set next start frame
+            loopWidget.value = next_start_frame;
+            loadNode.setDirtyCanvas(true, true);
 
+            // Trigger Queue if valid and auto_queue enabled
             if (isAutoQueueActive && !isQueuing) {
                 isQueuing = true;
                 try {
