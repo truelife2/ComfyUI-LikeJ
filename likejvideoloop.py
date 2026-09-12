@@ -1,5 +1,6 @@
 import os
 import cv2
+import json
 import torch
 import numpy as np
 import subprocess
@@ -162,8 +163,8 @@ class LikeJVideoLoopLoad:
     def IS_CHANGED(s, video_path, start_frame, chunk_size, overlap_padding=0, looping_frame=-1, node_id=None):
         return float("NaN")
     
-    RETURN_TYPES = ("LOOP_FLOW", "IMAGE", "AUDIO", "FLOAT", "STRING", "INT")
-    RETURN_NAMES = ("loop_flow", "images", "audio", "fps", "filename", "total_frames")
+    RETURN_TYPES = ("LOOP_FLOW", "IMAGE", "AUDIO", "FLOAT", "STRING", "INT", "IMAGE")
+    RETURN_NAMES = ("loop_flow", "images", "audio", "fps", "filename", "total_frames", "last_image")
     FUNCTION = "load_chunk"
     CATEGORY = "LikeJ/Video"
 
@@ -247,6 +248,8 @@ class LikeJVideoLoopLoad:
                 "fps": float(fps)
             })
 
+        last_image = out_tensor[-1:]
+
         return {
             "ui": {
                 "images": self._tensor_to_preview(out_tensor[0:1]),
@@ -256,7 +259,7 @@ class LikeJVideoLoopLoad:
                     "fps": float(fps)
                 }]
             },
-            "result": (loop_flow, out_tensor, audio_data, float(fps), filename_without_ext, total_frames)
+            "result": (loop_flow, out_tensor, audio_data, float(fps), filename_without_ext, total_frames, last_image)
         }
 
     def _extract_audio(self, video_path):
@@ -303,7 +306,10 @@ class LikeJVideoLoopSave:
                 "loop_flow": ("LOOP_FLOW",),
                 "images": ("IMAGE",),
                 "fps": ("FLOAT", {"default": 30.0, "min": 1.0, "max": 120.0, "step": 0.01}),
+                "crf": ("INT", {"default": 17, "min": 0, "max": 51, "step": 1}),
+                "directory": ("STRING", {"default": ""}),
                 "output_filename": ("STRING", {"default": "likej_output"}),
+                "embed_workflow": ("BOOLEAN", {"default": True}),
                 "auto_queue": ("BOOLEAN", {"default": True}),
                 "force_finish": ("BOOLEAN", {"default": False}),
             },
@@ -311,17 +317,19 @@ class LikeJVideoLoopSave:
                 "audio": ("AUDIO",),
             },
             "hidden": {
-                "node_id": "UNIQUE_ID"
+                "node_id": "UNIQUE_ID",
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO"
             }
         }
 
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("output_path",)
+    RETURN_TYPES = ("STRING", "IMAGE", "IMAGE")
+    RETURN_NAMES = ("output_path", "last_image", "loop_images")
     OUTPUT_NODE = True
     FUNCTION = "save_chunk"
     CATEGORY = "LikeJ/Video"
 
-    def save_chunk(self, loop_flow, images, fps, output_filename, auto_queue=True, force_finish=False, audio=None, node_id=None):
+    def save_chunk(self, loop_flow, images, fps, crf, directory, output_filename, embed_workflow=True, auto_queue=True, force_finish=False, audio=None, node_id=None, prompt=None, extra_pnginfo=None):
         crop_offset = loop_flow["crop_offset"]
         is_finished = loop_flow["is_finished"] or force_finish
         next_start_frame = loop_flow["next_start_frame"]
@@ -329,7 +337,15 @@ class LikeJVideoLoopSave:
         is_first_chunk = loop_flow.get("is_first_chunk", False)
         total_frames = loop_flow.get("total_frames", 0)
 
-        output_dir = folder_paths.get_output_directory()
+        # 處理輸出目錄與子目錄
+        base_output_dir = folder_paths.get_output_directory()
+        clean_dir = directory.strip().strip('"').strip("'")
+        if clean_dir:
+            output_dir = os.path.join(base_output_dir, clean_dir)
+        else:
+            output_dir = base_output_dir
+        os.makedirs(output_dir, exist_ok=True)
+
         clean_name = output_filename.strip().strip('"').strip("'")
         if clean_name.lower().endswith(".mp4"):
             clean_name = clean_name[:-4]
@@ -358,13 +374,25 @@ class LikeJVideoLoopSave:
                 '-r', str(fps),
                 '-i', '-',
                 '-c:v', 'libx264',
-                '-crf', '17',
+                '-crf', str(crf),
                 '-preset', 'superfast',
                 '-r', str(fps),
                 '-movflags', 'frag_keyframe+empty_moov',
                 '-pix_fmt', 'yuv420p',
-                temp_video_only
             ]
+
+            # 嵌入 Workflow 資訊至 MP4 Metadata
+            if embed_workflow:
+                workflow_data = {}
+                if extra_pnginfo is not None and "workflow" in extra_pnginfo:
+                    workflow_data["workflow"] = extra_pnginfo["workflow"]
+                if prompt is not None:
+                    workflow_data["prompt"] = prompt
+                if workflow_data:
+                    cmd.extend(['-metadata', f'comment={json.dumps(workflow_data)}'])
+
+            cmd.append(temp_video_only)
+
             proc = subprocess.Popen(
                 cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
@@ -395,7 +423,6 @@ class LikeJVideoLoopSave:
         except Exception as e:
             print(f"[LikeJ Loop] FFmpeg 管道寫入失敗: {e}")
 
-        # 計算當前已處理進度（幀數）
         processed_frames = min(next_start_frame, total_frames) if total_frames > 0 else next_start_frame
 
         if node_id is not None:
@@ -418,6 +445,8 @@ class LikeJVideoLoopSave:
             "auto_queue": auto_queue
         })
 
+        last_image = valid_images[-1:]
+
         return {
             "ui": {
                 "images": self._tensor_to_preview(valid_images[-1:]),
@@ -427,7 +456,7 @@ class LikeJVideoLoopSave:
                     "fps": float(fps)
                 }]
             },
-            "result": (final_path or session["final_path"],)
+            "result": (final_path or session["final_path"], last_image, valid_images)
         }
 
     def _tensor_to_preview(self, tensor):
