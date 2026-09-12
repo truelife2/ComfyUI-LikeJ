@@ -364,6 +364,23 @@ class LikeJVideoLoopSave:
                         "tooltip": "Constant Rate Factor (CRF) for H.264 compression (0 = lossless, 17-23 = visually lossless/high quality, 51 = lowest quality).",
                     },
                 ),
+                "preset": (
+                    [
+                        "ultrafast",
+                        "superfast",
+                        "veryfast",
+                        "faster",
+                        "fast",
+                        "medium",
+                        "slow",
+                        "slower",
+                        "veryslow",
+                    ],
+                    {
+                        "default": "slow",
+                        "tooltip": "FFmpeg encoding preset balancing compression efficiency and CPU speed. 'slow' provides higher compression ratio with lossless visual quality.",
+                    },
+                ),
                 "directory": (
                     "STRING",
                     {
@@ -417,7 +434,7 @@ class LikeJVideoLoopSave:
     FUNCTION = "save_chunk"
     CATEGORY = "LikeJ/Video"
 
-    def save_chunk(self, loop_flow, images, fps, crf, directory, output_filename, embed_workflow=True, auto_queue=True, force_finish=False, audio=None, node_id=None, prompt=None, extra_pnginfo=None):
+    def save_chunk(self, loop_flow, images, fps, crf, preset, directory, output_filename, embed_workflow=True, auto_queue=True, force_finish=False, audio=None, node_id=None, prompt=None, extra_pnginfo=None):
         crop_offset = loop_flow["crop_offset"]
         is_finished = loop_flow["is_finished"] or force_finish
         next_start_frame = loop_flow["next_start_frame"]
@@ -475,7 +492,7 @@ class LikeJVideoLoopSave:
                 "-crf",
                 str(crf),
                 "-preset",
-                "superfast",
+                str(preset),
                 "-r",
                 str(fps),
                 "-movflags",
