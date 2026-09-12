@@ -21,6 +21,33 @@ function findNodeById(id) {
         || app.graph?.getNodeById(String(id));
 }
 
+function addDividerWidget(node, targetWidgetName) {
+    const targetWidget = node.widgets?.find(w => w.name === targetWidgetName);
+    if (!targetWidget) return;
+
+    const container = document.createElement("div");
+    container.style.display = "flex";
+    container.style.alignItems = "center";
+    container.style.width = "100%";
+    container.style.margin = "10px 0 6px 0";
+
+    container.innerHTML = `
+        <div style="flex-grow: 1; height: 1px; background-color: rgba(255, 255, 255, 0.15);"></div>
+        <span style="padding: 0 8px; font-size: 10px; color: #888; letter-spacing: 0.5px;">LOOP CONTROL</span>
+        <div style="flex-grow: 1; height: 1px; background-color: rgba(255, 255, 255, 0.15);"></div>
+    `;
+
+    const dividerWidget = node.addDOMWidget("divider_line", "divider_line", container, {
+        serialize: false,
+        hideLabel: true,
+    });
+
+    const targetIdx = node.widgets.indexOf(targetWidget);
+    const dividerIdx = node.widgets.indexOf(dividerWidget);
+    if (targetIdx !== -1 && dividerIdx !== -1) {
+        node.widgets.splice(targetIdx, 0, node.widgets.splice(dividerIdx, 1)[0]);
+    }
+}
 // ---------------------------------------------------------------------
 // 僅針對特定節點綁定 MutationObserver，自動防禦 Vue 的 Style 覆蓋
 // ---------------------------------------------------------------------
@@ -151,6 +178,65 @@ app.registerExtension({
             setupAutoFlexFix(node);
 
             const pathWidget = node.widgets?.find(w => w.name === "video_path");
+
+            // === 新增：影片上傳按鈕 Widget ===
+            const uploadBtn = node.addWidget("button", "Upload Video", "upload", () => {
+                const fileInput = document.createElement("input");
+                fileInput.type = "file";
+                fileInput.accept = "video/*,.mp4,.mov,.avi,.mkv,.webm";
+                fileInput.style.display = "none";
+
+                fileInput.onchange = async (e) => {
+                    if (!e.target.files || e.target.files.length === 0) return;
+                    const file = e.target.files[0];
+
+                    const formData = new FormData();
+                    formData.append("image", file); // ComfyUI 上傳 API 統一接收 'image'
+                    formData.append("overwrite", "true");
+                    formData.append("type", "input");
+
+                    try {
+                        const response = await api.fetchApi("/upload/image", {
+                            method: "POST",
+                            body: formData,
+                        });
+
+                        if (response.status === 200) {
+                            const data = await response.json();
+                            // 取得相對 input 資料夾的檔名/子資料夾路徑
+                            const uploadedPath = data.subfolder ? `${data.subfolder}/${data.name}` : data.name;
+
+                            if (pathWidget) {
+                                pathWidget.value = uploadedPath;
+                                // 主動觸發原有 callback 以更新影片資訊
+                                if (pathWidget.callback) {
+                                    pathWidget.callback(uploadedPath);
+                                }
+                            }
+                        } else {
+                            alert("影片上傳失敗: " + response.statusText);
+                        }
+                    } catch (err) {
+                        console.error("[LikeJ Loop] 影片上傳錯誤:", err);
+                        alert("影片上傳失敗！");
+                    } finally {
+                        fileInput.remove();
+                    }
+                };
+
+                document.body.appendChild(fileInput);
+                fileInput.click();
+            });
+
+            // 將上傳按鈕排列至 video_path 的正下方
+            if (pathWidget && uploadBtn) {
+                const pathIdx = node.widgets.indexOf(pathWidget);
+                const btnIdx = node.widgets.indexOf(uploadBtn);
+                if (pathIdx !== -1 && btnIdx !== -1) {
+                    node.widgets.splice(pathIdx + 1, 0, node.widgets.splice(btnIdx, 1)[0]);
+                }
+            }
+
             if (pathWidget) {
                 const origCallback = pathWidget.callback;
                 pathWidget.callback = async function (value) {
@@ -193,6 +279,9 @@ app.registerExtension({
         if (node.comfyClass === "LikeJVideoLoopSave") {
             ensureDisplayWidget(node, SAVE_WIDGET_NAME, SAVE_PROP_NAME, SAVE_DEFAULT_TEXT);
             setupAutoFlexFix(node);
+
+            // 在 auto_queue 開關上方插入分隔線
+            addDividerWidget(node, "auto_queue");
 
             node.onExecuted = function (message) {
                 if (message?.save_info?.[0]) {
