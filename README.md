@@ -137,6 +137,17 @@
 
 <img width="329" height="694" alt="image" src="https://github.com/user-attachments/assets/4231cfef-bef9-48a4-ad19-881f7d938076" />
 
+## LikeJ Remove Background
+
+   > idea from: https://github.com/1038lab/ComfyUI-RMBG
+
+<img width="967" height="511" alt="image" src="https://github.com/user-attachments/assets/c2da0a52-edfe-4c45-8e07-def413d1aac7" />
+
+<img width="375" height="496" alt="image" src="https://github.com/user-attachments/assets/c67c2570-7bea-447e-9170-2f08bb95cc89" />
+
+<img width="445" height="292" alt="image" src="https://github.com/user-attachments/assets/9808b430-3b1d-405e-a92f-37450c0a7f1e" />
+
+
 
 
 
