@@ -17,6 +17,7 @@ from . import likejoutputtrigger
 from . import likejnoderepo
 from . import likejvideoloop
 from . import likejremovebg
+from . import likejmaskfill
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -40,6 +41,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJVideoLoopLoad": likejvideoloop.LikeJVideoLoopLoad,
     "LikeJVideoLoopSave": likejvideoloop.LikeJVideoLoopSave,
     "LikeJRemoveBg": likejremovebg.LikeJRemoveBg,
+    "LikeJMaskFill": likejmaskfill.LikeJMaskFill,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -64,6 +66,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJVideoLoopLoad": "LikeJ Video Loop Load",
     "LikeJVideoLoopSave": "LikeJ Video Loop Save",
     "LikeJRemoveBg": "LikeJ Remove Background",
+    "LikeJMaskFill": "LikeJ Mask Fill",
 }
 
 WEB_DIRECTORY = "./web"
