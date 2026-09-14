@@ -12,6 +12,34 @@ from aiohttp import web
 ENCODER_SESSIONS = {}
 
 
+def make_ffmetadata_file(metadata_dict, temp_dir, node_id):
+    """將工作流 JSON 寫入臨時的 FFMETADATA 檔案，避免 Windows 命令列長度超出限制"""
+    json_str = json.dumps(metadata_dict)
+    
+    # 針對 FFMETADATA 格式轉義特殊字元 (\, =, ;, #, \n)
+    escaped_chars = []
+    for char in json_str:
+        if char == '\\':
+            escaped_chars.append('\\\\')
+        elif char in ['=', ';', '#']:
+            escaped_chars.append('\\' + char)
+        elif char == '\n':
+            escaped_chars.append('\\\n')
+        elif char == '\r':
+            continue
+        else:
+            escaped_chars.append(char)
+
+    escaped_val = "".join(escaped_chars)
+    meta_content = f";FFMETADATA1\ncomment={escaped_val}\n"
+
+    meta_file_path = os.path.join(temp_dir, f"likej_temp_meta_{node_id}.txt")
+    with open(meta_file_path, "w", encoding="utf-8") as f:
+        f.write(meta_content)
+
+    return meta_file_path
+
+
 def get_unique_path(output_dir, filename_prefix, ext=".mp4"):
     base_path = os.path.join(output_dir, f"{filename_prefix}{ext}")
     if not os.path.exists(base_path) and not os.path.exists(base_path + ".temp.mp4"):
@@ -34,6 +62,7 @@ def finalize_encoder_session(node_id):
     proc = session["proc"]
     final_output_path = session["final_path"]
     temp_video_only = session["temp_video"]
+    meta_file = session.get("meta_file")
     audio = session.get("audio")
     output_dir = session.get("output_dir")
     initial_start_frame = session.get("initial_start_frame", 0)
@@ -46,50 +75,58 @@ def finalize_encoder_session(node_id):
     except Exception as e:
         print(f"[LikeJ Loop] Failed to close FFmpeg pipe: {e}")
 
-    if audio is not None and "waveform" in audio and os.path.exists(temp_video_only):
-        temp_audio_path = os.path.join(output_dir, f"likej_temp_audio_{node_id}.wav")
-        try:
-            waveform = audio["waveform"]
-            sample_rate = audio.get("sample_rate", 44100)
-            if waveform.ndim == 3:
-                waveform = waveform.squeeze(0)
-            torchaudio.save(temp_audio_path, waveform, sample_rate)
+    try:
+        if audio is not None and "waveform" in audio and os.path.exists(temp_video_only):
+            temp_audio_path = os.path.join(output_dir, f"likej_temp_audio_{node_id}.wav")
+            try:
+                waveform = audio["waveform"]
+                sample_rate = audio.get("sample_rate", 44100)
+                if waveform.ndim == 3:
+                    waveform = waveform.squeeze(0)
+                torchaudio.save(temp_audio_path, waveform, sample_rate)
 
-            start_time = initial_start_frame / fps if fps > 0 else 0.0
+                start_time = initial_start_frame / fps if fps > 0 else 0.0
 
-            cmd_audio = [
-                "ffmpeg",
-                "-y",
-                "-i",
-                temp_video_only,
-                "-ss",
-                f"{start_time:.4f}",
-                "-i",
-                temp_audio_path,
-                "-c:v",
-                "copy",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "192k",
-                "-movflags",
-                "+faststart",
-                "-shortest",
-                final_output_path,
-            ]
-            subprocess.run(cmd_audio, check=True)
+                cmd_audio = [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    temp_video_only,
+                    "-ss",
+                    f"{start_time:.4f}",
+                    "-i",
+                    temp_audio_path,
+                    "-c:v",
+                    "copy",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k",
+                    "-movflags",
+                    "+faststart",
+                    "-shortest",
+                    final_output_path,
+                ]
+                subprocess.run(cmd_audio, check=True)
 
-            if os.path.exists(temp_video_only):
-                os.remove(temp_video_only)
-            if os.path.exists(temp_audio_path):
-                os.remove(temp_audio_path)
-        except Exception as e:
-            print(f"[LikeJ Loop] Audio multiplexing failed: {e}")
+                if os.path.exists(temp_video_only):
+                    os.remove(temp_video_only)
+                if os.path.exists(temp_audio_path):
+                    os.remove(temp_audio_path)
+            except Exception as e:
+                print(f"[LikeJ Loop] Audio multiplexing failed: {e}")
+                if os.path.exists(temp_video_only):
+                    os.rename(temp_video_only, final_output_path)
+        else:
             if os.path.exists(temp_video_only):
                 os.rename(temp_video_only, final_output_path)
-    else:
-        if os.path.exists(temp_video_only):
-            os.rename(temp_video_only, final_output_path)
+    finally:
+        # 清理臨時 metadata 文字檔
+        if meta_file and os.path.exists(meta_file):
+            try:
+                os.remove(meta_file)
+            except Exception:
+                pass
 
     print(f"[LikeJ Loop] Video successfully finalized at: {final_output_path}")
     return final_output_path
@@ -460,17 +497,36 @@ class LikeJVideoLoopSave:
         h, w, _ = images_np[0].shape
 
         if is_first_chunk and node_id in ENCODER_SESSIONS:
-            old_proc = ENCODER_SESSIONS[node_id].get("proc")
+            old_session = ENCODER_SESSIONS.pop(node_id)
+            old_proc = old_session.get("proc")
+            old_meta = old_session.get("meta_file")
             if old_proc and old_proc.poll() is None:
                 try:
                     old_proc.kill()
                 except Exception:
                     pass
-            del ENCODER_SESSIONS[node_id]
+            if old_meta and os.path.exists(old_meta):
+                try:
+                    os.remove(old_meta)
+                except Exception:
+                    pass
 
         if node_id not in ENCODER_SESSIONS or ENCODER_SESSIONS[node_id]["proc"].poll() is not None:
             final_output_path = get_unique_path(output_dir, clean_name, ".mp4")
             temp_video_only = final_output_path + ".temp.mp4"
+
+            meta_file_path = None
+            if embed_workflow:
+                workflow_data = {}
+                if extra_pnginfo is not None and "workflow" in extra_pnginfo:
+                    workflow_data["workflow"] = extra_pnginfo["workflow"]
+                if prompt is not None:
+                    workflow_data["prompt"] = prompt
+                if workflow_data:
+                    try:
+                        meta_file_path = make_ffmetadata_file(workflow_data, output_dir, node_id)
+                    except Exception as e:
+                        print(f"[LikeJ Loop] Failed to create metadata temp file: {e}")
 
             cmd = [
                 "ffmpeg",
@@ -487,6 +543,13 @@ class LikeJVideoLoopSave:
                 str(fps),
                 "-i",
                 "-",
+            ]
+
+            # 若成功建立 metadata 檔，以 -i 引入並映射 metadata，避免命令列字串過長
+            if meta_file_path and os.path.exists(meta_file_path):
+                cmd.extend(["-i", meta_file_path, "-map_metadata", "1"])
+
+            cmd.extend([
                 "-c:v",
                 "libx264",
                 "-crf",
@@ -499,19 +562,8 @@ class LikeJVideoLoopSave:
                 "frag_keyframe+empty_moov",
                 "-pix_fmt",
                 "yuv420p",
-            ]
-
-            # Embed Workflow metadata into MP4 comment tag
-            if embed_workflow:
-                workflow_data = {}
-                if extra_pnginfo is not None and "workflow" in extra_pnginfo:
-                    workflow_data["workflow"] = extra_pnginfo["workflow"]
-                if prompt is not None:
-                    workflow_data["prompt"] = prompt
-                if workflow_data:
-                    cmd.extend(["-metadata", f"comment={json.dumps(workflow_data)}"])
-
-            cmd.append(temp_video_only)
+                temp_video_only,
+            ])
 
             proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -519,6 +571,7 @@ class LikeJVideoLoopSave:
                 "proc": proc,
                 "final_path": final_output_path,
                 "temp_video": temp_video_only,
+                "meta_file": meta_file_path,
                 "audio": audio,
                 "output_dir": output_dir,
                 "initial_start_frame": loop_flow.get("effective_start", 0),
@@ -574,3 +627,4 @@ class LikeJVideoLoopSave:
         file_name = "preview_last_frame.png"
         img.save(os.path.join(full_output_folder, file_name))
         return [{"filename": file_name, "subfolder": subfolder, "type": "temp"}]
+    
