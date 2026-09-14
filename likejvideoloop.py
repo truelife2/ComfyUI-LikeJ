@@ -12,7 +12,7 @@ from aiohttp import web
 ENCODER_SESSIONS = {}
 
 
-def make_ffmetadata_file(metadata_dict, temp_dir, node_id):
+def make_ffmetadata_file(metadata_dict, meta_file_path):
     """將工作流 JSON 寫入臨時的 FFMETADATA 檔案，避免 Windows 命令列長度超出限制"""
     json_str = json.dumps(metadata_dict)
     
@@ -33,7 +33,6 @@ def make_ffmetadata_file(metadata_dict, temp_dir, node_id):
     escaped_val = "".join(escaped_chars)
     meta_content = f";FFMETADATA1\ncomment={escaped_val}\n"
 
-    meta_file_path = os.path.join(temp_dir, f"likej_temp_meta_{node_id}.txt")
     with open(meta_file_path, "w", encoding="utf-8") as f:
         f.write(meta_content)
 
@@ -524,7 +523,8 @@ class LikeJVideoLoopSave:
                     workflow_data["prompt"] = prompt
                 if workflow_data:
                     try:
-                        meta_file_path = make_ffmetadata_file(workflow_data, output_dir, node_id)
+                        target_meta_path = final_output_path + ".temp.meta.txt"
+                        meta_file_path = make_ffmetadata_file(workflow_data, target_meta_path)
                     except Exception as e:
                         print(f"[LikeJ Loop] Failed to create metadata temp file: {e}")
 
