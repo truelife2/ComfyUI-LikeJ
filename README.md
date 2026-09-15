@@ -141,22 +141,33 @@
 
    > idea from: https://github.com/1038lab/ComfyUI-RMBG
 
-<img width="967" height="511" alt="image" src="https://github.com/user-attachments/assets/c2da0a52-edfe-4c45-8e07-def413d1aac7" />
+<img width="888" height="638" alt="image" src="https://github.com/user-attachments/assets/95b1134f-32db-4630-bf4b-2ca5c39867bb" />
 
-<img width="375" height="496" alt="image" src="https://github.com/user-attachments/assets/c67c2570-7bea-447e-9170-2f08bb95cc89" />
+<img width="446" height="358" alt="image" src="https://github.com/user-attachments/assets/351a7cf7-29c1-412d-8d6a-262fc152402b" />
 
-<img width="445" height="292" alt="image" src="https://github.com/user-attachments/assets/9808b430-3b1d-405e-a92f-37450c0a7f1e" />
+<img width="481" height="399" alt="image" src="https://github.com/user-attachments/assets/0c7b3e14-6ddd-4d11-9d8a-efe9cf405835" />
 
 ## LikeJ Mask Fill
 
    > idea from: https://github.com/1038lab/ComfyUI-RMBG
 
-<img width="590" height="744" alt="image" src="https://github.com/user-attachments/assets/f070586a-7d0f-44ea-912e-1e388852bb0a" />
+<img width="521" height="498" alt="image" src="https://github.com/user-attachments/assets/0c23472a-2ac7-4a05-aacc-bc78bfe14b8c" />
 
-<img width="607" height="555" alt="image" src="https://github.com/user-attachments/assets/a568a4a2-3c81-44c2-90aa-094eb1f77547" />
+<img width="481" height="444" alt="image" src="https://github.com/user-attachments/assets/0894e4cf-6b13-4089-8672-d2673cba7d23" />
 
+## LikeJ Image Arrange
 
+<img width="287" height="460" alt="image" src="https://github.com/user-attachments/assets/b2bbe75d-c0c1-4867-99ab-e7f3cb7e9858" />
 
+<img width="1063" height="541" alt="image" src="https://github.com/user-attachments/assets/df4aa983-4985-47d7-b26f-ce7066f17c4b" />
+
+<img width="997" height="561" alt="image" src="https://github.com/user-attachments/assets/85a1599f-403d-4d3d-a0f0-6dd07f40667a" />
+
+<img width="301" height="247" alt="image" src="https://github.com/user-attachments/assets/f829a7da-cf61-4d8e-9fe7-f1d28cb1de70" />
+
+<img width="276" height="306" alt="image" src="https://github.com/user-attachments/assets/5a018514-46f2-4089-a0dd-dbc871b3ce54" />
+
+<img width="341" height="416" alt="image" src="https://github.com/user-attachments/assets/7b40b907-973a-424e-89a1-0eb58c4cfe66" />
 
 
 
