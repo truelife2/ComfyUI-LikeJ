@@ -2,7 +2,7 @@ import os
 import json
 import torch
 import numpy as np
-from PIL import Image, ImageOps, ImageDraw, ImageColor
+from PIL import Image, ImageDraw
 from aiohttp import web
 from server import PromptServer
 
@@ -10,6 +10,7 @@ LAYOUT_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "layout_b
 os.makedirs(LAYOUT_DIR, exist_ok=True)
 
 routes = PromptServer.instance.routes
+
 
 @routes.get("/likej/layouts")
 async def list_layouts(request):
@@ -20,12 +21,9 @@ async def list_layouts(request):
         name = os.path.splitext(f)[0]
         preview_file = f"{name}.png"
         has_preview = preview_file in files
-        result.append({
-            "name": name,
-            "json_file": f,
-            "preview_url": f"/likej/preview/{preview_file}" if has_preview else None
-        })
+        result.append({"name": name, "json_file": f, "preview_url": f"/likej/preview/{preview_file}" if has_preview else None})
     return web.json_response(result)
+
 
 @routes.get("/likej/preview/{filename}")
 async def get_preview(request):
@@ -34,6 +32,7 @@ async def get_preview(request):
     if os.path.exists(file_path):
         return web.FileResponse(file_path)
     return web.Response(status=404)
+
 
 @routes.post("/likej/save_layout")
 async def save_layout_preset(request):
@@ -45,7 +44,7 @@ async def save_layout_preset(request):
         if not filename:
             return web.json_response({"success": False, "error": "Filename cannot be empty"}, status=400)
 
-        safe_name = "".join([c for c in filename if c.isalnum() or c in ('-', '_', ' ')]).strip()
+        safe_name = "".join([c for c in filename if c.isalnum() or c in ("-", "_", " ")]).strip()
         if not safe_name:
             return web.json_response({"success": False, "error": "Invalid filename"}, status=400)
 
@@ -60,7 +59,7 @@ async def save_layout_preset(request):
         boxes = layout_data.get("boxes", [])
 
         thumb_w = 320
-        thumb_h = int(320 * ch / cw)
+        thumb_h = max(1, int(320 * ch / cw))
         thumb = Image.new("RGBA", (thumb_w, thumb_h), (30, 30, 30, 255))
         draw = ImageDraw.Draw(thumb)
         scale = thumb_w / cw
@@ -79,13 +78,14 @@ async def save_layout_preset(request):
 
             if bw > 0 and bh > 0:
                 draw.rectangle([bx, by, bx + bw, by + bh], fill=(0, 150, 255, 90), outline=(0, 210, 255, 255), width=2)
-                draw.text((bx + bw/2 - 4, by + bh/2 - 6), f"#{order}", fill=(255, 255, 255, 255))
+                draw.text((bx + bw / 2 - 4, by + bh / 2 - 6), f"#{order}", fill=(255, 255, 255, 255))
 
         thumb.convert("RGB").save(png_path, "PNG")
 
         return web.json_response({"success": True, "name": safe_name})
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)}, status=500)
+
 
 @routes.post("/likej/delete_layout")
 async def delete_layout_preset(request):
@@ -96,7 +96,7 @@ async def delete_layout_preset(request):
         if not filename:
             return web.json_response({"success": False, "error": "Filename cannot be empty"}, status=400)
 
-        safe_name = "".join([c for c in filename if c.isalnum() or c in ('-', '_', ' ')]).strip()
+        safe_name = "".join([c for c in filename if c.isalnum() or c in ("-", "_", " ")]).strip()
         json_path = os.path.join(LAYOUT_DIR, f"{safe_name}.json")
         png_path = os.path.join(LAYOUT_DIR, f"{safe_name}.png")
 
@@ -117,152 +117,205 @@ async def delete_layout_preset(request):
 
 
 class LikeJImageArrange:
+    INPUT_IS_LIST = True
+
+    RESAMPLE_METHODS = {
+        "Lanczos": Image.Resampling.LANCZOS,
+        "Bicubic": Image.Resampling.BICUBIC,
+        "Bilinear": Image.Resampling.BILINEAR,
+        "Nearest": Image.Resampling.NEAREST,
+        "Box": Image.Resampling.BOX,
+        "Hamming": Image.Resampling.HAMMING,
+    }
+
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "images": ("IMAGE",),
-                "fit_mode": (["Cover", "Contain", "Fill"], {"default": "Cover"}),
-                "mask_mode": (["Alpha Mask", "Bounding Box"], {"default": "Alpha Mask"}),
+                "fit_mode": (["Cover", "Contain", "Stretch"], {"default": "Cover"}),
+                "resample_mode": (["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"], {"default": "Lanczos"}),
+                "mask_mode": (["Bounding Box", "Alpha Channel", "None"], {"default": "Bounding Box"}),
                 "bg_color": ("STRING", {"default": "#FFFFFF"}),
             },
             "optional": {
                 "masks": ("MASK",),
             },
             "hidden": {
-                "unique_id": "UNIQUE_ID",
                 "extra_pnginfo": "EXTRA_PNGINFO",
-            }
+                "prompt": "PROMPT",
+                "unique_id": "UNIQUE_ID",
+            },
         }
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("composed_image",)
-    FUNCTION = "composite"
+    RETURN_TYPES = ("IMAGE", "MASK")
+    RETURN_NAMES = ("composed_image", "composed_mask")
+    FUNCTION = "arrange_images"
     CATEGORY = "LikeJ"
 
-    def composite(self, images, fit_mode, mask_mode, bg_color, masks=None, unique_id=None, extra_pnginfo=None):
-        layout_data = {}
-        if extra_pnginfo and "workflow" in extra_pnginfo:
-            nodes = extra_pnginfo["workflow"].get("nodes", [])
-            for node in nodes:
-                if str(node.get("id")) == str(unique_id):
-                    layout_data = node.get("properties", {}).get("layout", {})
-                    break
-
-        canvas_w = int(layout_data.get("width", 1920))
-        canvas_h = int(layout_data.get("height", 1080))
-        boxes = layout_data.get("boxes", [])
-
+    def _hex_to_rgba(self, hex_str):
+        hex_str = str(hex_str).lstrip("#")
         try:
-            bg_rgb = ImageColor.getrgb(bg_color)
+            if len(hex_str) == 6:
+                r, g, b = tuple(int(hex_str[i : i + 2], 16) for i in (0, 2, 4))
+                return (r, g, b, 255)
+            elif len(hex_str) == 8:
+                return tuple(int(hex_str[i : i + 2], 16) for i in (0, 2, 4, 6))
         except Exception:
-            bg_rgb = (255, 255, 255)
+            pass
+        return (255, 255, 255, 255)
 
-        canvas_img = Image.new("RGBA", (canvas_w, canvas_h), bg_rgb + (255,))
+    def _get_node_layout(self, extra_pnginfo, unique_id):
+        try:
+            info = extra_pnginfo
+            if isinstance(info, list) and len(info) > 0:
+                info = info[0]
+            uid = unique_id
+            if isinstance(uid, list) and len(uid) > 0:
+                uid = uid[0]
 
-        pil_images = []
-        for i in range(images.shape[0]):
-            img_np = (images[i].cpu().numpy() * 255).astype(np.uint8)
-            if img_np.shape[2] == 4:
-                pil_images.append(Image.fromarray(img_np, mode="RGBA"))
-            else:
-                pil_images.append(Image.fromarray(img_np, mode="RGB"))
+            if info and "workflow" in info:
+                nodes = info["workflow"].get("nodes", [])
+                for node in nodes:
+                    if str(node.get("id")) == str(uid):
+                        props = node.get("properties", {})
+                        if "layout" in props:
+                            return props["layout"]
+        except Exception:
+            pass
+        return {"width": 1920, "height": 1080, "boxes": []}
 
-        pil_masks = []
-        if masks is not None and masks.numel() > 0:
-            m_tensor = masks.clone()
-            if m_tensor.dim() == 2:
-                m_tensor = m_tensor.unsqueeze(0)
-            elif m_tensor.dim() == 4:
-                if m_tensor.shape[1] == 1:
-                    m_tensor = m_tensor.squeeze(1)
-                elif m_tensor.shape[3] == 1:
-                    m_tensor = m_tensor.squeeze(3)
+    def _fit_image(self, pil_img, target_w, target_h, mode, resample_method):
+        img_w, img_h = pil_img.size
+        if mode == "Stretch":
+            return pil_img.resize((target_w, target_h), resample_method), 0, 0
+        elif mode == "Contain":
+            ratio = min(target_w / img_w, target_h / img_h)
+            new_w, new_h = max(1, int(img_w * ratio)), max(1, int(img_h * ratio))
+            resized = pil_img.resize((new_w, new_h), resample_method)
+            offset_x = (target_w - new_w) // 2
+            offset_y = (target_h - new_h) // 2
+            return resized, offset_x, offset_y
+        else:  # Cover
+            ratio = max(target_w / img_w, target_h / img_h)
+            new_w, new_h = max(1, int(img_w * ratio)), max(1, int(img_h * ratio))
+            resized = pil_img.resize((new_w, new_h), resample_method)
+            crop_x = (new_w - target_w) // 2
+            crop_y = (new_h - target_h) // 2
+            cropped = resized.crop((crop_x, crop_y, crop_x + target_w, crop_y + target_h))
+            return cropped, 0, 0
 
-            for i in range(m_tensor.shape[0]):
-                m_np = (m_tensor[i].cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
-                pil_masks.append(Image.fromarray(m_np, mode="L"))
+    def _flatten_input(self, raw_data):
+        flat = []
+        if raw_data is None:
+            return flat
 
-        if not pil_images:
-            out_np = np.array(canvas_img.convert("RGB")).astype(np.float32) / 255.0
-            return (torch.from_numpy(out_np).unsqueeze(0),)
+        if isinstance(raw_data, list):
+            for item in raw_data:
+                flat.extend(self._flatten_input(item))
+        elif isinstance(raw_data, torch.Tensor):
+            if raw_data.dim() == 4:
+                for b in range(raw_data.shape[0]):
+                    flat.append(raw_data[b])
+            elif raw_data.dim() == 3:
+                if raw_data.shape[-1] in [1, 3, 4]:
+                    flat.append(raw_data)
+                else:
+                    for b in range(raw_data.shape[0]):
+                        flat.append(raw_data[b])
+            elif raw_data.dim() == 2:
+                flat.append(raw_data)
+        else:
+            flat.append(raw_data)
+        return flat
 
-        boxes_sorted = sorted(boxes, key=lambda b: b.get("order", 0))
-        num_to_draw = min(len(pil_images), len(boxes_sorted))
+    def arrange_images(self, images, fit_mode="Cover", resample_mode="Lanczos", mask_mode="Bounding Box", bg_color="#FFFFFF", masks=None, extra_pnginfo=None, prompt=None, unique_id=None):
+        def unwrap(val, default):
+            while isinstance(val, list):
+                if len(val) > 0:
+                    val = val[0]
+                else:
+                    return default
+            return val if val is not None else default
 
-        for idx in range(num_to_draw):
-            box = boxes_sorted[idx]
-            src_img = pil_images[idx]
-            src_mask = pil_masks[idx] if idx < len(pil_masks) else None
+        fit_mode_val = unwrap(fit_mode, "Cover")
+        resample_mode_val = unwrap(resample_mode, "Lanczos")
+        mask_mode_val = unwrap(mask_mode, "Bounding Box")
+        bg_color_val = unwrap(bg_color, "#FFFFFF")
 
-            # 扣除 Padding
-            pad_top = int(box.get("pad_top", 0))
-            pad_bottom = int(box.get("pad_bottom", 0))
-            pad_left = int(box.get("pad_left", 0))
-            pad_right = int(box.get("pad_right", 0))
+        resample_method = self.RESAMPLE_METHODS.get(resample_mode_val, Image.Resampling.LANCZOS)
 
-            box_x = int(box.get("x", 0)) + pad_left
-            box_y = int(box.get("y", 0)) + pad_top
-            box_w = int(box.get("w", 100)) - pad_left - pad_right
-            box_h = int(box.get("h", 100)) - pad_top - pad_bottom
+        layout = self._get_node_layout(extra_pnginfo, unique_id)
+        canvas_w = int(layout.get("width", 1920))
+        canvas_h = int(layout.get("height", 1080))
+        boxes = layout.get("boxes", [])
+        boxes = sorted(boxes, key=lambda b: b.get("order", 1))
 
-            if box_w <= 0 or box_h <= 0:
+        flat_images = self._flatten_input(images)
+        flat_masks = self._flatten_input(masks) if masks is not None else []
+
+        bg_rgba = self._hex_to_rgba(bg_color_val)
+        canvas_img = Image.new("RGBA", (canvas_w, canvas_h), bg_rgba)
+        canvas_mask = Image.new("L", (canvas_w, canvas_h), 0)
+
+        for i, box in enumerate(boxes):
+            if i >= len(flat_images):
+                break
+
+            img_tensor = flat_images[i]
+            if img_tensor is None:
                 continue
 
-            # 根據 mask_mode 處理 Mask
-            if src_mask is not None:
-                if src_mask.size != src_img.size:
-                    src_mask = src_mask.resize(src_img.size, Image.Resampling.BILINEAR)
+            img_np = (img_tensor.cpu().numpy() * 255.0).clip(0, 255).astype(np.uint8)
 
-                bbox = src_mask.getbbox()
-                if bbox is not None:
-                    if mask_mode == "Bounding Box":
-                        # 模式 1：僅提取 Mask 最外圍邊界矩形，直接裁切原圖（框內保持 100% 不透明度）
-                        src_img = src_img.crop(bbox)
-                    else:
-                        # 模式 2（Alpha Mask）：依邊界裁切，並將 Mask 的黑色區域變為透明
-                        src_img = src_img.crop(bbox)
-                        src_mask = src_mask.crop(bbox)
-
-                        if src_img.mode != "RGBA":
-                            src_img = src_img.convert("RGBA")
-
-                        r, g, b, a = src_img.split()
-                        final_a = Image.composite(a, Image.new("L", a.size, 0), src_mask)
-                        src_img.putalpha(final_a)
-
-            if fit_mode == "Cover":
-                resized_img = ImageOps.fit(src_img, (box_w, box_h), Image.Resampling.LANCZOS)
-            elif fit_mode == "Contain":
-                src_ratio = src_img.width / src_img.height
-                box_ratio = box_w / box_h
-                if src_ratio > box_ratio:
-                    nw = box_w
-                    nh = max(1, int(box_w / src_ratio))
-                else:
-                    nh = box_h
-                    nw = max(1, int(box_h * src_ratio))
-                resized_tmp = src_img.resize((nw, nh), Image.Resampling.LANCZOS)
-                
-                bg_mode = "RGBA" if src_img.mode == "RGBA" else "RGB"
-                resized_img = Image.new(bg_mode, (box_w, box_h), bg_rgb if bg_mode == "RGB" else bg_rgb + (255,))
-                paste_x = (box_w - nw) // 2
-                paste_y = (box_h - nh) // 2
-                
-                if resized_tmp.mode == "RGBA":
-                    resized_img.paste(resized_tmp, (paste_x, paste_y), mask=resized_tmp)
-                else:
-                    resized_img.paste(resized_tmp, (paste_x, paste_y))
-            else:  # Fill
-                resized_img = src_img.resize((box_w, box_h), Image.Resampling.LANCZOS)
-
-            if resized_img.mode == "RGBA":
-                canvas_img.paste(resized_img, (box_x, box_y), mask=resized_img)
+            if img_np.shape[-1] == 4:
+                sub_pil = Image.fromarray(img_np, mode="RGBA")
             else:
-                canvas_img.paste(resized_img, (box_x, box_y))
+                sub_pil = Image.fromarray(img_np, mode="RGB").convert("RGBA")
 
-        final_img = canvas_img.convert("RGB")
-        out_np = np.array(final_img).astype(np.float32) / 255.0
-        out_tensor = torch.from_numpy(out_np).unsqueeze(0)
+            if mask_mode_val != "None" and i < len(flat_masks) and flat_masks[i] is not None:
+                m_tensor = flat_masks[i]
+                if isinstance(m_tensor, torch.Tensor):
+                    m_np = (m_tensor.cpu().numpy() * 255.0).clip(0, 255).astype(np.uint8)
+                    mask_pil = Image.fromarray(m_np, mode="L")
 
-        return (out_tensor,)
+                    if mask_pil.size != sub_pil.size:
+                        mask_pil = mask_pil.resize(sub_pil.size, resample_method)
+
+                    if m_np.max() > 0:
+                        r, g, b, a = sub_pil.split()
+                        combined_a = Image.fromarray(np.minimum(np.array(a), np.array(mask_pil)))
+                        sub_pil.putalpha(combined_a)
+
+            bx = int(box.get("x", 0))
+            by = int(box.get("y", 0))
+            bw = int(box.get("w", 100))
+            bh = int(box.get("h", 100))
+
+            p_top = int(box.get("pad_top", 0))
+            p_bottom = int(box.get("pad_bottom", 0))
+            p_left = int(box.get("pad_left", 0))
+            p_right = int(box.get("pad_right", 0))
+
+            tx = bx + p_left
+            ty = by + p_top
+            tw = max(1, bw - p_left - p_right)
+            th = max(1, bh - p_top - p_bottom)
+
+            fitted_sub, off_x, off_y = self._fit_image(sub_pil, tw, th, fit_mode_val, resample_method)
+            final_x = tx + off_x
+            final_y = ty + off_y
+
+            canvas_img.alpha_composite(fitted_sub, (final_x, final_y))
+
+            sub_alpha = fitted_sub.split()[-1]
+            canvas_mask.paste(sub_alpha, (final_x, final_y), fitted_sub)
+
+        final_rgb = canvas_img.convert("RGB")
+        out_img_np = np.array(final_rgb).astype(np.float32) / 255.0
+        out_img_tensor = torch.from_numpy(out_img_np).unsqueeze(0)
+
+        out_mask_np = np.array(canvas_mask).astype(np.float32) / 255.0
+        out_mask_tensor = torch.from_numpy(out_mask_np).unsqueeze(0)
+
+        return (out_img_tensor, out_mask_tensor)
