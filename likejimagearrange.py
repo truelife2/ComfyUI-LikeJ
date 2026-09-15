@@ -66,14 +66,20 @@ async def save_layout_preset(request):
         scale = thumb_w / cw
 
         for b in boxes:
-            bx = b.get("x", 0) * scale
-            by = b.get("y", 0) * scale
-            bw = b.get("w", 100) * scale
-            bh = b.get("h", 100) * scale
+            pad_t = b.get("pad_top", 0) * scale
+            pad_b = b.get("pad_bottom", 0) * scale
+            pad_l = b.get("pad_left", 0) * scale
+            pad_r = b.get("pad_right", 0) * scale
+
+            bx = b.get("x", 0) * scale + pad_l
+            by = b.get("y", 0) * scale + pad_t
+            bw = b.get("w", 100) * scale - pad_l - pad_r
+            bh = b.get("h", 100) * scale - pad_t - pad_b
             order = b.get("order", b.get("id", 1))
 
-            draw.rectangle([bx, by, bx + bw, by + bh], fill=(0, 150, 255, 90), outline=(0, 210, 255, 255), width=2)
-            draw.text((bx + bw/2 - 4, by + bh/2 - 6), f"#{order}", fill=(255, 255, 255, 255))
+            if bw > 0 and bh > 0:
+                draw.rectangle([bx, by, bx + bw, by + bh], fill=(0, 150, 255, 90), outline=(0, 210, 255, 255), width=2)
+                draw.text((bx + bw/2 - 4, by + bh/2 - 6), f"#{order}", fill=(255, 255, 255, 255))
 
         thumb.convert("RGB").save(png_path, "PNG")
 
@@ -117,9 +123,12 @@ class LikeJImageArrange:
             "required": {
                 "images": ("IMAGE",),
                 "fit_mode": (["Cover", "Contain", "Fill"], {"default": "Cover"}),
+                "mask_mode": (["Alpha Mask", "Bounding Box"], {"default": "Alpha Mask"}),
                 "bg_color": ("STRING", {"default": "#FFFFFF"}),
             },
-            # 移除 layout_json 欄位，改用系統內建隱藏傳遞機制
+            "optional": {
+                "masks": ("MASK",),
+            },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
                 "extra_pnginfo": "EXTRA_PNGINFO",
@@ -131,8 +140,7 @@ class LikeJImageArrange:
     FUNCTION = "composite"
     CATEGORY = "LikeJ"
 
-    def composite(self, images, fit_mode, bg_color, unique_id=None, extra_pnginfo=None):
-        # 從工作流的 node.properties 中讀取序列化的 layout 設定
+    def composite(self, images, fit_mode, mask_mode, bg_color, masks=None, unique_id=None, extra_pnginfo=None):
         layout_data = {}
         if extra_pnginfo and "workflow" in extra_pnginfo:
             nodes = extra_pnginfo["workflow"].get("nodes", [])
@@ -160,6 +168,21 @@ class LikeJImageArrange:
             else:
                 pil_images.append(Image.fromarray(img_np, mode="RGB"))
 
+        pil_masks = []
+        if masks is not None and masks.numel() > 0:
+            m_tensor = masks.clone()
+            if m_tensor.dim() == 2:
+                m_tensor = m_tensor.unsqueeze(0)
+            elif m_tensor.dim() == 4:
+                if m_tensor.shape[1] == 1:
+                    m_tensor = m_tensor.squeeze(1)
+                elif m_tensor.shape[3] == 1:
+                    m_tensor = m_tensor.squeeze(3)
+
+            for i in range(m_tensor.shape[0]):
+                m_np = (m_tensor[i].cpu().numpy() * 255).clip(0, 255).astype(np.uint8)
+                pil_masks.append(Image.fromarray(m_np, mode="L"))
+
         if not pil_images:
             out_np = np.array(canvas_img.convert("RGB")).astype(np.float32) / 255.0
             return (torch.from_numpy(out_np).unsqueeze(0),)
@@ -170,14 +193,43 @@ class LikeJImageArrange:
         for idx in range(num_to_draw):
             box = boxes_sorted[idx]
             src_img = pil_images[idx]
+            src_mask = pil_masks[idx] if idx < len(pil_masks) else None
 
-            box_x = int(box.get("x", 0))
-            box_y = int(box.get("y", 0))
-            box_w = int(box.get("w", 100))
-            box_h = int(box.get("h", 100))
+            # 扣除 Padding
+            pad_top = int(box.get("pad_top", 0))
+            pad_bottom = int(box.get("pad_bottom", 0))
+            pad_left = int(box.get("pad_left", 0))
+            pad_right = int(box.get("pad_right", 0))
+
+            box_x = int(box.get("x", 0)) + pad_left
+            box_y = int(box.get("y", 0)) + pad_top
+            box_w = int(box.get("w", 100)) - pad_left - pad_right
+            box_h = int(box.get("h", 100)) - pad_top - pad_bottom
 
             if box_w <= 0 or box_h <= 0:
                 continue
+
+            # 根據 mask_mode 處理 Mask
+            if src_mask is not None:
+                if src_mask.size != src_img.size:
+                    src_mask = src_mask.resize(src_img.size, Image.Resampling.BILINEAR)
+
+                bbox = src_mask.getbbox()
+                if bbox is not None:
+                    if mask_mode == "Bounding Box":
+                        # 模式 1：僅提取 Mask 最外圍邊界矩形，直接裁切原圖（框內保持 100% 不透明度）
+                        src_img = src_img.crop(bbox)
+                    else:
+                        # 模式 2（Alpha Mask）：依邊界裁切，並將 Mask 的黑色區域變為透明
+                        src_img = src_img.crop(bbox)
+                        src_mask = src_mask.crop(bbox)
+
+                        if src_img.mode != "RGBA":
+                            src_img = src_img.convert("RGBA")
+
+                        r, g, b, a = src_img.split()
+                        final_a = Image.composite(a, Image.new("L", a.size, 0), src_mask)
+                        src_img.putalpha(final_a)
 
             if fit_mode == "Cover":
                 resized_img = ImageOps.fit(src_img, (box_w, box_h), Image.Resampling.LANCZOS)

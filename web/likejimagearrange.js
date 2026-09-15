@@ -37,7 +37,6 @@ function el(tag, className = "", props = {}) {
     return element;
 }
 
-// 修正後的拖拽事件監聽器封裝（避免誤擋自身的 drag 互動）
 function bindDrag(targetEl, onMove) {
     targetEl.addEventListener("mousedown", (e) => {
         if (e.target !== targetEl && e.target.dataset.noDrag) return;
@@ -91,7 +90,6 @@ function injectStyles() {
         .likej-scrollable::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
         .likej-scrollable::-webkit-scrollbar-thumb:hover { background: #00d2ff; }
         
-        /* 下拉選單樣式 */
         .likej-dropdown { position: relative; display: inline-block; }
         .likej-dropdown-content { 
             display: none; 
@@ -131,7 +129,6 @@ app.registerExtension({
                 this.properties.layout = { width: CONFIG.DEFAULT_W, height: CONFIG.DEFAULT_H, boxes: [] };
             }
 
-            // Custom Widget - LAYOUT_PREVIEW
             this.addCustomWidget({
                 type: "LAYOUT_PREVIEW",
                 name: "layout_preview",
@@ -184,6 +181,18 @@ app.registerExtension({
                         ctx.lineWidth = 1.5;
                         ctx.strokeRect(bx, by, bw, bh);
 
+                        const pT = (box.pad_top || 0) * scale;
+                        const pB = (box.pad_bottom || 0) * scale;
+                        const pL = (box.pad_left || 0) * scale;
+                        const pR = (box.pad_right || 0) * scale;
+
+                        if (pT > 0 || pB > 0 || pL > 0 || pR > 0) {
+                            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+                            ctx.setLineDash([2, 2]);
+                            ctx.strokeRect(bx + pL, by + pT, Math.max(0, bw - pL - pR), Math.max(0, bh - pT - pB));
+                            ctx.setLineDash([]);
+                        }
+
                         ctx.fillStyle = "#ffffff";
                         ctx.font = "bold 11px sans-serif";
                         ctx.textAlign = "center";
@@ -230,7 +239,7 @@ function openLayoutModal(node) {
     let boxes = currentLayout.boxes ? JSON.parse(JSON.stringify(currentLayout.boxes)) : [];
 
     if (boxes.length === 0) {
-        boxes.push({ id: 1, order: 1, x: 50, y: 50, w: 400, h: 300 });
+        boxes.push({ id: 1, order: 1, x: 50, y: 50, w: 400, h: 300, pad_top: 0, pad_bottom: 0, pad_left: 0, pad_right: 0 });
     }
 
     const modal = el("div", "likej-modal-overlay");
@@ -240,7 +249,6 @@ function openLayoutModal(node) {
     const setCanvasBtn = el("button", "likej-btn", { innerText: "⚙️ Set Canvas Size" });
     const addBtn = el("button", "likej-btn", { innerText: "+ Add Box" });
 
-    // 下拉選單：對齊工具
     const alignDropdown = el("div", "likej-dropdown");
     const alignMenuBtn = el("button", "likej-btn", { innerText: "📐 Align ▾" });
     const alignMenuContent = el("div", "likej-dropdown-content");
@@ -272,7 +280,6 @@ function openLayoutModal(node) {
     const galleryBtn = el("button", "likej-btn", { innerText: "📂 Load Preset" });
     const savePresetBtn = el("button", "likej-btn", { innerText: "💾 Save Preset" });
 
-    // 取消按鈕（放棄變更並關閉）
     const cancelBtn = el("button", "likej-btn likej-btn-danger", { innerText: "Cancel" });
     cancelBtn.onclick = () => modal.remove();
 
@@ -370,8 +377,13 @@ function openLayoutModal(node) {
     function openBoxEditModal(box) {
         const boxModal = el("div", "likej-modal-overlay likej-modal-top-z");
 
+        const pTop = box.pad_top || 0;
+        const pBottom = box.pad_bottom || 0;
+        const pLeft = box.pad_left || 0;
+        const pRight = box.pad_right || 0;
+
         boxModal.innerHTML = `
-            <div class="likej-dialog" style="width:350px;">
+            <div class="likej-dialog" style="width:360px;">
                 <h3 style="margin:0;font-size:16px;color:#00d2ff;text-align:center;">✏️ Edit Box #${box.order} Settings</h3>
                 <div class="likej-grid-2col">
                     <label style="font-size:13px;grid-column: span 2;">Order:
@@ -389,6 +401,23 @@ function openLayoutModal(node) {
                     <label style="font-size:13px;">Height:
                         <input type="number" id="box_h" value="${box.h}" class="likej-input">
                     </label>
+                </div>
+                <div style="margin-top:6px;border-top:1px solid #444;padding-top:8px;">
+                    <div style="font-size:13px;font-weight:bold;color:#00d2ff;margin-bottom:6px;">Margin / Padding (px):</div>
+                    <div class="likej-grid-2col">
+                        <label style="font-size:12px;">Top:
+                            <input type="number" id="box_pad_top" value="${pTop}" min="0" class="likej-input">
+                        </label>
+                        <label style="font-size:12px;">Bottom:
+                            <input type="number" id="box_pad_bottom" value="${pBottom}" min="0" class="likej-input">
+                        </label>
+                        <label style="font-size:12px;">Left:
+                            <input type="number" id="box_pad_left" value="${pLeft}" min="0" class="likej-input">
+                        </label>
+                        <label style="font-size:12px;">Right:
+                            <input type="number" id="box_pad_right" value="${pRight}" min="0" class="likej-input">
+                        </label>
+                    </div>
                 </div>
                 <div style="font-size:11px;color:#aaa;margin-top:4px;">* Values exceeding canvas (${canvasW}×${canvasH}) will be constrained automatically.</div>
                 <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;">
@@ -414,6 +443,11 @@ function openLayoutModal(node) {
             box.w = clamp(inputW, CONFIG.MIN_BOX_SIZE, canvasW - box.x);
             box.h = clamp(inputH, CONFIG.MIN_BOX_SIZE, canvasH - box.y);
 
+            box.pad_top = Math.max(0, parseInt(boxModal.querySelector("#box_pad_top").value) || 0);
+            box.pad_bottom = Math.max(0, parseInt(boxModal.querySelector("#box_pad_bottom").value) || 0);
+            box.pad_left = Math.max(0, parseInt(boxModal.querySelector("#box_pad_left").value) || 0);
+            box.pad_right = Math.max(0, parseInt(boxModal.querySelector("#box_pad_right").value) || 0);
+
             const currentIndex = boxes.indexOf(box);
             if (currentIndex !== -1) boxes.splice(currentIndex, 1);
             boxes.splice(targetOrder - 1, 0, box);
@@ -435,8 +469,20 @@ function openLayoutModal(node) {
                 style: `left:${box.x * scale}px;top:${box.y * scale}px;width:${box.w * scale}px;height:${box.h * scale}px;`
             });
 
+            const pT = (box.pad_top || 0) * scale;
+            const pB = (box.pad_bottom || 0) * scale;
+            const pL = (box.pad_left || 0) * scale;
+            const pR = (box.pad_right || 0) * scale;
+
+            if (pT > 0 || pB > 0 || pL > 0 || pR > 0) {
+                const innerPadEl = el("div", "", {
+                    style: `position:absolute;left:${pL}px;top:${pT}px;width:${Math.max(0, box.w * scale - pL - pR)}px;height:${Math.max(0, box.h * scale - pT - pB)}px;border:1px dashed rgba(255,255,255,0.7);pointer-events:none;box-sizing:border-box;`
+                });
+                boxEl.appendChild(innerPadEl);
+            }
+
             const label = el("div", "", {
-                style: "font-weight:bold;font-size:14px;pointer-events:none;text-align:center;line-height:1.25;"
+                style: "font-weight:bold;font-size:14px;pointer-events:none;text-align:center;line-height:1.25;z-index:1;"
             });
 
             const updateLabelText = () => {
@@ -498,7 +544,7 @@ function openLayoutModal(node) {
     }
 
     addBtn.onclick = () => {
-        boxes.push({ id: boxes.length + 1, x: 50, y: 50, w: 400, h: 300, order: boxes.length + 1 });
+        boxes.push({ id: boxes.length + 1, x: 50, y: 50, w: 400, h: 300, order: boxes.length + 1, pad_top: 0, pad_bottom: 0, pad_left: 0, pad_right: 0 });
         renderBoxes();
     };
 
@@ -618,7 +664,7 @@ function openLayoutModal(node) {
             const result = await res.json();
 
             if (result.success) {
-                // alert(`Preset "${result.name}" saved successfully!`);
+                // Preset saved successfully
             } else alert(`Save failed: ${result.error}`);
         } catch (e) {
             alert("Failed to save preset to backend!");
