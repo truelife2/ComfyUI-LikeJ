@@ -42,7 +42,7 @@ class LikeJLoadImages:
     RETURN_NAMES = ("images", "masks", "files", "count")
     OUTPUT_IS_LIST = (True, True, True, False)
     FUNCTION = "load_images"
-    CATEGORY = "LikeJ"
+    CATEGORY = "LikeJ/Image"
 
     def load_images(self, directory: str, files_output_mode: str, regex: str = "", skip_first: int = 0, load_cap: int = 0):
         if not os.path.isdir(directory):

@@ -85,7 +85,7 @@ class LikeJRemoveBg:
     RETURN_NAMES = ("image", "mask")
     OUTPUT_NODE = True
     FUNCTION = "remove_background"
-    CATEGORY = "LikeJ"
+    CATEGORY = "LikeJ/Image"
 
     def _get_bbox(self, mask, threshold=0.05):
         nonzero = torch.nonzero(mask > threshold)

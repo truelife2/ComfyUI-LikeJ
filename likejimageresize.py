@@ -90,7 +90,7 @@ class LikeJImageResize:
     RETURN_TYPES = ("IMAGE", "MASK")
     RETURN_NAMES = ("image", "mask")
     FUNCTION = "execute"
-    CATEGORY = "LikeJ"
+    CATEGORY = "LikeJ/Image"
 
     def _hex_to_rgb(self, hex_str):
         hex_str = hex_str.lstrip('#')

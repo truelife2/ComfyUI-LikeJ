@@ -156,7 +156,7 @@ class LikeJImageArrange:
     RETURN_TYPES = ("IMAGE", "MASK")
     RETURN_NAMES = ("composed_image", "composed_mask")
     FUNCTION = "arrange_images"
-    CATEGORY = "LikeJ"
+    CATEGORY = "LikeJ/Image"
 
     def _hex_to_rgba(self, hex_str):
         hex_str = str(hex_str).lstrip("#")

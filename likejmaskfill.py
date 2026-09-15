@@ -47,7 +47,7 @@ class LikeJMaskFill:
     RETURN_NAMES = ("image",)
     OUTPUT_NODE = True
     FUNCTION = "fill_color"
-    CATEGORY = "LikeJ"
+    CATEGORY = "LikeJ/Image"
 
     def _hex_to_rgb(self, hex_str):
         if not isinstance(hex_str, str):
