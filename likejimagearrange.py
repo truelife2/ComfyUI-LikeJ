@@ -136,12 +136,15 @@ class LikeJImageArrange:
             "required": {
                 "images": ("IMAGE",),
                 "fit_mode": (["Cover", "Contain", "Stretch"], {"default": "Cover"}),
-                "resample_mode": (["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"], {"default": "Lanczos"}),
+                "resample_method": (["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"], {"default": "Lanczos"}),
+                "bg_fit_mode": (["Cover", "Contain", "Stretch"], {"default": "Cover"}),
+                "bg_resample_method": (["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"], {"default": "Lanczos"}),
                 "mask_mode": (["Bounding Box", "Alpha Channel", "None"], {"default": "Bounding Box"}),
                 "bg_color": ("STRING", {"default": "#FFFFFF"}),
             },
             "optional": {
                 "masks": ("MASK",),
+                "background_image": ("IMAGE",),
             },
             "hidden": {
                 "extra_pnginfo": "EXTRA_PNGINFO",
@@ -231,7 +234,21 @@ class LikeJImageArrange:
             flat.append(raw_data)
         return flat
 
-    def arrange_images(self, images, fit_mode="Cover", resample_mode="Lanczos", mask_mode="Bounding Box", bg_color="#FFFFFF", masks=None, extra_pnginfo=None, prompt=None, unique_id=None):
+    def arrange_images(
+        self,
+        images,
+        fit_mode="Cover",
+        resample_method="Lanczos",
+        bg_fit_mode="Cover",
+        bg_resample_method="Lanczos",
+        mask_mode="Bounding Box",
+        bg_color="#FFFFFF",
+        masks=None,
+        background_image=None,
+        extra_pnginfo=None,
+        prompt=None,
+        unique_id=None,
+    ):
         def unwrap(val, default):
             while isinstance(val, list):
                 if len(val) > 0:
@@ -241,11 +258,14 @@ class LikeJImageArrange:
             return val if val is not None else default
 
         fit_mode_val = unwrap(fit_mode, "Cover")
-        resample_mode_val = unwrap(resample_mode, "Lanczos")
+        resample_method_val = unwrap(resample_method, "Lanczos")
+        bg_fit_mode_val = unwrap(bg_fit_mode, "Cover")
+        bg_resample_method_val = unwrap(bg_resample_method, "Lanczos")
         mask_mode_val = unwrap(mask_mode, "Bounding Box")
         bg_color_val = unwrap(bg_color, "#FFFFFF")
 
-        resample_method = self.RESAMPLE_METHODS.get(resample_mode_val, Image.Resampling.LANCZOS)
+        resample_obj = self.RESAMPLE_METHODS.get(resample_method_val, Image.Resampling.LANCZOS)
+        bg_resample_obj = self.RESAMPLE_METHODS.get(bg_resample_method_val, Image.Resampling.LANCZOS)
 
         layout = self._get_node_layout(extra_pnginfo, unique_id)
         canvas_w = int(layout.get("width", 1920))
@@ -255,11 +275,26 @@ class LikeJImageArrange:
 
         flat_images = self._flatten_input(images)
         flat_masks = self._flatten_input(masks) if masks is not None else []
+        flat_bg = self._flatten_input(background_image) if background_image is not None else []
 
         bg_rgba = self._hex_to_rgba(bg_color_val)
         canvas_img = Image.new("RGBA", (canvas_w, canvas_h), bg_rgba)
         canvas_mask = Image.new("L", (canvas_w, canvas_h), 0)
 
+        # 處理背景圖片
+        if len(flat_bg) > 0 and flat_bg[0] is not None:
+            bg_tensor = flat_bg[0]
+            bg_np = (bg_tensor.cpu().numpy() * 255.0).clip(0, 255).astype(np.uint8)
+
+            if bg_np.shape[-1] == 4:
+                bg_pil = Image.fromarray(bg_np, mode="RGBA")
+            else:
+                bg_pil = Image.fromarray(bg_np, mode="RGB").convert("RGBA")
+
+            fitted_bg, bg_off_x, bg_off_y = self._fit_image(bg_pil, canvas_w, canvas_h, bg_fit_mode_val, bg_resample_obj)
+            canvas_img.alpha_composite(fitted_bg, (bg_off_x, bg_off_y))
+
+        # 處理各排列框 (Boxes)
         for i, box in enumerate(boxes):
             if i >= len(flat_images):
                 break
@@ -282,7 +317,7 @@ class LikeJImageArrange:
                     mask_pil = Image.fromarray(m_np, mode="L")
 
                     if mask_pil.size != sub_pil.size:
-                        mask_pil = mask_pil.resize(sub_pil.size, resample_method)
+                        mask_pil = mask_pil.resize(sub_pil.size, resample_obj)
 
                     if m_np.max() > 0:
                         r, g, b, a = sub_pil.split()
@@ -304,7 +339,7 @@ class LikeJImageArrange:
             tw = max(1, bw - p_left - p_right)
             th = max(1, bh - p_top - p_bottom)
 
-            fitted_sub, off_x, off_y = self._fit_image(sub_pil, tw, th, fit_mode_val, resample_method)
+            fitted_sub, off_x, off_y = self._fit_image(sub_pil, tw, th, fit_mode_val, resample_obj)
             final_x = tx + off_x
             final_y = ty + off_y
 
