@@ -648,27 +648,95 @@ function openLayoutModal(node) {
         fetchAndRenderPresets();
     };
 
-    savePresetBtn.onclick = async () => {
-        const filename = prompt("Please enter preset name (existing name will be overwritten):");
-        if (!filename) return;
+    savePresetBtn.onclick = () => {
+        const saveModal = el("div", "likej-modal-overlay likej-modal-high-z");
 
-        try {
-            const res = await fetch(CONFIG.ENDPOINTS.SAVE, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    filename: filename.trim(),
-                    layout: { width: canvasW, height: canvasH, boxes: boxes }
-                })
+        saveModal.innerHTML = `
+            <div class="likej-dialog" style="width: 380px; max-height: 80vh;">
+                <h3 style="margin:0;font-size:18px;color:#00d2ff;text-align:center;">💾 Save Layout Preset</h3>
+                <label style="font-size:13px;display:block;">
+                    Preset Name:
+                    <input type="text" id="preset_name_input" class="likej-input" placeholder="Enter new name or click existing..." style="margin-top:6px;">
+                </label>
+                <div>
+                    <div style="font-size:12px;color:#aaa;margin-bottom:6px;">Select existing preset to overwrite:</div>
+                    <div id="existing_presets_list" class="likej-scrollable" style="max-height: 180px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 4px; background: #1a1a1a;">
+                        <div style="color:#888;font-size:12px;padding:6px;text-align:center;">Loading presets...</div>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                    <button id="cancel_save_preset" class="likej-btn">Cancel</button>
+                    <button id="confirm_save_preset" class="likej-btn likej-btn-primary">Save / Overwrite</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(saveModal);
+
+        const nameInput = saveModal.querySelector("#preset_name_input");
+        const listContainer = saveModal.querySelector("#existing_presets_list");
+
+        // 載入已存在的預設選單
+        fetch(CONFIG.ENDPOINTS.LAYOUTS)
+            .then((res) => res.json())
+            .then((layouts) => {
+                listContainer.innerHTML = "";
+                if (!layouts || layouts.length === 0) {
+                    listContainer.innerHTML = "<div style='color:#888;font-size:12px;padding:6px;text-align:center;'>No existing presets found</div>";
+                    return;
+                }
+                layouts.forEach((item) => {
+                    const itemEl = el("div", "", {
+                        innerText: item.name,
+                        style: "padding: 6px 10px; border-bottom: 1px solid #2a2a2a; cursor: pointer; font-size: 13px; border-radius: 3px; transition: background 0.15s, color 0.15s;"
+                    });
+                    itemEl.onmouseenter = () => {
+                        itemEl.style.background = "#333";
+                        itemEl.style.color = "#00d2ff";
+                    };
+                    itemEl.onmouseleave = () => {
+                        itemEl.style.background = "transparent";
+                        itemEl.style.color = "#fff";
+                    };
+                    itemEl.onclick = () => {
+                        nameInput.value = item.name;
+                    };
+                    listContainer.appendChild(itemEl);
+                });
+            })
+            .catch(() => {
+                listContainer.innerHTML = "<div style='color:#ff4d4d;font-size:12px;padding:6px;text-align:center;'>Failed to load existing presets</div>";
             });
-            const result = await res.json();
 
-            if (result.success) {
-                // Preset saved successfully
-            } else alert(`Save failed: ${result.error}`);
-        } catch (e) {
-            alert("Failed to save preset to backend!");
-        }
+        saveModal.querySelector("#cancel_save_preset").onclick = () => saveModal.remove();
+
+        saveModal.querySelector("#confirm_save_preset").onclick = async () => {
+            const filename = nameInput.value.trim();
+            if (!filename) {
+                alert("Please enter or select a preset name!");
+                return;
+            }
+
+            try {
+                const res = await fetch(CONFIG.ENDPOINTS.SAVE, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: filename,
+                        layout: { width: canvasW, height: canvasH, boxes: boxes }
+                    })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    saveModal.remove();
+                } else {
+                    alert(`Save failed: ${result.error}`);
+                }
+            } catch (e) {
+                alert("Failed to save preset to backend!");
+            }
+        };
     };
 
     saveBtn.onclick = () => {

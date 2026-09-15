@@ -30,7 +30,9 @@ async def get_preview(request):
     filename = request.match_info["filename"]
     file_path = os.path.join(LAYOUT_DIR, filename)
     if os.path.exists(file_path):
-        return web.FileResponse(file_path)
+        response = web.FileResponse(file_path)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
     return web.Response(status=404)
 
 
