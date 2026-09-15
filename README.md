@@ -151,7 +151,7 @@
 
    > idea from: https://github.com/1038lab/ComfyUI-RMBG
 
-<img width="590" height="744" alt="image" src="https://github.com/user-attachments/assets/f070586a-7d0f-44ea-912e-1e388852bb0a" />
+<img width="521" height="498" alt="image" src="https://github.com/user-attachments/assets/0c23472a-2ac7-4a05-aacc-bc78bfe14b8c" />
 
 <img width="481" height="444" alt="image" src="https://github.com/user-attachments/assets/0894e4cf-6b13-4089-8672-d2673cba7d23" />
 
