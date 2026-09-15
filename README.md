@@ -169,6 +169,11 @@
 
 <img width="341" height="416" alt="image" src="https://github.com/user-attachments/assets/7b40b907-973a-424e-89a1-0eb58c4cfe66" />
 
+## LikeJ Image Slots
+
+<img width="588" height="715" alt="image" src="https://github.com/user-attachments/assets/1eb845c3-105c-43f2-9a2e-c9af514b300e" />
+
+<img width="1164" height="520" alt="image" src="https://github.com/user-attachments/assets/d49088a1-1eb2-4d3b-b363-5a5006d4fe9f" />
 
 
 
