@@ -153,7 +153,7 @@
 
 <img width="590" height="744" alt="image" src="https://github.com/user-attachments/assets/f070586a-7d0f-44ea-912e-1e388852bb0a" />
 
-<img width="607" height="555" alt="image" src="https://github.com/user-attachments/assets/a568a4a2-3c81-44c2-90aa-094eb1f77547" />
+<img width="481" height="444" alt="image" src="https://github.com/user-attachments/assets/0894e4cf-6b13-4089-8672-d2673cba7d23" />
 
 ## LikeJ Image Arrange
 
