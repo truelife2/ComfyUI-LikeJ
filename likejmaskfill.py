@@ -36,6 +36,10 @@ class LikeJMaskFill:
                     "default": False,
                     "tooltip": "If true, fill/cutout outside the mask (background) instead of inside."
                 }),
+                "remove_alpha": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "If true, fills transparent areas with color and strips alpha channel (outputs 3-channel RGB)."
+                }),
             }
         }
 
@@ -82,7 +86,7 @@ class LikeJMaskFill:
 
         return ui_images
 
-    def fill_color(self, image, mask, transparent, hex_color, opacity, invert_mask):
+    def fill_color(self, image, mask, transparent, hex_color, opacity, invert_mask, remove_alpha=False):
         batch_size, h, w, c = image.shape
         device = image.device
         dtype = image.dtype
@@ -108,7 +112,7 @@ class LikeJMaskFill:
         mask_expanded = mask.unsqueeze(-1).to(device, dtype=dtype)
 
         if transparent:
-            # 挖空透明模式（強制轉為 4 通道 RGBA）
+            # 挖空透明模式（強制保持 4 通道 RGBA）
             if c == 4:
                 rgb = image[..., :3]
                 alpha = image[..., 3:]
@@ -129,11 +133,18 @@ class LikeJMaskFill:
             if c == 4:
                 rgb = image[..., :3]
                 alpha = image[..., 3:]
-                filled_rgb = rgb * (1.0 - effective_mask) + fill_tensor * effective_mask
-                filled_alpha = alpha
-                out_image = torch.cat([filled_rgb, filled_alpha], dim=-1)
+
+                if remove_alpha:
+                    # 開啟 remove_alpha：將透明底填入顏色並壓平，強制轉為 3 通道 (RGB)
+                    base_rgb = rgb * alpha + fill_tensor * (1.0 - alpha)
+                    out_image = base_rgb * (1.0 - effective_mask) + fill_tensor * effective_mask
+                else:
+                    # 未開啟 remove_alpha：維持 4 通道 (RGBA)
+                    filled_rgb = rgb * (1.0 - effective_mask) + fill_tensor * effective_mask
+                    filled_alpha = alpha * (1.0 - effective_mask) + 1.0 * effective_mask
+                    out_image = torch.cat([filled_rgb, filled_alpha], dim=-1)
             else:
-                # 若原本是 3 通道，直接在 RGB 混色，維持 3 通道輸出，避免打斷下游模型
+                # 原圖本身即為 3 通道 (RGB)
                 rgb = image[..., :3]
                 out_image = rgb * (1.0 - effective_mask) + fill_tensor * effective_mask
 
