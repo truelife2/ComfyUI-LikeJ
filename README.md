@@ -141,11 +141,11 @@
 
    > idea from: https://github.com/1038lab/ComfyUI-RMBG
 
-<img width="967" height="511" alt="image" src="https://github.com/user-attachments/assets/c2da0a52-edfe-4c45-8e07-def413d1aac7" />
+<img width="888" height="638" alt="image" src="https://github.com/user-attachments/assets/95b1134f-32db-4630-bf4b-2ca5c39867bb" />
 
-<img width="375" height="496" alt="image" src="https://github.com/user-attachments/assets/c67c2570-7bea-447e-9170-2f08bb95cc89" />
+<img width="446" height="358" alt="image" src="https://github.com/user-attachments/assets/351a7cf7-29c1-412d-8d6a-262fc152402b" />
 
-<img width="445" height="292" alt="image" src="https://github.com/user-attachments/assets/9808b430-3b1d-405e-a92f-37450c0a7f1e" />
+<img width="481" height="399" alt="image" src="https://github.com/user-attachments/assets/0c7b3e14-6ddd-4d11-9d8a-efe9cf405835" />
 
 ## LikeJ Mask Fill
 
