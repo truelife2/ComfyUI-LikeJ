@@ -167,6 +167,8 @@ class LikeJRemoveBg:
         return img[y_min:y_max+1, x_min:x_max+1], mask[y_min:y_max+1, x_min:x_max+1]
 
     def _stack_batch(self, out_images, out_masks):
+        if len(out_images) == 0:
+            return None, None
         if len(out_images) == 1:
             return torch.stack(out_images, dim=0), torch.stack(out_masks, dim=0)
 
@@ -187,6 +189,8 @@ class LikeJRemoveBg:
         return torch.stack(padded_imgs, dim=0), torch.stack(padded_msks, dim=0)
 
     def _generate_ui_preview(self, rgba_images):
+        if rgba_images is None or len(rgba_images) == 0:
+            return []
         output_dir = folder_paths.get_temp_directory()
         ui_images = []
         batch_id = uuid.uuid4().hex[:8]
@@ -207,7 +211,13 @@ class LikeJRemoveBg:
 
         return ui_images
 
-    def remove_background(self, image, model_name, input_mask_mode="Bounding Box", expand_mask=0, invert_mask=False, sensitivity=1.0, threshold=0.0, blur_radius=0, crop_to_content=False, crop_padding=0, mask=None):
+    def remove_background(self, image=None, model_name=None, input_mask_mode="Bounding Box", expand_mask=0, invert_mask=False, sensitivity=1.0, threshold=0.0, blur_radius=0, crop_to_content=False, crop_padding=0, mask=None):
+        if image is None:
+            return {
+                "ui": {"images": []},
+                "result": (None, None)
+            }
+
         model_path = folder_paths.get_full_path("background_removal", model_name)
         if not model_path or not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found: {model_name}")
@@ -229,16 +239,19 @@ class LikeJRemoveBg:
         }
 
     def _process_onnx(self, image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, blur_radius, crop_to_content, crop_padding, input_mask_tensor):
-        import onnxruntime as ort
-
-        providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
-        session = ort.InferenceSession(model_path, providers=providers)
-        input_name = session.get_inputs()[0].name
+        session = None
+        input_name = None
 
         input_masks = self._normalize_mask_tensor(input_mask_tensor)
         out_images, out_masks = [], []
 
         for i in range(image.shape[0]):
+            if session is None:
+                import onnxruntime as ort
+                providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+                session = ort.InferenceSession(model_path, providers=providers)
+                input_name = session.get_inputs()[0].name
+
             img_tensor = image[i][..., :3]
             orig_h, orig_w, _ = img_tensor.shape
 
@@ -246,6 +259,8 @@ class LikeJRemoveBg:
             if input_masks is not None:
                 idx = i if i < input_masks.shape[0] else 0
                 in_mask = input_masks[idx]
+                if in_mask.dim() == 3 and in_mask.shape[0] == 1:
+                    in_mask = in_mask[0]
                 if in_mask.shape != (orig_h, orig_w):
                     in_mask = torch.nn.functional.interpolate(
                         in_mask.unsqueeze(0).unsqueeze(0), size=(orig_h, orig_w), mode="bilinear", align_corners=False
@@ -272,7 +287,7 @@ class LikeJRemoveBg:
             output_mask = outputs[0]
 
             mask_tensor = torch.from_numpy(output_mask).squeeze()
-            if mask_tensor.max() > 1.0 or mask_tensor.min() < 0.0:
+            if mask_tensor.max().item() > 1.0 or mask_tensor.min().item() < 0.0:
                 mask_tensor = torch.sigmoid(mask_tensor)
 
             if mask_tensor.shape != (h_infer, w_infer):
@@ -306,36 +321,39 @@ class LikeJRemoveBg:
         return self._stack_batch(out_images, out_masks)
 
     def _process_pytorch(self, image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, blur_radius, crop_to_content, crop_padding, input_mask_tensor):
-        from safetensors.torch import load_file
-        from transformers import AutoConfig, AutoModelForImageSegmentation
-        from torchvision import transforms
-
+        model = None
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        folder_path = os.path.dirname(model_path)
-
-        config_path = os.path.join(folder_path, "config.json")
-        if not os.path.exists(config_path):
-            raise FileNotFoundError(f"Missing required model files ('config.json' or '.py' scripts) in directory: {folder_path}")
-
-        config = AutoConfig.from_pretrained(folder_path, trust_remote_code=True, local_files_only=True)
-        model = AutoModelForImageSegmentation.from_config(config, trust_remote_code=True)
-
-        state_dict = load_file(model_path)
-        model.load_state_dict(state_dict, strict=False)
-
-        model.to(device)
-        model.eval()
+        transform_image = None
 
         input_masks = self._normalize_mask_tensor(input_mask_tensor)
         out_images, out_masks = [], []
 
-        transform_image = transforms.Compose([
-            transforms.Resize((1024, 1024)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-
         for i in range(image.shape[0]):
+            if model is None:
+                from safetensors.torch import load_file
+                from transformers import AutoConfig, AutoModelForImageSegmentation
+                from torchvision import transforms
+
+                folder_path = os.path.dirname(model_path)
+                config_path = os.path.join(folder_path, "config.json")
+                if not os.path.exists(config_path):
+                    raise FileNotFoundError(f"Missing required model files ('config.json' or '.py' scripts) in directory: {folder_path}")
+
+                config = AutoConfig.from_pretrained(folder_path, trust_remote_code=True, local_files_only=True)
+                model = AutoModelForImageSegmentation.from_config(config, trust_remote_code=True)
+
+                state_dict = load_file(model_path)
+                model.load_state_dict(state_dict, strict=False)
+
+                model.to(device)
+                model.eval()
+
+                transform_image = transforms.Compose([
+                    transforms.Resize((1024, 1024)),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
+
             img_tensor = image[i][..., :3]
             orig_h, orig_w, _ = img_tensor.shape
 
@@ -343,6 +361,8 @@ class LikeJRemoveBg:
             if input_masks is not None:
                 idx = i if i < input_masks.shape[0] else 0
                 in_mask = input_masks[idx]
+                if in_mask.dim() == 3 and in_mask.shape[0] == 1:
+                    in_mask = in_mask[0]
                 if in_mask.shape != (orig_h, orig_w):
                     in_mask = torch.nn.functional.interpolate(
                         in_mask.unsqueeze(0).unsqueeze(0), size=(orig_h, orig_w), mode="bilinear", align_corners=False

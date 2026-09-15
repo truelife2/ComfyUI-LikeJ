@@ -19,6 +19,7 @@ from . import likejvideoloop
 from . import likejremovebg
 from . import likejmaskfill
 from . import likejimagearrange
+from . import likejimageslots
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -44,6 +45,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJRemoveBg": likejremovebg.LikeJRemoveBg,
     "LikeJMaskFill": likejmaskfill.LikeJMaskFill,
     "LikeJImageArrange": likejimagearrange.LikeJImageArrange,
+    "LikeJImageSlots": likejimageslots.LikeJImageSlots,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -70,6 +72,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJRemoveBg": "LikeJ Remove Background",
     "LikeJMaskFill": "LikeJ Mask Fill",
     "LikeJImageArrange": "LikeJ Image Arrange",
+    "LikeJImageSlots": "LikeJ Image Slots",
 }
 
 WEB_DIRECTORY = "./web"

@@ -217,7 +217,10 @@ class LikeJImageArrange:
 
         if isinstance(raw_data, list):
             for item in raw_data:
-                flat.extend(self._flatten_input(item))
+                if item is None:
+                    flat.append(None)  # 保留 None，維護槽位索引順序
+                else:
+                    flat.extend(self._flatten_input(item))
         elif isinstance(raw_data, torch.Tensor):
             if raw_data.dim() == 4:
                 for b in range(raw_data.shape[0]):
