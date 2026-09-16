@@ -8,8 +8,7 @@ import folder_paths
 from PIL import Image
 from server import PromptServer
 from aiohttp import web
-
-WEB_DIRECTORY = "./js"
+import nodes
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
 LAYOUT_LLMS_DIR = os.path.join(NODE_DIR, "layout_llms")
@@ -230,7 +229,7 @@ class LikeJPromptGenerator:
                     "step": 512,
                     "tooltip": "Context window size"
                 }),
-                "max_tokens": ("INT", {"default": 256, "min": 16, "max": 8192, "step": 16}),
+                "max_tokens": ("INT", {"default": 2048, "min": 16, "max": 8192, "step": 16}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "Nucleus sampling probability threshold"}),
                 "repeat_penalty": ("FLOAT", {"default": 1.1, "min": 1.0, "max": 2.0, "step": 0.05, "tooltip": "Penalty for repeating tokens"}),
@@ -241,7 +240,7 @@ class LikeJPromptGenerator:
                     "Alpha Mask Black"
                 ], {"default": "Crop Bounding Box", "tooltip": "Bounding Box: crop ROI with padding; Alpha Mask Black: black out non-mask area; Strict: crop ROI & black out non-mask"}),
                 "mask_padding": ("INT", {"default": 0, "min": 0, "max": 256, "step": 8, "tooltip": "Extra padding pixels for Crop Bounding Box"}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff,"control_after_generate": True}),
             },
             "optional": {
                 "image1": ("IMAGE",),
@@ -323,6 +322,7 @@ class LikeJPromptGenerator:
                 verbose=False
             )
             LikeJPromptGenerator._current_cache_key = cache_key
+            print(f"[LikeJPromptGenerator] GGUF model loaded: {model_name}")
 
         llm = LikeJPromptGenerator._llm_instance
 
@@ -363,6 +363,8 @@ class LikeJPromptGenerator:
             "<|end_of_text|>", "<|endoftext|>", "USER:", "ASSISTANT:"
         ]
 
+        print(f"[LikeJPromptGenerator] Generating optimized prompt with model: {model_name}, instruction file: {system_instruction_file}, seed: {seed}")
+
         response = llm.create_chat_completion(
             messages=messages,
             max_tokens=int(max_tokens),
@@ -374,4 +376,6 @@ class LikeJPromptGenerator:
         )
 
         optimized_prompt = response["choices"][0]["message"]["content"].strip()
+        print(f"[LikeJPromptGenerator] Optimized prompt generated: {optimized_prompt}")
+
         return (optimized_prompt,)
