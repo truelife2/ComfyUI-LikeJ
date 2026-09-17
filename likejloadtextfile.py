@@ -9,7 +9,6 @@ def resolve_target_path(raw_input):
         return ""
 
     cleaned = re.sub(r'[\u200e\u200f\u200b-\u200d\ufeff]', '', str(raw_input))
-
     cleaned = cleaned.strip().strip('"\'' + '“”‘’').strip()
 
     if not cleaned or cleaned.lower() == "none":
@@ -62,6 +61,30 @@ async def read_file_content(request):
         return web.json_response({"content": content})
     except Exception as e:
         return web.json_response({"content": "", "error": str(e)})
+
+
+# API：儲存修改後的檔案內容
+@PromptServer.instance.routes.post("/likej/save_file_content")
+async def save_file_content(request):
+    try:
+        data = await request.json()
+        raw_path = data.get("path", "")
+        content = data.get("content", "")
+        encoding = data.get("encoding", "auto")
+
+        file_path = resolve_target_path(raw_path)
+
+        if not file_path:
+            return web.json_response({"success": False, "error": "找不到指定路徑的檔案。"})
+
+        target_encoding = "utf-8" if encoding == "auto" else encoding
+
+        with open(file_path, "w", encoding=target_encoding, errors="replace") as f:
+            f.write(content)
+
+        return web.json_response({"success": True})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)})
 
 
 class LikeJLoadTextFile:
