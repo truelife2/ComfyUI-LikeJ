@@ -9,6 +9,7 @@ from PIL import Image
 from server import PromptServer
 from aiohttp import web
 import nodes
+import comfy.model_management
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
 LAYOUT_LLMS_DIR = os.path.join(NODE_DIR, "layout_llms")
@@ -17,9 +18,6 @@ if "LLM" not in folder_paths.folder_names_and_paths:
     folder_paths.add_model_folder_path("LLM", os.path.join(folder_paths.models_dir, "LLM"))
 
 def get_instruction_files():
-    """Scan layout_llms directory for .md and .txt files.
-    Only create default.md when the directory is completely empty.
-    """
     if not os.path.exists(LAYOUT_LLMS_DIR):
         os.makedirs(LAYOUT_LLMS_DIR, exist_ok=True)
     
@@ -122,6 +120,16 @@ async def api_delete_instruction(request):
             return web.json_response({"error": str(e)}, status=500)
     return web.json_response({"error": "File not found"}, status=404)
 
+# 手動釋放 LLM 顯存 API
+@PromptServer.instance.routes.post("/likej/unload_model")
+async def api_unload_model(request):
+    released = LikeJPromptGenerator.unload_model()
+    return web.json_response({
+        "success": True, 
+        "released": released, 
+        "message": "LLM VRAM released successfully." if released else "No model was loaded in VRAM."
+    })
+
 def get_all_gguf_files():
     gguf_files = []
     search_dirs = []
@@ -158,7 +166,6 @@ def resolve_full_path(rel_path):
     return None
 
 def process_mask_crop(pil_img, mask_tensor, mode, padding):
-    """根據 Mask 模式對 PIL 圖片進行 Bounding Box 裁切或遮罩處理"""
     mask_np = mask_tensor[0].cpu().numpy()
     
     if mask_np.shape[0] != pil_img.height or mask_np.shape[1] != pil_img.width:
@@ -197,9 +204,25 @@ def process_mask_crop(pil_img, mask_tensor, mode, padding):
 class LikeJPromptGenerator:
     _llm_instance = None
     _current_cache_key = None
+    _keep_in_vram = True
 
     def __init__(self):
         pass
+
+    @classmethod
+    def unload_model(cls):
+        """核心釋放模型顯存邏輯"""
+        if cls._llm_instance is not None:
+            print("[LikeJPromptGenerator] Unloading LLM model from VRAM...")
+            del cls._llm_instance
+            cls._llm_instance = None
+            cls._current_cache_key = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            print("[LikeJPromptGenerator] Model successfully unloaded.")
+            return True
+        return False
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -241,6 +264,10 @@ class LikeJPromptGenerator:
                 ], {"default": "Crop Bounding Box", "tooltip": "Bounding Box: crop ROI with padding; Alpha Mask Black: black out non-mask area; Strict: crop ROI & black out non-mask"}),
                 "mask_padding": ("INT", {"default": 0, "min": 0, "max": 256, "step": 8, "tooltip": "Extra padding pixels for Crop Bounding Box"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff,"control_after_generate": True}),
+                "keep_model_in_vram": ("BOOLEAN", {
+                    "default": True, 
+                    "tooltip": "True: 保留模型加速下次生成；False: 生成完後自動釋放顯存"
+                }),
             },
             "optional": {
                 "image1": ("IMAGE",),
@@ -257,7 +284,8 @@ class LikeJPromptGenerator:
     FUNCTION = "generate_prompt"
     CATEGORY = "LikeJ/Prompt"
 
-    def generate_prompt(self, model_name, system_instruction_file, prompt, n_gpu_layers=-1, n_ctx=4096, max_tokens=256, temperature=0.7, top_p=0.9, repeat_penalty=1.1, image_target_size=1024, mask_mode="Crop Bounding Box", mask_padding=32, seed=0, image1=None, mask1=None, image2=None, mask2=None, image3=None, mask3=None):
+    def _run_inference(self, model_name, system_instruction_file, prompt, n_gpu_layers, n_ctx, max_tokens, temperature, top_p, repeat_penalty, image_target_size, mask_mode, mask_padding, seed, image1, mask1, image2, mask2, image3, mask3):
+        """將推論隔離在獨立作用域，確保 response、messages 等區域變數離開此函數後能立即被垃圾回收銷毀"""
         try:
             from llama_cpp import Llama
         except ImportError:
@@ -279,7 +307,6 @@ class LikeJPromptGenerator:
 
         model_dir = os.path.dirname(model_path)
         
-        # 收集有效的 (標籤, 圖片, 對應遮罩) 資料集
         valid_inputs = []
         if image1 is not None: valid_inputs.append(("Image 1", image1, mask1))
         if image2 is not None: valid_inputs.append(("Image 2", image2, mask2))
@@ -297,12 +324,7 @@ class LikeJPromptGenerator:
         if LikeJPromptGenerator._current_cache_key != cache_key or LikeJPromptGenerator._llm_instance is None:
             print(f"[LikeJPromptGenerator] Loading GGUF model: {model_name}")
 
-            if LikeJPromptGenerator._llm_instance is not None:
-                del LikeJPromptGenerator._llm_instance
-                LikeJPromptGenerator._llm_instance = None
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
+            LikeJPromptGenerator.unload_model()
 
             chat_handler = None
             if mmproj_path:
@@ -324,9 +346,6 @@ class LikeJPromptGenerator:
             LikeJPromptGenerator._current_cache_key = cache_key
             print(f"[LikeJPromptGenerator] GGUF model loaded: {model_name}")
 
-        llm = LikeJPromptGenerator._llm_instance
-
-        # 處理多圖與獨立 Mask 裁切
         user_content = prompt
         if len(valid_inputs) > 0 and mmproj_path:
             content_list = [{"type": "text", "text": prompt}]
@@ -335,11 +354,9 @@ class LikeJPromptGenerator:
                 img_np = (img_tensor[0].cpu().numpy() * 255).astype("uint8")
                 pil_img = Image.fromarray(img_np)
 
-                # 當該張圖片有對應連接的 mask 時進行獨立裁切
                 if mask_tensor is not None:
                     pil_img = process_mask_crop(pil_img, mask_tensor, mask_mode, mask_padding)
 
-                # 智慧等比例縮放
                 if max(pil_img.size) > image_target_size:
                     pil_img.thumbnail((image_target_size, image_target_size), Image.Resampling.LANCZOS)
 
@@ -363,9 +380,9 @@ class LikeJPromptGenerator:
             "<|end_of_text|>", "<|endoftext|>", "USER:", "ASSISTANT:"
         ]
 
-        print(f"[LikeJPromptGenerator] Generating optimized prompt with model: {model_name}, instruction file: {system_instruction_file}, seed: {seed}")
+        print(f"[LikeJPromptGenerator] Generating prompt with model: {model_name}")
 
-        response = llm.create_chat_completion(
+        response = LikeJPromptGenerator._llm_instance.create_chat_completion(
             messages=messages,
             max_tokens=int(max_tokens),
             temperature=float(temperature),
@@ -376,6 +393,62 @@ class LikeJPromptGenerator:
         )
 
         optimized_prompt = response["choices"][0]["message"]["content"].strip()
-        print(f"[LikeJPromptGenerator] Optimized prompt generated: {optimized_prompt}")
+        print(f"[LikeJPromptGenerator] Optimized prompt generated successfully.")
+        return optimized_prompt
+
+    def generate_prompt(self, model_name, system_instruction_file, prompt, keep_model_in_vram=True, n_gpu_layers=-1, n_ctx=4096, max_tokens=256, temperature=0.7, top_p=0.9, repeat_penalty=1.1, image_target_size=1024, mask_mode="Crop Bounding Box", mask_padding=32, seed=0, image1=None, mask1=None, image2=None, mask2=None, image3=None, mask3=None):
+        # 紀錄當前 keep 狀態供 Hook 查詢
+        LikeJPromptGenerator._keep_in_vram = keep_model_in_vram
+
+        # 執行推論
+        optimized_prompt = self._run_inference(
+            model_name, system_instruction_file, prompt, n_gpu_layers, n_ctx, 
+            max_tokens, temperature, top_p, repeat_penalty, image_target_size, 
+            mask_mode, mask_padding, seed, image1, mask1, image2, mask2, image3, mask3
+        )
+
+        # 若使用者明確設定關閉，則立即釋放
+        if not keep_model_in_vram:
+            print("[LikeJPromptGenerator] 'keep_model_in_vram' is False. Releasing VRAM...")
+            LikeJPromptGenerator.unload_model()
 
         return (optimized_prompt,)
+
+
+# --- ComfyUI 底層記憶體 Hook 管理 ---
+_orig_soft_empty_cache = comfy.model_management.soft_empty_cache
+_orig_unload_all_models = comfy.model_management.unload_all_models
+_orig_free_memory = comfy.model_management.free_memory
+
+def hooked_soft_empty_cache(*args, **kwargs):
+    # 只有當使用者設定不保留時，才跟隨 soft_empty 釋放
+    if not LikeJPromptGenerator._keep_in_vram:
+        LikeJPromptGenerator.unload_model()
+    return _orig_soft_empty_cache(*args, **kwargs)
+
+def hooked_unload_all_models(*args, **kwargs):
+    # 使用者點擊 UI 的 Unload All，強制釋放
+    LikeJPromptGenerator.unload_model()
+    return _orig_unload_all_models(*args, **kwargs)
+
+def hooked_free_memory(needed, device, *args, **kwargs):
+    # 當下一個節點向 ComfyUI 申請顯存時觸發
+    if LikeJPromptGenerator._llm_instance is not None:
+        if not LikeJPromptGenerator._keep_in_vram:
+            LikeJPromptGenerator.unload_model()
+        elif torch.cuda.is_available():
+            try:
+                # 檢查當前 GPU 剩餘實體顯存 (Bytes)
+                free_mem, _ = torch.cuda.mem_get_info(device)
+                # 只有當剩餘顯存不足以讓下一個模型載入時，才將 LLM 退場
+                if free_mem < needed:
+                    print(f"[LikeJPromptGenerator] VRAM required ({needed / 1024**2:.1f}MB) > Free ({free_mem / 1024**2:.1f}MB). Evicting LLM...")
+                    LikeJPromptGenerator.unload_model()
+            except Exception:
+                pass
+
+    return _orig_free_memory(needed, device, *args, **kwargs)
+
+comfy.model_management.soft_empty_cache = hooked_soft_empty_cache
+comfy.model_management.unload_all_models = hooked_unload_all_models
+comfy.model_management.free_memory = hooked_free_memory

@@ -9,21 +9,46 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
 
-                const buttonName = "📝 Edit / Manage System Instructions";
-                const hasButton = this.widgets?.some(w => w.name === buttonName);
-                
-                if (!hasButton) {
-                    const btn = this.addWidget("button", buttonName, null, () => {
+                // 1. 編輯指令檔按鈕 (放 system_instruction_file 下方)
+                const editBtnName = "📝 Edit / Manage System Instructions";
+                if (!this.widgets?.some(w => w.name === editBtnName)) {
+                    const btn = this.addWidget("button", editBtnName, null, () => {
                         showInstructionModal(this);
                     });
 
-                    // 確保按鈕定位在 system_instruction_file 下拉選單的正下方
                     const targetIdx = this.widgets.findIndex(w => w.name === "system_instruction_file");
                     if (targetIdx !== -1) {
                         const btnIdx = this.widgets.indexOf(btn);
                         if (btnIdx !== -1) {
                             this.widgets.splice(btnIdx, 1);
                             this.widgets.splice(targetIdx + 1, 0, btn);
+                        }
+                    }
+                }
+
+                // 2. 手動釋放顯存按鈕 (放 keep_model_in_vram 下方，亦即最底部)
+                const unloadBtnName = "🧹 Unload Model VRAM";
+                if (!this.widgets?.some(w => w.name === unloadBtnName)) {
+                    const unloadBtn = this.addWidget("button", unloadBtnName, null, async () => {
+                        try {
+                            const resp = await api.fetchApi("/likej/unload_model", { method: "POST" });
+                            if (resp.ok) {
+                                const data = await resp.json();
+                                alert(data.message);
+                            } else {
+                                alert("Failed to unload VRAM.");
+                            }
+                        } catch (e) {
+                            alert("Request error: " + e);
+                        }
+                    });
+
+                    const keepIdx = this.widgets.findIndex(w => w.name === "keep_model_in_vram");
+                    if (keepIdx !== -1) {
+                        const btnIdx = this.widgets.indexOf(unloadBtn);
+                        if (btnIdx !== -1) {
+                            this.widgets.splice(btnIdx, 1);
+                            this.widgets.splice(keepIdx + 1, 0, unloadBtn);
                         }
                     }
                 }
@@ -39,7 +64,6 @@ function showInstructionModal(node) {
     const availableFiles = fileWidget ? (fileWidget.options?.values || ["None"]) : ["None"];
     let currentFile = fileWidget ? fileWidget.value : availableFiles[0];
 
-    // Overlay 遮罩層
     const overlay = document.createElement("div");
     Object.assign(overlay.style, {
         position: "fixed",
@@ -57,7 +81,6 @@ function showInstructionModal(node) {
         transition: "opacity 0.2s ease"
     });
 
-    // Dialog 彈出視窗主體
     const dialog = document.createElement("div");
     Object.assign(dialog.style, {
         backgroundColor: "#1e1e1e",
@@ -119,7 +142,6 @@ function showInstructionModal(node) {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    // 平滑進入動畫
     requestAnimationFrame(() => {
         overlay.style.opacity = "1";
         dialog.style.transform = "scale(1)";
@@ -129,7 +151,6 @@ function showInstructionModal(node) {
     const filenameInput = dialog.querySelector("#likej-filename");
     const contentTextarea = dialog.querySelector("#likej-content");
 
-    // 關閉視窗與觸發淡出動畫
     const closeModal = () => {
         overlay.style.opacity = "0";
         dialog.style.transform = "scale(0.95)";
@@ -138,7 +159,6 @@ function showInstructionModal(node) {
         }, 200);
     };
 
-    // 讀取檔案
     const loadFileContent = async (filename) => {
         if (!filename || filename === "None") {
             contentTextarea.value = "";
@@ -157,7 +177,6 @@ function showInstructionModal(node) {
 
     loadFileContent(currentFile);
 
-    // 事件控制
     fileSelect.addEventListener("change", (e) => {
         const selected = e.target.value;
         filenameInput.value = selected;
@@ -166,7 +185,6 @@ function showInstructionModal(node) {
 
     dialog.querySelector("#likej-cancel").onclick = closeModal;
 
-    // 鍵盤快捷鍵：Esc 關閉、Ctrl+Enter 儲存
     const handleKeyDown = (e) => {
         if (e.key === "Escape") {
             closeModal();
@@ -179,7 +197,6 @@ function showInstructionModal(node) {
     };
     document.addEventListener("keydown", handleKeyDown);
 
-    // 刪除邏輯
     dialog.querySelector("#likej-delete").onclick = async () => {
         const targetFile = fileSelect.value;
         if (!targetFile || targetFile === "None") {
@@ -212,7 +229,6 @@ function showInstructionModal(node) {
         }
     };
 
-    // 儲存邏輯
     dialog.querySelector("#likej-save").onclick = async () => {
         const filename = filenameInput.value.trim();
         const content = contentTextarea.value;
