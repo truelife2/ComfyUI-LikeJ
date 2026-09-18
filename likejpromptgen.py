@@ -266,7 +266,7 @@ class LikeJPromptGenerator:
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff,"control_after_generate": True}),
                 "keep_model_in_vram": ("BOOLEAN", {
                     "default": True, 
-                    "tooltip": "True: 保留模型加速下次生成；False: 生成完後自動釋放顯存"
+                    "tooltip": "True: Keep model in VRAM for faster subsequent generations; False: Automatically release VRAM after generation."
                 }),
             },
             "optional": {

@@ -21,9 +21,9 @@ class LikeJRemoveBg:
                 "model_name": (model_list, {
                     "tooltip": "Select background removal model from models/background_removal."
                 }),
-                "input_mask_mode": (["Bounding Box", "Alpha Mask", "Intersect Mask"], {
+                "input_mask_mode": (["None", "Bounding Box", "Mask Clip"], {
                     "default": "Bounding Box",
-                    "tooltip": "How the preliminary input mask is applied before/after AI processing."
+                    "tooltip": "None: Ignore mask. Bounding Box: Crop mask area for local AI inference. Mask Clip: Full AI inference clipped by input mask."
                 }),
                 "expand_mask": ("INT", {
                     "default": 0,
@@ -211,7 +211,7 @@ class LikeJRemoveBg:
 
         return ui_images
 
-    def remove_background(self, image=None, model_name=None, input_mask_mode="Bounding Box", expand_mask=0, invert_mask=False, sensitivity=1.0, threshold=0.0, blur_radius=0, crop_to_content=False, crop_padding=0, mask=None):
+    def remove_background(self, image=None, model_name=None, input_mask_mode="None", expand_mask=0, invert_mask=False, sensitivity=1.0, threshold=0.0, blur_radius=0, crop_to_content=False, crop_padding=0, mask=None):
         if image is None:
             return {
                 "ui": {"images": []},
@@ -256,7 +256,7 @@ class LikeJRemoveBg:
             orig_h, orig_w, _ = img_tensor.shape
 
             in_mask = None
-            if input_masks is not None:
+            if input_mask_mode != "None" and input_masks is not None:
                 idx = i if i < input_masks.shape[0] else 0
                 in_mask = input_masks[idx]
                 if in_mask.dim() == 3 and in_mask.shape[0] == 1:
@@ -266,16 +266,16 @@ class LikeJRemoveBg:
                         in_mask.unsqueeze(0).unsqueeze(0), size=(orig_h, orig_w), mode="bilinear", align_corners=False
                     ).squeeze()
 
+                if torch.max(in_mask) <= 0.001:
+                    in_mask = None
+
             bbox = None
             infer_img = img_tensor
-            if in_mask is not None:
-                if input_mask_mode == "Bounding Box":
-                    bbox = self._get_bbox(in_mask)
-                    if bbox is not None:
-                        y_min, y_max, x_min, x_max = bbox
-                        infer_img = img_tensor[y_min:y_max+1, x_min:x_max+1]
-                elif input_mask_mode == "Alpha Mask":
-                    infer_img = img_tensor * in_mask.unsqueeze(-1)
+            if in_mask is not None and input_mask_mode == "Bounding Box":
+                bbox = self._get_bbox(in_mask)
+                if bbox is not None:
+                    y_min, y_max, x_min, x_max = bbox
+                    infer_img = img_tensor[y_min:y_max+1, x_min:x_max+1]
 
             h_infer, w_infer, _ = infer_img.shape
             img_input = infer_img.permute(2, 0, 1).unsqueeze(0).numpy()
@@ -295,7 +295,7 @@ class LikeJRemoveBg:
                     mask_tensor.unsqueeze(0).unsqueeze(0), size=(h_infer, w_infer), mode="bilinear", align_corners=False
                 ).squeeze()
 
-            if in_mask is not None and input_mask_mode == "Intersect Mask":
+            if in_mask is not None and input_mask_mode in ["Mask Clip", "Mask Intersect", "Intersect Mask"]:
                 mask_tensor = mask_tensor * in_mask.cpu()
 
             processed_mask = self._post_process_mask(mask_tensor, sensitivity, expand_mask, threshold, blur_radius, invert_mask)
@@ -358,7 +358,7 @@ class LikeJRemoveBg:
             orig_h, orig_w, _ = img_tensor.shape
 
             in_mask = None
-            if input_masks is not None:
+            if input_mask_mode != "None" and input_masks is not None:
                 idx = i if i < input_masks.shape[0] else 0
                 in_mask = input_masks[idx]
                 if in_mask.dim() == 3 and in_mask.shape[0] == 1:
@@ -368,16 +368,16 @@ class LikeJRemoveBg:
                         in_mask.unsqueeze(0).unsqueeze(0), size=(orig_h, orig_w), mode="bilinear", align_corners=False
                     ).squeeze()
 
+                if torch.max(in_mask) <= 0.001:
+                    in_mask = None
+
             bbox = None
             infer_img = img_tensor
-            if in_mask is not None:
-                if input_mask_mode == "Bounding Box":
-                    bbox = self._get_bbox(in_mask)
-                    if bbox is not None:
-                        y_min, y_max, x_min, x_max = bbox
-                        infer_img = img_tensor[y_min:y_max+1, x_min:x_max+1]
-                elif input_mask_mode == "Alpha Mask":
-                    infer_img = img_tensor * in_mask.unsqueeze(-1)
+            if in_mask is not None and input_mask_mode == "Bounding Box":
+                bbox = self._get_bbox(in_mask)
+                if bbox is not None:
+                    y_min, y_max, x_min, x_max = bbox
+                    infer_img = img_tensor[y_min:y_max+1, x_min:x_max+1]
 
             h_infer, w_infer, _ = infer_img.shape
             pil_img = Image.fromarray((infer_img.cpu().numpy() * 255.0).astype(np.uint8))
@@ -393,7 +393,7 @@ class LikeJRemoveBg:
                 preds, size=(h_infer, w_infer), mode="bilinear", align_corners=False
             ).squeeze().clamp(0.0, 1.0).cpu()
 
-            if in_mask is not None and input_mask_mode == "Intersect Mask":
+            if in_mask is not None and input_mask_mode in ["Mask Clip", "Mask Intersect", "Intersect Mask"]:
                 mask_tensor = mask_tensor * in_mask.cpu()
 
             processed_mask = self._post_process_mask(mask_tensor, sensitivity, expand_mask, threshold, blur_radius, invert_mask)

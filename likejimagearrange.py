@@ -120,6 +120,7 @@ async def delete_layout_preset(request):
 
 class LikeJImageArrange:
     INPUT_IS_LIST = True
+    DESCRIPTION = "Arranges multiple images into custom canvas layouts with background and mask support."
 
     RESAMPLE_METHODS = {
         "Lanczos": Image.Resampling.LANCZOS,
@@ -134,17 +135,38 @@ class LikeJImageArrange:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "images": ("IMAGE",),
-                "fit_mode": (["Cover", "Contain", "Stretch"], {"default": "Cover"}),
-                "resample_method": (["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"], {"default": "Lanczos"}),
-                "bg_fit_mode": (["Cover", "Contain", "Stretch"], {"default": "Cover"}),
-                "bg_resample_method": (["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"], {"default": "Lanczos"}),
-                "mask_mode": (["Bounding Box", "Alpha Channel", "None"], {"default": "Bounding Box"}),
-                "bg_color": ("STRING", {"default": "#FFFFFF"}),
+                "images": ("IMAGE", {"tooltip": "Input image or batch of images to arrange into layout boxes."}),
+                "fit_mode": (
+                    ["Cover", "Contain", "Stretch"],
+                    {"default": "Cover", "tooltip": "Fitting mode for sub-images within each layout box (Cover, Contain, or Stretch)."},
+                ),
+                "resample_method": (
+                    ["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"],
+                    {"default": "Lanczos", "tooltip": "Resampling algorithm used when resizing sub-images."},
+                ),
+                "bg_fit_mode": (
+                    ["Cover", "Contain", "Stretch"],
+                    {"default": "Cover", "tooltip": "Fitting mode for the background image on the canvas."},
+                ),
+                "bg_resample_method": (
+                    ["Lanczos", "Bicubic", "Bilinear", "Nearest", "Box", "Hamming"],
+                    {"default": "Lanczos", "tooltip": "Resampling algorithm used when scaling the background image."},
+                ),
+                "mask_mode": (
+                    ["Bounding Box", "Mask Clip", "None"],
+                    {
+                        "default": "Bounding Box",
+                        "tooltip": "Bounding Box: Crop image to mask bounds; Mask Clip: Crop to mask bounds and apply alpha transparency; None: Ignore mask.",
+                    },
+                ),
+                "bg_color": (
+                    "STRING",
+                    {"default": "#FFFFFF", "tooltip": "Solid canvas background color in Hex format (e.g., #FFFFFF or #FFFFFF80)."},
+                ),
             },
             "optional": {
-                "masks": ("MASK",),
-                "background_image": ("IMAGE",),
+                "masks": ("MASK", {"tooltip": "Optional mask or batch of masks corresponding to each input image."}),
+                "background_image": ("IMAGE", {"tooltip": "Optional background image rendered beneath all arranged sub-images."}),
             },
             "hidden": {
                 "extra_pnginfo": "EXTRA_PNGINFO",
@@ -218,7 +240,7 @@ class LikeJImageArrange:
         if isinstance(raw_data, list):
             for item in raw_data:
                 if item is None:
-                    flat.append(None)  # 保留 None，維護槽位索引順序
+                    flat.append(None)
                 else:
                     flat.extend(self._flatten_input(item))
         elif isinstance(raw_data, torch.Tensor):
@@ -313,6 +335,7 @@ class LikeJImageArrange:
             else:
                 sub_pil = Image.fromarray(img_np, mode="RGB").convert("RGBA")
 
+            # 處理 Mask
             if mask_mode_val != "None" and i < len(flat_masks) and flat_masks[i] is not None:
                 m_tensor = flat_masks[i]
                 if isinstance(m_tensor, torch.Tensor):
@@ -322,10 +345,15 @@ class LikeJImageArrange:
                     if mask_pil.size != sub_pil.size:
                         mask_pil = mask_pil.resize(sub_pil.size, resample_obj)
 
-                    if m_np.max() > 0:
-                        r, g, b, a = sub_pil.split()
-                        combined_a = Image.fromarray(np.minimum(np.array(a), np.array(mask_pil)))
-                        sub_pil.putalpha(combined_a)
+                    bbox = mask_pil.getbbox()
+                    if bbox:
+                        sub_pil = sub_pil.crop(bbox)
+                        mask_pil = mask_pil.crop(bbox)
+
+                        if mask_mode_val == "Mask Clip":
+                            r, g, b, a = sub_pil.split()
+                            combined_a = Image.fromarray(np.minimum(np.array(a), np.array(mask_pil)))
+                            sub_pil.putalpha(combined_a)
 
             bx = int(box.get("x", 0))
             by = int(box.get("y", 0))

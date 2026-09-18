@@ -77,11 +77,40 @@ function injectStyles() {
         .likej-input { width: 100%; margin-top: 4px; padding: 6px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; box-sizing: border-box; font-size: 13px; }
         .likej-input:focus { border-color: #00d2ff; outline: none; }
         .likej-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .likej-canvas-container { background: #1a1a1a; border: 2px solid #555; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .likej-box { position: absolute; background: rgba(0,150,255,0.35); border: 2px solid #00d2ff; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: move; user-select: none; box-sizing: border-box; }
-        .likej-box-resizer { position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; background: #00d2ff; cursor: se-resize; }
-        .likej-box-delete { position: absolute; top: 2px; right: 6px; cursor: pointer; color: #ff4d4d; font-size: 18px; font-weight: bold; }
-        .likej-box-delete:hover { color: #ff1a1a; }
+        
+        .likej-canvas-container { background: #1a1a1a; border: 2px solid #555; position: relative; overflow: visible; margin: 15px auto; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .likej-box { position: absolute; background: rgba(0,150,255,0.35); border: 2px solid #00d2ff; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: move; user-select: none; box-sizing: border-box; z-index: 1; }
+        
+        /* 四角控制點 */
+        .likej-box-handle { position: absolute; width: 8px; height: 8px; background: #ffffff; border: 1.5px solid #00d2ff; box-sizing: border-box; border-radius: 2px; z-index: 5; }
+        .likej-box-handle.tl { top: -4px; left: -4px; cursor: nwse-resize; }
+        .likej-box-handle.tr { top: -4px; right: -4px; cursor: nesw-resize; }
+        .likej-box-handle.bl { bottom: -4px; left: -4px; cursor: nesw-resize; }
+        .likej-box-handle.br { bottom: -4px; right: -4px; cursor: nwse-resize; }
+
+        /* 右上角刪除按鈕：直接用 z-index 置頂並定位於右上角外側 */
+        .likej-box-delete { 
+            position: absolute; 
+            top: 5px; 
+            right: 5px; 
+            width: 18px; 
+            height: 18px; 
+            background: #e53935; 
+            color: #ffffff; 
+            border: 1px solid #ffffff; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 12px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            z-index: 10; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4); 
+            line-height: 1; 
+        }
+        .likej-box-delete:hover { background: #ff1a1a; transform: scale(1.1); }
+
         .likej-gallery-card { position: relative; background: #222; border: 1px solid #444; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: border-color 0.2s; }
         .likej-gallery-card:hover { border-color: #00d2ff; }
         .likej-gallery-img { width: 100%; height: 120px; object-fit: contain; background: #111; border-radius: 4px; margin-bottom: 8px; }
@@ -237,6 +266,7 @@ function openLayoutModal(node) {
     let canvasW = currentLayout.width || CONFIG.DEFAULT_W;
     let canvasH = currentLayout.height || CONFIG.DEFAULT_H;
     let boxes = currentLayout.boxes ? JSON.parse(JSON.stringify(currentLayout.boxes)) : [];
+    let maxZIndex = 1; // 用來記錄目前最高層級
 
     if (boxes.length === 0) {
         boxes.push({ id: 1, order: 1, x: 50, y: 50, w: 400, h: 300, pad_top: 0, pad_bottom: 0, pad_left: 0, pad_right: 0 });
@@ -387,7 +417,7 @@ function openLayoutModal(node) {
                 <h3 style="margin:0;font-size:16px;color:#00d2ff;text-align:center;">✏️ Edit Box #${box.order} Settings</h3>
                 <div class="likej-grid-2col">
                     <label style="font-size:13px;grid-column: span 2;">Order:
-                        <input type="number" id="box_order" value="${box.order}" min="1" max="${boxes.length}" class="likej-input">
+                        <input type="number" id="box_order" value="${box.order}" min="1" class="likej-input">
                     </label>
                     <label style="font-size:13px;">X Position:
                         <input type="number" id="box_x" value="${box.x}" class="likej-input">
@@ -432,25 +462,50 @@ function openLayoutModal(node) {
         boxModal.querySelector("#cancel_box").onclick = () => boxModal.remove();
 
         boxModal.querySelector("#apply_box").onclick = () => {
-            const targetOrder = clamp(parseInt(boxModal.querySelector("#box_order").value) || box.order, 1, boxes.length);
+            const targetOrder = parseInt(boxModal.querySelector("#box_order").value) || box.order;
             const inputX = parseInt(boxModal.querySelector("#box_x").value) || 0;
             const inputY = parseInt(boxModal.querySelector("#box_y").value) || 0;
             const inputW = parseInt(boxModal.querySelector("#box_w").value) || 100;
             const inputH = parseInt(boxModal.querySelector("#box_h").value) || 100;
 
-            box.x = clamp(inputX, 0, canvasW - CONFIG.MIN_BOX_SIZE);
-            box.y = clamp(inputY, 0, canvasH - CONFIG.MIN_BOX_SIZE);
-            box.w = clamp(inputW, CONFIG.MIN_BOX_SIZE, canvasW - box.x);
-            box.h = clamp(inputH, CONFIG.MIN_BOX_SIZE, canvasH - box.y);
+            box.order = Math.max(1, targetOrder);
 
+            // 1. 先獲取目標尺寸（不能小於最小值，也不能大於畫布總寬高）
+            let targetW = clamp(inputW, CONFIG.MIN_BOX_SIZE, canvasW);
+            let targetH = clamp(inputH, CONFIG.MIN_BOX_SIZE, canvasH);
+
+            // 2. 先調整位置：若右/下超出邊界，則向左/上移
+            let targetX = inputX;
+            if (targetX + targetW > canvasW) {
+                targetX = canvasW - targetW;
+            }
+
+            let targetY = inputY;
+            if (targetY + targetH > canvasH) {
+                targetY = canvasH - targetH;
+            }
+
+            // 3. 邊界保護（確保不超出左上角 0, 0）
+            targetX = Math.max(0, targetX);
+            targetY = Math.max(0, targetY);
+
+            // 4. 若移動後右/下依然超出（例如輸入尺寸本身就大於畫布），才縮小尺寸
+            if (targetX + targetW > canvasW) {
+                targetW = canvasW - targetX;
+            }
+            if (targetY + targetH > canvasH) {
+                targetH = canvasH - targetY;
+            }
+
+            box.x = targetX;
+            box.y = targetY;
+            box.w = targetW;
+            box.h = targetH;
+            
             box.pad_top = Math.max(0, parseInt(boxModal.querySelector("#box_pad_top").value) || 0);
             box.pad_bottom = Math.max(0, parseInt(boxModal.querySelector("#box_pad_bottom").value) || 0);
             box.pad_left = Math.max(0, parseInt(boxModal.querySelector("#box_pad_left").value) || 0);
             box.pad_right = Math.max(0, parseInt(boxModal.querySelector("#box_pad_right").value) || 0);
-
-            const currentIndex = boxes.indexOf(box);
-            if (currentIndex !== -1) boxes.splice(currentIndex, 1);
-            boxes.splice(targetOrder - 1, 0, box);
 
             renderBoxes();
             boxModal.remove();
@@ -459,38 +514,53 @@ function openLayoutModal(node) {
 
     function renderBoxes() {
         canvasContainer.innerHTML = "";
+        boxes.sort((a, b) => (a.order || 0) - (b.order || 0));
+
         boxes.forEach((box, index) => {
-            box.order = index + 1;
+            if (box.order === undefined || box.order === null) box.order = index + 1;
 
             if (box.x + box.w > canvasW) box.w = Math.max(CONFIG.MIN_BOX_SIZE, canvasW - box.x);
             if (box.y + box.h > canvasH) box.h = Math.max(CONFIG.MIN_BOX_SIZE, canvasH - box.y);
 
-            const boxEl = el("div", "likej-box", {
-                style: `left:${box.x * scale}px;top:${box.y * scale}px;width:${box.w * scale}px;height:${box.h * scale}px;`
+            const boxEl = el("div", "likej-box");
+            box._el = boxEl;
+
+            const innerPadEl = el("div", "", {
+                style: `position:absolute;border:1px dashed rgba(255,255,255,0.7);pointer-events:none;box-sizing:border-box;`
             });
-
-            const pT = (box.pad_top || 0) * scale;
-            const pB = (box.pad_bottom || 0) * scale;
-            const pL = (box.pad_left || 0) * scale;
-            const pR = (box.pad_right || 0) * scale;
-
-            if (pT > 0 || pB > 0 || pL > 0 || pR > 0) {
-                const innerPadEl = el("div", "", {
-                    style: `position:absolute;left:${pL}px;top:${pT}px;width:${Math.max(0, box.w * scale - pL - pR)}px;height:${Math.max(0, box.h * scale - pT - pB)}px;border:1px dashed rgba(255,255,255,0.7);pointer-events:none;box-sizing:border-box;`
-                });
-                boxEl.appendChild(innerPadEl);
-            }
+            boxEl.appendChild(innerPadEl);
 
             const label = el("div", "", {
                 style: "font-weight:bold;font-size:14px;pointer-events:none;text-align:center;line-height:1.25;z-index:1;"
             });
-
-            const updateLabelText = () => {
-                label.innerHTML = `#${box.order}<br><span style="font-size:11px;opacity:0.9;font-weight:normal;">${box.w} × ${box.h}<br>(X: ${box.x}, Y: ${box.y})</span>`;
-            };
-            updateLabelText();
             boxEl.appendChild(label);
 
+            const updateBoxStyle = () => {
+                boxEl.style.left = `${box.x * scale}px`;
+                boxEl.style.top = `${box.y * scale}px`;
+                boxEl.style.width = `${box.w * scale}px`;
+                boxEl.style.height = `${box.h * scale}px`;
+
+                const pT = (box.pad_top || 0) * scale;
+                const pB = (box.pad_bottom || 0) * scale;
+                const pL = (box.pad_left || 0) * scale;
+                const pR = (box.pad_right || 0) * scale;
+
+                if (pT > 0 || pB > 0 || pL > 0 || pR > 0) {
+                    innerPadEl.style.display = "block";
+                    innerPadEl.style.left = `${pL}px`;
+                    innerPadEl.style.top = `${pT}px`;
+                    innerPadEl.style.width = `${Math.max(0, box.w * scale - pL - pR)}px`;
+                    innerPadEl.style.height = `${Math.max(0, box.h * scale - pT - pB)}px`;
+                } else {
+                    innerPadEl.style.display = "none";
+                }
+
+                label.innerHTML = `#${box.order}<br><span style="font-size:11px;opacity:0.9;font-weight:normal;">${box.w} × ${box.h}<br>(X: ${box.x}, Y: ${box.y})</span>`;
+            };
+            box._updateStyle = updateBoxStyle;
+
+            // 雙擊直接開啟編輯
             boxEl.ondblclick = (e) => {
                 e.stopPropagation();
                 openBoxEditModal(box);
@@ -501,50 +571,94 @@ function openLayoutModal(node) {
             delBtn.onclick = (e) => {
                 e.stopPropagation();
                 if (confirm(`Are you sure you want to delete Box #${box.order}?`)) {
-                    boxes.splice(index, 1);
+                    boxes.splice(boxes.indexOf(box), 1);
                     renderBoxes();
                 }
             };
 
-            const resizer = el("div", "likej-box-resizer");
-            resizer.dataset.noDrag = "true";
+            const handles = {
+                tl: el("div", "likej-box-handle tl"),
+                tr: el("div", "likej-box-handle tr"),
+                bl: el("div", "likej-box-handle bl"),
+                br: el("div", "likej-box-handle br")
+            };
 
-            boxEl.append(delBtn, resizer);
+            Object.values(handles).forEach((h) => {
+                h.dataset.noDrag = "true";
+            });
 
-            let initX, initY;
+            boxEl.append(delBtn, handles.tl, handles.tr, handles.bl, handles.br);
+
+            let initX, initY, initW, initH;
+
+            // 按下時僅提升 z-index，完全不碰 DOM 結構
             boxEl.addEventListener("mousedown", () => {
+                boxEl.style.zIndex = ++maxZIndex;
                 initX = box.x;
                 initY = box.y;
             });
+
             bindDrag(boxEl, (dx, dy) => {
                 box.x = clamp(Math.round(initX + dx / scale), 0, canvasW - box.w);
                 box.y = clamp(Math.round(initY + dy / scale), 0, canvasH - box.h);
-                boxEl.style.left = `${box.x * scale}px`;
-                boxEl.style.top = `${box.y * scale}px`;
-                updateLabelText();
+                updateBoxStyle();
             });
 
-            let initW, initH;
-            resizer.addEventListener("mousedown", () => {
-                initW = box.w;
-                initH = box.h;
-            });
-            bindDrag(resizer, (dx, dy) => {
-                const newW = Math.round(initW + dx / scale);
-                const newH = Math.round(initH + dy / scale);
-                box.w = clamp(newW, CONFIG.MIN_BOX_SIZE, canvasW - box.x);
-                box.h = clamp(newH, CONFIG.MIN_BOX_SIZE, canvasH - box.y);
-                boxEl.style.width = `${box.w * scale}px`;
-                boxEl.style.height = `${box.h * scale}px`;
-                updateLabelText();
+            const setupHandle = (handleEl, calcFn) => {
+                handleEl.addEventListener("mousedown", (e) => {
+                    e.stopPropagation();
+                    boxEl.style.zIndex = ++maxZIndex;
+                    initX = box.x;
+                    initY = box.y;
+                    initW = box.w;
+                    initH = box.h;
+                });
+                bindDrag(handleEl, (dx, dy) => {
+                    calcFn(dx / scale, dy / scale);
+                    updateBoxStyle();
+                });
+            };
+
+            setupHandle(handles.br, (dx_c, dy_c) => {
+                const newX2 = clamp(Math.round(initX + initW + dx_c), initX + CONFIG.MIN_BOX_SIZE, canvasW);
+                const newY2 = clamp(Math.round(initY + initH + dy_c), initY + CONFIG.MIN_BOX_SIZE, canvasH);
+                box.w = newX2 - initX;
+                box.h = newY2 - initY;
             });
 
+            setupHandle(handles.bl, (dx_c, dy_c) => {
+                const newX = clamp(Math.round(initX + dx_c), 0, initX + initW - CONFIG.MIN_BOX_SIZE);
+                const newY2 = clamp(Math.round(initY + initH + dy_c), initY + CONFIG.MIN_BOX_SIZE, canvasH);
+                box.x = newX;
+                box.w = (initX + initW) - newX;
+                box.h = newY2 - initY;
+            });
+
+            setupHandle(handles.tr, (dx_c, dy_c) => {
+                const newX2 = clamp(Math.round(initX + initW + dx_c), initX + CONFIG.MIN_BOX_SIZE, canvasW);
+                const newY = clamp(Math.round(initY + dy_c), 0, initY + initH - CONFIG.MIN_BOX_SIZE);
+                box.y = newY;
+                box.w = newX2 - initX;
+                box.h = (initY + initH) - newY;
+            });
+
+            setupHandle(handles.tl, (dx_c, dy_c) => {
+                const newX = clamp(Math.round(initX + dx_c), 0, initX + initW - CONFIG.MIN_BOX_SIZE);
+                const newY = clamp(Math.round(initY + dy_c), 0, initY + initH - CONFIG.MIN_BOX_SIZE);
+                box.x = newX;
+                box.y = newY;
+                box.w = (initX + initW) - newX;
+                box.h = (initY + initH) - newY;
+            });
+
+            updateBoxStyle();
             canvasContainer.appendChild(boxEl);
         });
     }
 
     addBtn.onclick = () => {
-        boxes.push({ id: boxes.length + 1, x: 50, y: 50, w: 400, h: 300, order: boxes.length + 1, pad_top: 0, pad_bottom: 0, pad_left: 0, pad_right: 0 });
+        const nextOrder = boxes.length > 0 ? Math.max(...boxes.map((b) => b.order || 0)) + 1 : 1;
+        boxes.push({ id: Date.now(), x: 50, y: 50, w: 400, h: 300, order: nextOrder, pad_top: 0, pad_bottom: 0, pad_left: 0, pad_right: 0 });
         renderBoxes();
     };
 
@@ -676,7 +790,6 @@ function openLayoutModal(node) {
         const nameInput = saveModal.querySelector("#preset_name_input");
         const listContainer = saveModal.querySelector("#existing_presets_list");
 
-        // 載入已存在的預設選單
         fetch(CONFIG.ENDPOINTS.LAYOUTS)
             .then((res) => res.json())
             .then((layouts) => {
