@@ -53,6 +53,22 @@ class LikeJRemoveBg:
                     "display": "number",
                     "tooltip": "Binarize mask into hard edges. 0.0 disables binarization (e.g., 0.5 for crisp cuts)."
                 }),
+                "feather_radius": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 100,
+                    "step": 1,
+                    "display": "number",
+                    "tooltip": "Feather edge strength (pixel radius) for soft blending."
+                }),
+                "feather_depth": ("FLOAT", {
+                    "default": 1.0,
+                    "min": 0.1,
+                    "max": 5.0,
+                    "step": 0.1,
+                    "display": "number",
+                    "tooltip": "Feather depth & falloff curve. < 1.0 deepens edge opacity, > 1.0 steepens inner transparency."
+                }),
                 "blur_radius": ("INT", {
                     "default": 0,
                     "min": 0,
@@ -130,6 +146,23 @@ class LikeJRemoveBg:
             return mask
         return (mask >= threshold).float()
 
+    def _apply_feather(self, mask, feather_radius, feather_depth):
+        if feather_radius <= 0 and feather_depth == 1.0:
+            return mask
+        
+        out = mask
+        if feather_radius > 0:
+            kernel_size = feather_radius * 2 + 1
+            sigma = feather_radius / 3.0
+            orig_shape = out.shape
+            x = out.unsqueeze(0).unsqueeze(0)
+            out = F.gaussian_blur(x, kernel_size=[kernel_size, kernel_size], sigma=[sigma, sigma]).reshape(orig_shape)
+
+        if feather_depth != 1.0 and feather_depth > 0:
+            out = torch.pow(out.clamp(0.0, 1.0), feather_depth)
+
+        return out
+
     def _apply_blur(self, mask, blur_radius):
         if blur_radius <= 0:
             return mask
@@ -140,7 +173,7 @@ class LikeJRemoveBg:
         blurred = F.gaussian_blur(x, kernel_size=[kernel_size, kernel_size], sigma=[sigma, sigma])
         return blurred.reshape(orig_shape)
 
-    def _post_process_mask(self, mask, sensitivity, expand_mask, threshold, blur_radius, invert_mask):
+    def _post_process_mask(self, mask, sensitivity, expand_mask, threshold, feather_radius, feather_depth, blur_radius, invert_mask):
         if sensitivity != 1.0:
             mask = mask * sensitivity
         mask = torch.clamp(mask, 0.0, 1.0)
@@ -148,6 +181,8 @@ class LikeJRemoveBg:
             mask = self._adjust_mask(mask, expand_mask)
         if threshold > 0.0:
             mask = self._apply_threshold(mask, threshold)
+        if feather_radius > 0 or feather_depth != 1.0:
+            mask = self._apply_feather(mask, feather_radius, feather_depth)
         if blur_radius > 0:
             mask = self._apply_blur(mask, blur_radius)
         if invert_mask:
@@ -211,7 +246,22 @@ class LikeJRemoveBg:
 
         return ui_images
 
-    def remove_background(self, image=None, model_name=None, input_mask_mode="None", expand_mask=0, invert_mask=False, sensitivity=1.0, threshold=0.0, blur_radius=0, crop_to_content=False, crop_padding=0, mask=None):
+    def remove_background(
+        self,
+        image=None,
+        model_name=None,
+        input_mask_mode="None",
+        expand_mask=0,
+        invert_mask=False,
+        sensitivity=1.0,
+        threshold=0.0,
+        feather_radius=0,
+        feather_depth=1.0,
+        blur_radius=0,
+        crop_to_content=False,
+        crop_padding=0,
+        mask=None
+    ):
         if image is None:
             return {
                 "ui": {"images": []},
@@ -225,9 +275,13 @@ class LikeJRemoveBg:
         ext = os.path.splitext(model_path)[1].lower()
 
         if ext == ".onnx":
-            out_images, out_masks = self._process_onnx(image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, blur_radius, crop_to_content, crop_padding, mask)
+            out_images, out_masks = self._process_onnx(
+                image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, feather_radius, feather_depth, blur_radius, crop_to_content, crop_padding, mask
+            )
         elif ext in [".safetensors", ".pth", ".pt"]:
-            out_images, out_masks = self._process_pytorch(image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, blur_radius, crop_to_content, crop_padding, mask)
+            out_images, out_masks = self._process_pytorch(
+                image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, feather_radius, feather_depth, blur_radius, crop_to_content, crop_padding, mask
+            )
         else:
             raise ValueError(f"Unsupported model format: {ext}")
 
@@ -238,7 +292,9 @@ class LikeJRemoveBg:
             "result": (out_images, out_masks)
         }
 
-    def _process_onnx(self, image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, blur_radius, crop_to_content, crop_padding, input_mask_tensor):
+    def _process_onnx(
+        self, image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, feather_radius, feather_depth, blur_radius, crop_to_content, crop_padding, input_mask_tensor
+    ):
         session = None
         input_name = None
 
@@ -298,7 +354,9 @@ class LikeJRemoveBg:
             if in_mask is not None and input_mask_mode in ["Mask Clip", "Mask Intersect", "Intersect Mask"]:
                 mask_tensor = mask_tensor * in_mask.cpu()
 
-            processed_mask = self._post_process_mask(mask_tensor, sensitivity, expand_mask, threshold, blur_radius, invert_mask)
+            processed_mask = self._post_process_mask(
+                mask_tensor, sensitivity, expand_mask, threshold, feather_radius, feather_depth, blur_radius, invert_mask
+            )
 
             if bbox is not None:
                 y_min, y_max, x_min, x_max = bbox
@@ -320,7 +378,9 @@ class LikeJRemoveBg:
 
         return self._stack_batch(out_images, out_masks)
 
-    def _process_pytorch(self, image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, blur_radius, crop_to_content, crop_padding, input_mask_tensor):
+    def _process_pytorch(
+        self, image, model_path, input_mask_mode, sensitivity, expand_mask, invert_mask, threshold, feather_radius, feather_depth, blur_radius, crop_to_content, crop_padding, input_mask_tensor
+    ):
         model = None
         device = "cuda" if torch.cuda.is_available() else "cpu"
         transform_image = None
@@ -396,7 +456,9 @@ class LikeJRemoveBg:
             if in_mask is not None and input_mask_mode in ["Mask Clip", "Mask Intersect", "Intersect Mask"]:
                 mask_tensor = mask_tensor * in_mask.cpu()
 
-            processed_mask = self._post_process_mask(mask_tensor, sensitivity, expand_mask, threshold, blur_radius, invert_mask)
+            processed_mask = self._post_process_mask(
+                mask_tensor, sensitivity, expand_mask, threshold, feather_radius, feather_depth, blur_radius, invert_mask
+            )
 
             if bbox is not None:
                 y_min, y_max, x_min, x_max = bbox
