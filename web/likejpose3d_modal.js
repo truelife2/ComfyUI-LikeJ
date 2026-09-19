@@ -321,12 +321,203 @@ btnConfirmSavePose?.addEventListener('click', async () => {
 // --- 3. 載入姿態彈窗 Modal ---
 // ==========================================
 const poseModal = document.getElementById('pose-modal');
-const poseGallery = document.getElementById('pose-gallery');
+const poseGallery = poseModal?.querySelector('#pose-gallery') || document.getElementById('pose-gallery');
 const btnLoadPose = document.getElementById('btn-load-pose');
-const btnCloseModal = document.getElementById('btn-close-modal');
+const btnCloseModal = poseModal?.querySelector('#btn-close-modal') || document.getElementById('btn-close-modal');
+
+// 仿照 likejimagearrange.js：將 Modal 動態掛載至 ComfyUI 最上層 document.body
+function ensurePoseModalInTopDocument() {
+    if (!poseModal) return;
+    try {
+        const topDoc = window.top?.document || window.parent?.document || document;
+        if (topDoc !== document && poseModal.parentElement !== topDoc.body) {
+            if (!topDoc.getElementById('likejpose3d-top-modal-styles')) {
+                const style = topDoc.createElement('style');
+                style.id = 'likejpose3d-top-modal-styles';
+                style.textContent = `
+                    .likej-pose-modal-top {
+                        position: fixed !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100vw !important;
+                        height: 100vh !important;
+                        background: rgba(15, 23, 42, 0.8) !important;
+                        z-index: 99999 !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        opacity: 0 !important;
+                        visibility: hidden !important;
+                        pointer-events: none !important;
+                        transition: opacity 0.2s ease, visibility 0.2s ease !important;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                        box-sizing: border-box !important;
+                    }
+                    .likej-pose-modal-top.active {
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                        pointer-events: auto !important;
+                    }
+                    .likej-pose-modal-top .modal-content {
+                        width: 90vw !important;
+                        max-width: 1200px !important;
+                        height: 85vh !important;
+                        max-height: 800px !important;
+                        background: #ffffff !important;
+                        border-radius: 12px !important;
+                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4) !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        overflow: hidden !important;
+                        box-sizing: border-box !important;
+                    }
+                    .likej-pose-modal-top .modal-header {
+                        padding: 12px 20px !important;
+                        border-bottom: 1px solid #e2e8f0 !important;
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: center !important;
+                        background: #f8fafc !important;
+                        box-sizing: border-box !important;
+                    }
+                    .likej-pose-modal-top .modal-title {
+                        font-size: 16px !important;
+                        font-weight: 700 !important;
+                        color: #1e293b !important;
+                    }
+                    .likej-pose-modal-top .modal-close {
+                        background: transparent !important;
+                        border: none !important;
+                        font-size: 20px !important;
+                        cursor: pointer !important;
+                        color: #64748b !important;
+                        width: 32px !important;
+                        height: 32px !important;
+                        border-radius: 50% !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                    }
+                    .likej-pose-modal-top .modal-close:hover {
+                        background: #e2e8f0 !important;
+                        color: #0f172a !important;
+                    }
+                    .likej-pose-modal-top #pose-gallery {
+                        flex: 1 1 auto !important;
+                        min-height: 0 !important;
+                        overflow-y: auto !important;
+                        padding: 20px !important;
+                        display: grid !important;
+                        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+                        gap: 16px !important;
+                        align-content: start !important;
+                        box-sizing: border-box !important;
+                    }
+                    .likej-pose-modal-top .pose-card {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        height: 200px !important;
+                        border: 1px solid #e2e8f0 !important;
+                        border-radius: 8px !important;
+                        overflow: hidden !important;
+                        background: #ffffff !important;
+                        cursor: pointer !important;
+                        transition: all 0.2s ease !important;
+                        position: relative !important;
+                        box-sizing: border-box !important;
+                    }
+                    .likej-pose-modal-top .pose-card:hover {
+                        transform: translateY(-4px) !important;
+                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15) !important;
+                        border-color: #3b82f6 !important;
+                    }
+                    .likej-pose-modal-top .pose-card-img-wrapper {
+                        width: 100% !important;
+                        height: 135px !important;
+                        flex-shrink: 0 !important;
+                        background: #f1f5f9 !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        overflow: hidden !important;
+                    }
+                    .likej-pose-modal-top .pose-card-img {
+                        width: 100% !important;
+                        height: 100% !important;
+                        object-fit: contain !important;
+                    }
+                    .likej-pose-modal-top .pose-card-placeholder {
+                        font-size: 36px !important;
+                        color: #94a3b8 !important;
+                    }
+                    .likej-pose-modal-top .pose-card-info {
+                        height: 65px !important;
+                        flex-shrink: 0 !important;
+                        padding: 8px 12px !important;
+                        background: #ffffff !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        justify-content: center !important;
+                        box-sizing: border-box !important;
+                    }
+                    .likej-pose-modal-top .pose-card-title {
+                        font-size: 13px !important;
+                        font-weight: 600 !important;
+                        color: #334155 !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                    }
+                    .likej-pose-modal-top .pose-card-model {
+                        font-size: 11px !important;
+                        color: #64748b !important;
+                        margin-top: 2px !important;
+                        white-space: nowrap !important;
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                    }
+                    .likej-pose-modal-top .pose-card-delete {
+                        position: absolute !important;
+                        top: 6px !important;
+                        right: 6px !important;
+                        width: 24px !important;
+                        height: 24px !important;
+                        background: rgba(220, 38, 38, 0.85) !important;
+                        color: #ffffff !important;
+                        border: none !important;
+                        border-radius: 50% !important;
+                        cursor: pointer !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        font-size: 12px !important;
+                        font-weight: bold !important;
+                        line-height: 1 !important;
+                        opacity: 0 !important;
+                        transition: opacity 0.2s ease !important;
+                        z-index: 10 !important;
+                    }
+                    .likej-pose-modal-top .pose-card:hover .pose-card-delete {
+                        opacity: 1 !important;
+                    }
+                `;
+                topDoc.head.appendChild(style);
+            }
+            poseModal.classList.add('likej-pose-modal-top');
+            topDoc.body.appendChild(poseModal);
+        }
+    } catch (e) {
+        console.warn("Could not attach pose modal to top document:", e);
+    }
+}
 
 btnLoadPose?.addEventListener('click', async () => {
-    const chkKeepModel = document.getElementById('chk-keep-current-model');
+    ensurePoseModalInTopDocument();
+
+    const titleEl = poseModal?.querySelector('.modal-title');
+    if (titleEl) titleEl.innerText = i18n[AppState.currentLang]?.modalPoseTitle || "📂 Select Pose to Load";
+
+    const chkKeepModel = poseModal?.querySelector('#chk-keep-current-model') || document.getElementById('chk-keep-current-model');
     if (chkKeepModel) chkKeepModel.checked = false;
 
     poseModal?.classList.add('active');
@@ -358,7 +549,9 @@ btnLoadPose?.addEventListener('click', async () => {
                 `;
 
                 card.addEventListener('click', () => {
-                    const keepCurrentModel = document.getElementById('chk-keep-current-model')?.checked || false;
+                    const chk = poseModal?.querySelector('#chk-keep-current-model') || document.getElementById('chk-keep-current-model');
+                    const keepCurrentModel = chk?.checked || false;
+
                     if (typeof loadPoseConfigAndModel === 'function') {
                         loadPoseConfigAndModel(item, keepCurrentModel);
                     }
@@ -405,8 +598,20 @@ btnLoadPose?.addEventListener('click', async () => {
     }
 });
 
-bindModalCloseEvents(poseModal, btnCloseModal, () => poseModal?.classList.remove('active'));
+// 關閉姿態 Modal 處理函式
+function closePoseModal() {
+    if (poseModal) {
+        poseModal.classList.remove('active');
 
+        // 關閉時移回目前 iframe 內部，確保刪除節點時資源能被自動回收
+        if (poseModal.parentElement !== document.body) {
+            document.body.appendChild(poseModal);
+        }
+    }
+}
+
+// 綁定關閉事件
+bindModalCloseEvents(poseModal, btnCloseModal, closePoseModal);
 
 // ==========================================
 // --- 4. Shape Keys 彈窗與設定管理 ---
@@ -617,7 +822,6 @@ function getHiddenPartsData() {
 }
 
 function applyHiddenPartsData(hiddenParts) {
-    
     if (!AppState.currentModel || !Array.isArray(hiddenParts)) return;
 
     const hiddenSet = new Set(hiddenParts);
@@ -811,6 +1015,11 @@ async function loadVnccsPose(item) {
 
 const btnLoadVnccs = document.getElementById('btn-load-vnccs');
 btnLoadVnccs?.addEventListener('click', async () => {
+    ensurePoseModalInTopDocument();
+
+    const titleEl = poseModal?.querySelector('.modal-title');
+    if (titleEl) titleEl.innerText = "📂 VNCCS 姿態庫";
+
     if (poseGallery) {
         poseGallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 20px;">${i18n[AppState.currentLang].loadingVnccs}</div>`;
     }
