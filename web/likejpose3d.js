@@ -7,6 +7,32 @@ app.registerExtension({
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             const onConfigure = nodeType.prototype.onConfigure;
 
+            const onSerialize = nodeType.prototype.onSerialize;
+            nodeType.prototype.onSerialize = function (info) {
+                if (onSerialize) onSerialize.apply(this, arguments);
+
+                console.log(info);
+                console.log(new Error().stack);
+                // // 1. 清除 properties 裡的 Base64
+                // if (info.properties) {
+                //     delete info.properties["pose_b64"];
+                // }
+
+                // 2. 清除 widgets_values (陣列形式) 裡的 Base64
+                if (info.widgets_values && Array.isArray(info.widgets_values)) {
+                    info.widgets_values = info.widgets_values.map(val => {
+                        if (typeof val === "string" && val.startsWith("data:image/")) {
+                            return "";
+                        }
+                        return val;
+                    });
+                }
+
+                if (info.widgets_values_named && typeof info.widgets_values_named === "object") {
+                    delete info.widgets_values_named["3d_editor"];
+                }
+            };
+
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 const self = this;
@@ -56,12 +82,9 @@ app.registerExtension({
 
                 const editorWidget = self.addDOMWidget("3d_editor", "HTML", iframe, {
                     getValue: () => self.properties["pose_b64"],
-                    setValue: (v) => { self.properties["pose_b64"] = v; }
+                    setValue: (v) => { self.properties["pose_b64"] = v; },
+                    computeSize: () => [450, 400]
                 });
-
-                if (editorWidget) {
-                    editorWidget.computeSize = () => [450, 400];
-                }
 
                 self.setSize([450, 480]);
 
@@ -83,10 +106,10 @@ app.registerExtension({
                     }
 
                     if (event.data.type === "LIKEJ_POSE3D_SAVE_CONFIG") {
-                        const strData = typeof event.data.config === "string" 
-                            ? event.data.config 
+                        const strData = typeof event.data.config === "string"
+                            ? event.data.config
                             : JSON.stringify(event.data.config);
-                        
+
                         self.properties["pose_config"] = strData;
                         app.graph.setDirtyCanvas(true);
                     }
