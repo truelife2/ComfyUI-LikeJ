@@ -158,6 +158,10 @@ app.registerExtension({
                 this.properties.layout = { width: CONFIG.DEFAULT_W, height: CONFIG.DEFAULT_H, boxes: [] };
             }
 
+            // 先新增按鈕，使其顯示在預覽圖上方
+            this.addWidget("button", "📐 Edit Canvas Layout", null, () => openLayoutModal(this));
+
+            // 接著新增預覽圖 Widget
             this.addCustomWidget({
                 type: "LAYOUT_PREVIEW",
                 name: "layout_preview",
@@ -174,6 +178,8 @@ app.registerExtension({
                     const ch = layout?.height || 1080;
                     const boxes = layout?.boxes || [];
 
+                    const remainingHeight = node.size[1] - y;
+
                     const padding = 12;
                     const maxW = widgetWidth - padding * 2;
                     const maxH = 150 - padding * 2;
@@ -187,7 +193,7 @@ app.registerExtension({
                     }
 
                     const startX = padding + (maxW - renderW) / 2;
-                    const startY = y + padding + (maxH - renderH) / 2;
+                    const startY = y + padding;
 
                     ctx.save();
                     ctx.fillStyle = "#121212";
@@ -231,10 +237,8 @@ app.registerExtension({
 
                     ctx.restore();
                 },
-                computeSize: () => [220, 150]
+                computeSize: (width) => [width, 150]
             });
-
-            this.addWidget("button", "📐 Edit Canvas Layout", null, () => openLayoutModal(this));
 
             if (this.computeSize) {
                 const sz = this.computeSize();
@@ -501,7 +505,7 @@ function openLayoutModal(node) {
             box.y = targetY;
             box.w = targetW;
             box.h = targetH;
-            
+
             box.pad_top = Math.max(0, parseInt(boxModal.querySelector("#box_pad_top").value) || 0);
             box.pad_bottom = Math.max(0, parseInt(boxModal.querySelector("#box_pad_bottom").value) || 0);
             box.pad_left = Math.max(0, parseInt(boxModal.querySelector("#box_pad_left").value) || 0);
