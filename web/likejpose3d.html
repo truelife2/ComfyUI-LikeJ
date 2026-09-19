@@ -1353,7 +1353,7 @@
             AppState.renderer.setSize(AppState.targetWidth, AppState.targetHeight, false);
             AppState.renderer.render(AppState.scene, AppState.camera);
 
-            const dataURL = AppState.renderer.domElement.toDataURL("image/png");
+            const dataURL = AppState.renderer.domElement.toDataURL("image/webp", 0.8);
 
             AppState.renderer.setPixelRatio(currentPixelRatio);
             AppState.camera.aspect = currentAspect;

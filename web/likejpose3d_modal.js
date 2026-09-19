@@ -274,7 +274,7 @@ btnConfirmSavePose?.addEventListener('click', async () => {
     AppState.transformControls.visible = false;
 
     AppState.renderer.render(AppState.scene, AppState.camera);
-    const previewB64 = AppState.renderer.domElement.toDataURL("image/png");
+    const previewB64 = AppState.renderer.domElement.toDataURL("image/webp", 0.8);
 
     AppState.jointSpheres.forEach(s => s.visible = AppState.showJoints);
     if (AppState.skeletonHelper) AppState.skeletonHelper.visible = AppState.showJoints;
@@ -307,7 +307,7 @@ btnConfirmSavePose?.addEventListener('click', async () => {
         });
         const result = await res.json();
         if (result.success) {
-            alert(`${i18n[AppState.currentLang].msgSavePoseSuccess}\r\n${result.pose_name}.json (.png)`);
+            // alert(`${i18n[AppState.currentLang].msgSavePoseSuccess}\r\n${result.pose_name}.json (.png)`);
         } else {
             alert(i18n[AppState.currentLang].msgSaveFailed + (result.error || "Unknown Error"));
         }
