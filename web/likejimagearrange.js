@@ -178,8 +178,6 @@ app.registerExtension({
                     const ch = layout?.height || 1080;
                     const boxes = layout?.boxes || [];
 
-                    const remainingHeight = node.size[1] - y;
-
                     const padding = 12;
                     const maxW = widgetWidth - padding * 2;
                     const maxH = 150 - padding * 2;
