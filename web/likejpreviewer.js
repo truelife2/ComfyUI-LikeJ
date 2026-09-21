@@ -46,8 +46,7 @@ app.registerExtension({
                 const widget = widgetResult.widget;
                 if (widget) {
                     if (widget.inputEl) widget.inputEl.readOnly = true;
-                    // 不把預覽內容寫入存檔 JSON
-                    widget.serializeValue = async () => undefined;
+                    // 已移除 widget.serializeValue 覆寫，使其預設正常序列化文字內容
                 }
 
                 // 同步 DOM Header 顯示
@@ -82,7 +81,7 @@ app.registerExtension({
                     info.properties.custom_title = realTitle;
                 };
 
-                // 讀檔時還原真實名稱
+                // 讀檔時還原真實名稱與預覽內容
                 const origOnConfigure = this.onConfigure;
                 this.onConfigure = function (info) {
                     if (origOnConfigure) origOnConfigure.apply(this, arguments);
@@ -97,9 +96,8 @@ app.registerExtension({
                         self.properties.custom_title = "LikeJ Previewer";
                     }
 
-                    // 重整讀檔時保持空白
-                    self.preview_val = "";
-                    if (widget) widget.value = "";
+                    // 讀檔時還原已被序列化的預覽內容
+                    self.preview_val = widget ? (widget.value || "") : "";
                     self.updateHeaderDisplay();
                 };
 
