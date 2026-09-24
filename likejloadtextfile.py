@@ -145,6 +145,11 @@ class LikeJLoadTextFile:
                     "placeholder": "Paste absolute path or click 📂 to upload"
                 }),
                 "encoding": (encodings, {"default": "auto"}),
+                "text": ("STRING", {
+                    "default": "", 
+                    "multiline": True,
+                    "placeholder": "Text content preview / edit..."
+                }),
                 "directory": ("STRING", {
                     "default": "",
                     "multiline": False,
@@ -153,45 +158,11 @@ class LikeJLoadTextFile:
             }
         }
 
-    # ⚠️ 這裡必須保持與 INPUT_TYPES 同階級縮進！
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("text",)
-    OUTPUT_NODE = True
     FUNCTION = "load_text"
     CATEGORY = "LikeJ"
 
-    def load_text(self, directory, path, encoding):
-        file_path = resolve_target_path(path)
-
-        if not file_path and directory and path:
-            dir_path = os.path.normpath(directory.strip())
-            if not os.path.isabs(dir_path):
-                dir_path = os.path.join(folder_paths.get_input_directory(), dir_path)
-            candidate = os.path.join(dir_path, os.path.basename(path.strip()))
-            file_path = resolve_target_path(candidate)
-
-        if not file_path:
-            print(f"[LikeJLoadTextFile] Warning: File not found for input (path: {path}, dir: {directory}), returning empty string.")
-            return {"ui": {"text": [""]}, "result": ("",)}
-
-        target_encoding = encoding
-        if encoding == "auto":
-            try:
-                import chardet
-                with open(file_path, "rb") as f:
-                    raw_data = f.read(10000)
-                    detected = chardet.detect(raw_data)
-                    target_encoding = detected.get("encoding", "utf-8") or "utf-8"
-            except ImportError:
-                print("[LikeJLoadTextFile] 'chardet' library not found. Falling back to 'utf-8'.")
-                target_encoding = "utf-8"
-
-        try:
-            with open(file_path, "r", encoding=target_encoding, errors="replace") as f:
-                content = f.read()
-        except Exception as e:
-            print(f"[LikeJLoadTextFile] Error reading file {file_path}: {e}")
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-
-        return {"ui": {"text": [content]}, "result": (content,)}
+    def load_text(self, path, encoding, text, directory):
+        # 執行時直接輸出文字框內當前的內容，支援使用者手動修改，不會每次執行都強制重新讀取檔案
+        return (text,)

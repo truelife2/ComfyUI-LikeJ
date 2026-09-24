@@ -1,8 +1,7 @@
 import { app } from "../../scripts/app.js";
-import { ComfyWidgets } from "../../scripts/widgets.js";
 
 // ============================================================================
-// 1. Vue DOM Grid Fix (自動將 preview 設為 auto 伸縮，其餘設為 min-content)
+// 1. Vue DOM Grid Fix (自動將 text 設為 auto 伸縮，其餘設為 min-content)
 // ============================================================================
 function setupAutoFlexFix(node, btnContainer) {
     requestAnimationFrame(() => {
@@ -24,10 +23,10 @@ function setupAutoFlexFix(node, btnContainer) {
         function fix() {
             if (!node.widgets) return;
 
-            const previewIdx = node.widgets.findIndex(w => w.name === "preview");
+            const textIdx = node.widgets.findIndex(w => w.name === "text");
 
             const rowsPattern = node.widgets.map((w, idx) => {
-                return idx === previewIdx ? "auto" : "min-content";
+                return idx === textIdx ? "auto" : "min-content";
             }).join(" ");
 
             widgetsEl.style.setProperty("grid-template-rows", rowsPattern, "important");
@@ -105,10 +104,14 @@ app.registerExtension({
     async nodeCreated(node) {
         if (node.comfyClass !== "LikeJLoadTextFile") return;
 
-        // 從 Python 建立的初始 Widget 中取出（此時 Python 順序為: path, encoding, directory）
         const pathWidget = node.widgets?.find(w => w.name === "path");
         const encodingWidget = node.widgets?.find(w => w.name === "encoding");
+        const textWidget = node.widgets?.find(w => w.name === "text");
         const dirWidget = node.widgets?.find(w => w.name === "directory");
+
+        if (textWidget && textWidget.inputEl) {
+            textWidget.inputEl.placeholder = "Text content preview / edit...";
+        }
 
         // 1. 動態下拉選單 (dir_files)
         const fileSelectWidget = node.addWidget("combo", "dir_files", "", () => { }, {
@@ -121,30 +124,13 @@ app.registerExtension({
         fileInput.style.display = "none";
         document.body.appendChild(fileInput);
 
-        // 2. 文本預覽框 (preview)
-        let previewWidget = node.widgets?.find(w => w.name === "preview");
-        if (!previewWidget) {
-            previewWidget = ComfyWidgets["STRING"](
-                node,
-                "preview",
-                ["STRING", { multiline: true }],
-                app
-            ).widget;
-
-            if (previewWidget.inputEl) {
-                previewWidget.inputEl.readOnly = false;
-                previewWidget.inputEl.placeholder = "Text content preview / edit...";
-            }
-
-            previewWidget.serializeValue = async () => undefined;
-            if (!previewWidget.options) previewWidget.options = {};
-            previewWidget.options.serialize = false;
-        }
-
         const refreshPreview = async () => {
             const path = pathWidget?.value || "";
             const encoding = encodingWidget?.value || "auto";
-            previewWidget.value = await API.readFile(path, encoding);
+            const content = await API.readFile(path, encoding);
+            if (textWidget) {
+                textWidget.value = content;
+            }
         };
 
         const updateDirFilesList = async () => {
@@ -193,18 +179,17 @@ app.registerExtension({
             if (!confirmed) return;
 
             const encoding = encodingWidget?.value || "auto";
-            const content = previewWidget.value || "";
+            const content = textWidget?.value || "";
 
             const res = await API.saveFile(path, content, encoding);
             if (res.success) {
                 alert("✅ File saved successfully!");
-                await refreshPreview();
             } else {
                 alert(`❌ Failed to save file: ${res.error || "Unknown error"}`);
             }
         };
 
-        // 3. 操作按鈕容器 (action_buttons)
+        // 2. 操作按鈕容器 (action_buttons)
         const btnContainer = document.createElement("div");
         btnContainer.id = `likej-btn-container-${node.id}`;
         btnContainer.style.cssText = `
@@ -245,17 +230,26 @@ app.registerExtension({
         btnWidget.computeSize = () => [node.size ? node.size[0] : 300, 26];
         btnWidget.options = { serialize: false };
 
-        // 最終組合順序 (直接從上到下順序排列)
+        // 最終組合順序
         node.widgets = [
             pathWidget,          // 1. 路徑
             encodingWidget,      // 2. 編碼
             btnWidget,           // 3. 按鈕群組
-            previewWidget,       // 4. 預覽框 (auto 伸展)
-            dirWidget,           // 5. 目錄 (從 Python 端傳入)
+            textWidget,          // 4. 文字框 (auto 伸展)
+            dirWidget,           // 5. 目錄
             fileSelectWidget     // 6. 目錄檔案下拉選單
         ].filter(Boolean);
 
         setupAutoFlexFix(node, btnContainer);
+
+        // 綁定路徑改變時自動載入
+        if (pathWidget) {
+            const origCb = pathWidget.callback;
+            pathWidget.callback = function (val) {
+                if (origCb) origCb.apply(this, arguments);
+                refreshPreview();
+            };
+        }
 
         if (dirWidget) {
             const origDirCb = dirWidget.callback;
@@ -265,27 +259,10 @@ app.registerExtension({
             };
         }
 
-        if (pathWidget) {
-            const origCb = pathWidget.callback;
-            pathWidget.callback = function (val) {
-                if (origCb) origCb.apply(this, arguments);
-                refreshPreview();
-            };
-        }
-
-        if (encodingWidget) {
-            const origEncCb = encodingWidget.callback;
-            encodingWidget.callback = function (val) {
-                if (origEncCb) origEncCb.apply(this, arguments);
-                refreshPreview();
-            };
-        }
-
         const origOnConfigure = node.onConfigure;
         node.onConfigure = function () {
             if (origOnConfigure) origOnConfigure.apply(this, arguments);
             updateDirFilesList();
-            refreshPreview();
         };
 
         fileInput.addEventListener("change", async (e) => {
@@ -298,6 +275,7 @@ app.registerExtension({
                     pathWidget.value = data.name;
                     if (pathWidget.callback) pathWidget.callback(data.name);
                 }
+                refreshPreview();
                 app.graph.setDirtyCanvas(true, true);
             } catch (err) {
                 alert("File upload failed: " + err.message);
@@ -305,11 +283,6 @@ app.registerExtension({
                 fileInput.value = "";
             }
         });
-
-        const origOnExecuted = node.onExecuted;
-        node.onExecuted = function (message) {
-            if (origOnExecuted) origOnExecuted.apply(this, arguments);
-        };
 
         const origOnRemoved = node.onRemoved;
         node.onRemoved = function () {
