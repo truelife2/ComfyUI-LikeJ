@@ -2,19 +2,36 @@ import { app } from "../../scripts/app.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 
 // ============================================================================
-// 1. Vue DOM Grid Fix (Single execution without MutationObserver)
+// 1. Vue DOM Grid Fix (自動將 preview 設為 auto 伸縮，其餘設為 min-content)
 // ============================================================================
-function setupAutoFlexFix(node) {
+function setupAutoFlexFix(node, btnContainer) {
     requestAnimationFrame(() => {
         const widgetsEl = document.querySelector(`[data-widgets-grid-node-id="${node.id}"]`);
-        if (!widgetsEl) return;
+        if (!widgetsEl || widgetsEl.dataset.autoFixBound) return;
 
-        // Lock button row to min-content so it doesn't stretch like row 4
-        widgetsEl.style.setProperty(
-            "grid-template-rows",
-            "min-content min-content min-content 1fr",
-            "important"
-        );
+        widgetsEl.dataset.autoFixBound = "true";
+
+        fix();
+
+        const observer = new MutationObserver(() => {
+            fix();
+        });
+        observer.observe(widgetsEl, {
+            attributes: true,
+            attributeFilter: ["style"]
+        });
+
+        function fix() {
+            if (!node.widgets) return;
+
+            const previewIdx = node.widgets.findIndex(w => w.name === "preview");
+
+            const rowsPattern = node.widgets.map((w, idx) => {
+                return idx === previewIdx ? "auto" : "min-content";
+            }).join(" ");
+
+            widgetsEl.style.setProperty("grid-template-rows", rowsPattern, "important");
+        }
     });
 }
 
@@ -53,6 +70,23 @@ const API = {
         }
     },
 
+    async listDirFiles(directory) {
+        if (!directory?.trim()) return [];
+        try {
+            const resp = await fetch("/likej/list_dir_files", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ directory })
+            });
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            return data.files || [];
+        } catch (err) {
+            console.error("[LikeJ] Failed to list directory files:", err);
+            return [];
+        }
+    },
+
     async uploadFile(file) {
         const body = new FormData();
         body.append("image", file);
@@ -71,8 +105,15 @@ app.registerExtension({
     async nodeCreated(node) {
         if (node.comfyClass !== "LikeJLoadTextFile") return;
 
+        // 從 Python 建立的初始 Widget 中取出（此時 Python 順序為: path, encoding, directory）
         const pathWidget = node.widgets?.find(w => w.name === "path");
         const encodingWidget = node.widgets?.find(w => w.name === "encoding");
+        const dirWidget = node.widgets?.find(w => w.name === "directory");
+
+        // 1. 動態下拉選單 (dir_files)
+        const fileSelectWidget = node.addWidget("combo", "dir_files", "", () => { }, {
+            values: ["(Select file from directory)"]
+        });
 
         const fileInput = document.createElement("input");
         fileInput.type = "file";
@@ -80,7 +121,7 @@ app.registerExtension({
         fileInput.style.display = "none";
         document.body.appendChild(fileInput);
 
-        // Native multiline preview widget
+        // 2. 文本預覽框 (preview)
         let previewWidget = node.widgets?.find(w => w.name === "preview");
         if (!previewWidget) {
             previewWidget = ComfyWidgets["STRING"](
@@ -106,6 +147,41 @@ app.registerExtension({
             previewWidget.value = await API.readFile(path, encoding);
         };
 
+        const updateDirFilesList = async () => {
+            const dir = dirWidget?.value?.trim();
+            if (!dir) {
+                fileSelectWidget.options.values = ["(Select file from directory)"];
+                fileSelectWidget.value = "(Select file from directory)";
+                return;
+            }
+
+            const files = await API.listDirFiles(dir);
+            if (files && files.length > 0) {
+                fileSelectWidget.options.values = files;
+                if (!files.includes(fileSelectWidget.value)) {
+                    fileSelectWidget.value = files[0];
+                }
+            } else {
+                fileSelectWidget.options.values = ["(No text files found)"];
+                fileSelectWidget.value = "(No text files found)";
+            }
+        };
+
+        fileSelectWidget.callback = function (val) {
+            if (!val || val.startsWith("(")) return;
+            const dir = dirWidget?.value?.trim() || "";
+            if (dir) {
+                const separator = dir.includes("/") ? "/" : "\\";
+                const fullPath = dir.endsWith("/") || dir.endsWith("\\")
+                    ? `${dir}${val}`
+                    : `${dir}${separator}${val}`;
+                if (pathWidget) {
+                    pathWidget.value = fullPath;
+                    refreshPreview();
+                }
+            }
+        };
+
         const handleSave = async () => {
             const path = pathWidget?.value?.trim();
             if (!path) {
@@ -122,12 +198,13 @@ app.registerExtension({
             const res = await API.saveFile(path, content, encoding);
             if (res.success) {
                 alert("✅ File saved successfully!");
+                await refreshPreview();
             } else {
                 alert(`❌ Failed to save file: ${res.error || "Unknown error"}`);
             }
         };
 
-        // Action button container
+        // 3. 操作按鈕容器 (action_buttons)
         const btnContainer = document.createElement("div");
         btnContainer.id = `likej-btn-container-${node.id}`;
         btnContainer.style.cssText = `
@@ -154,28 +231,39 @@ app.registerExtension({
         });
 
         btnContainer.querySelector("#likej-upload").onclick = () => fileInput.click();
-        btnContainer.querySelector("#likej-reload").onclick = refreshPreview;
+        btnContainer.querySelector("#likej-reload").onclick = () => {
+            updateDirFilesList();
+            refreshPreview();
+        };
         btnContainer.querySelector("#likej-save").onclick = handleSave;
 
         const btnWidget = node.addDOMWidget("action_buttons", "btnGroup", btnContainer, {
             getValue() { return ""; },
-            setValue() {}
+            setValue() { }
         });
 
         btnWidget.computeSize = () => [node.size ? node.size[0] : 300, 26];
         btnWidget.options = { serialize: false };
 
-        if (encodingWidget) {
-            const encIdx = node.widgets.indexOf(encodingWidget);
-            const btnIdx = node.widgets.indexOf(btnWidget);
-            if (encIdx !== -1 && btnIdx !== -1) {
-                node.widgets.splice(btnIdx, 1);
-                node.widgets.splice(encIdx + 1, 0, btnWidget);
-            }
-        }
+        // 最終組合順序 (直接從上到下順序排列)
+        node.widgets = [
+            pathWidget,          // 1. 路徑
+            encodingWidget,      // 2. 編碼
+            btnWidget,           // 3. 按鈕群組
+            previewWidget,       // 4. 預覽框 (auto 伸展)
+            dirWidget,           // 5. 目錄 (從 Python 端傳入)
+            fileSelectWidget     // 6. 目錄檔案下拉選單
+        ].filter(Boolean);
 
-        // Apply grid track fix once upon creation
-        setupAutoFlexFix(node);
+        setupAutoFlexFix(node, btnContainer);
+
+        if (dirWidget) {
+            const origDirCb = dirWidget.callback;
+            dirWidget.callback = function (val) {
+                if (origDirCb) origDirCb.apply(this, arguments);
+                updateDirFilesList();
+            };
+        }
 
         if (pathWidget) {
             const origCb = pathWidget.callback;
@@ -196,7 +284,7 @@ app.registerExtension({
         const origOnConfigure = node.onConfigure;
         node.onConfigure = function () {
             if (origOnConfigure) origOnConfigure.apply(this, arguments);
-            setupAutoFlexFix(node);
+            updateDirFilesList();
             refreshPreview();
         };
 
@@ -221,9 +309,6 @@ app.registerExtension({
         const origOnExecuted = node.onExecuted;
         node.onExecuted = function (message) {
             if (origOnExecuted) origOnExecuted.apply(this, arguments);
-            if (message?.text && message.text[0] !== undefined) {
-                previewWidget.value = message.text[0];
-            }
         };
 
         const origOnRemoved = node.onRemoved;

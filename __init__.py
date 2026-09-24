@@ -20,7 +20,6 @@ from . import likejremovebg
 from . import likejmaskfill
 from . import likejimagearrange
 from . import likejimageslots
-from . import likejpromptgen
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -47,7 +46,6 @@ NODE_CLASS_MAPPINGS = {
     "LikeJMaskFill": likejmaskfill.LikeJMaskFill,
     "LikeJImageArrange": likejimagearrange.LikeJImageArrange,
     "LikeJImageSlots": likejimageslots.LikeJImageSlots,
-    "LikeJPromptGenerator": likejpromptgen.LikeJPromptGenerator,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -75,7 +73,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJMaskFill": "LikeJ Mask Fill",
     "LikeJImageArrange": "LikeJ Image Arrange",
     "LikeJImageSlots": "LikeJ Image Slots",
-    "LikeJPromptGenerator": "LikeJ Prompt Generator(GGUF)",
 }
 
 WEB_DIRECTORY = "./web"
