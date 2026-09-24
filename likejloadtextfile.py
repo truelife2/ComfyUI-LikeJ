@@ -155,6 +155,11 @@ class LikeJLoadTextFile:
                     "multiline": False,
                     "placeholder": "Folder path (Optional, e.g. C:/prompts)"
                 }),
+            },
+            "optional": {
+                # 設定 forceInput: True，使其在節點左側顯示為可接線的輸入點
+                "prefix": ("STRING", {"forceInput": True}),
+                "suffix": ("STRING", {"forceInput": True}),
             }
         }
 
@@ -163,6 +168,13 @@ class LikeJLoadTextFile:
     FUNCTION = "load_text"
     CATEGORY = "LikeJ"
 
-    def load_text(self, path, encoding, text, directory):
-        # 執行時直接輸出文字框內當前的內容，支援使用者手動修改，不會每次執行都強制重新讀取檔案
-        return (text,)
+    def load_text(self, path, encoding, text, directory, prefix="", suffix=""):
+        p_str = str(prefix) if prefix is not None else ""
+        s_str = str(suffix) if suffix is not None else ""
+        t_str = str(text) if text is not None else ""
+
+        # 過濾掉空白項目並用空一行（\n\n）連接
+        parts = [p for p in [p_str, t_str, s_str] if p.strip()]
+        result = "\n\n".join(parts)
+
+        return (result,)
