@@ -113,10 +113,11 @@ app.registerExtension({
             textWidget.inputEl.placeholder = "Text content preview / edit...";
         }
 
-        // 1. 動態下拉選單 (dir_files)
-        const fileSelectWidget = node.addWidget("combo", "dir_files", "", () => { }, {
-            values: ["(Select file from directory)"]
+        // 1. 動態下拉選單 (dir_files) - 預設維持 "None"
+        const fileSelectWidget = node.addWidget("combo", "dir_files", "None", () => { }, {
+            values: ["None"]
         });
+        fileSelectWidget.serialize = false;
 
         const fileInput = document.createElement("input");
         fileInput.type = "file";
@@ -133,28 +134,35 @@ app.registerExtension({
             }
         };
 
+        // 更新清單時將 "None" 插在陣列第 0 個
         const updateDirFilesList = async () => {
             const dir = dirWidget?.value?.trim();
             if (!dir) {
-                fileSelectWidget.options.values = ["(Select file from directory)"];
-                fileSelectWidget.value = "(Select file from directory)";
+                fileSelectWidget.options.values = ["None"];
+                fileSelectWidget.value = "None";
                 return;
             }
 
             const files = await API.listDirFiles(dir);
             if (files && files.length > 0) {
-                fileSelectWidget.options.values = files;
-                if (!files.includes(fileSelectWidget.value)) {
-                    fileSelectWidget.value = files[0];
+                const newValues = ["None", ...files];
+                fileSelectWidget.options.values = newValues;
+                // 若當前選取的數值不在新清單內，預設切回 "None"
+                if (!newValues.includes(fileSelectWidget.value)) {
+                    fileSelectWidget.value = "None";
                 }
             } else {
-                fileSelectWidget.options.values = ["(No text files found)"];
-                fileSelectWidget.value = "(No text files found)";
+                fileSelectWidget.options.values = ["None", "(No text files found)"];
+                if (fileSelectWidget.value !== "None") {
+                    fileSelectWidget.value = "None";
+                }
             }
         };
 
+        // 選到 "None" 或提示字串時直接 return，不觸發動作
         fileSelectWidget.callback = function (val) {
-            if (!val || val.startsWith("(")) return;
+            if (!val || val === "None" || val.startsWith("(")) return;
+            
             const dir = dirWidget?.value?.trim() || "";
             if (dir) {
                 const separator = dir.includes("/") ? "/" : "\\";
@@ -223,12 +231,8 @@ app.registerExtension({
         btnContainer.querySelector("#likej-save").onclick = handleSave;
 
         const btnWidget = node.addDOMWidget("action_buttons", "btnGroup", btnContainer, {
-            getValue() { return ""; },
-            setValue() { }
         });
-
-        btnWidget.computeSize = () => [node.size ? node.size[0] : 300, 26];
-        btnWidget.options = { serialize: false };
+        btnWidget.serialize = false;
 
         // 最終組合順序
         node.widgets = [
