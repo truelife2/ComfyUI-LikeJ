@@ -31,7 +31,7 @@ def resolve_target_path(raw_input):
     return ""
 
 
-# API：提供前端即時預覽
+# API: Read file content
 @PromptServer.instance.routes.post("/likej/read_file_content")
 async def read_file_content(request):
     try:
@@ -63,7 +63,7 @@ async def read_file_content(request):
         return web.json_response({"content": "", "error": str(e)})
 
 
-# API：儲存修改後的檔案內容
+# API: Save file content
 @PromptServer.instance.routes.post("/likej/save_file_content")
 async def save_file_content(request):
     try:
@@ -71,6 +71,7 @@ async def save_file_content(request):
         raw_path = data.get("path", "")
         content = data.get("content", "")
         encoding = data.get("encoding", "auto")
+        overwrite = data.get("overwrite", True)
 
         file_path = resolve_target_path(raw_path)
 
@@ -83,7 +84,10 @@ async def save_file_content(request):
                     file_path = os.path.join(folder_paths.get_input_directory(), cleaned)
 
         if not file_path:
-            return web.json_response({"success": False, "error": "找不到指定路徑的檔案。"})
+            return web.json_response({"success": False, "error": "Target file path cannot be empty."})
+
+        if os.path.exists(file_path) and not overwrite:
+            return web.json_response({"success": False, "error": "File already exists and overwrite is disabled."})
 
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
@@ -99,7 +103,24 @@ async def save_file_content(request):
         return web.json_response({"success": False, "error": str(e)})
 
 
-# API：取得指定目錄下的所有文本檔案
+# API: Delete target file
+@PromptServer.instance.routes.post("/likej/delete_file")
+async def delete_file(request):
+    try:
+        data = await request.json()
+        raw_path = data.get("path", "")
+        file_path = resolve_target_path(raw_path)
+
+        if not file_path or not os.path.exists(file_path):
+            return web.json_response({"success": False, "error": "File does not exist or invalid path."})
+
+        os.remove(file_path)
+        return web.json_response({"success": True})
+    except Exception as e:
+        return web.json_response({"success": False, "error": str(e)})
+
+
+# API: List files in target directory
 @PromptServer.instance.routes.post("/likej/list_dir_files")
 async def list_dir_files(request):
     try:
@@ -157,7 +178,6 @@ class LikeJLoadTextFile:
                 }),
             },
             "optional": {
-                # 設定 forceInput: True，使其在節點左側顯示為可接線的輸入點
                 "prefix": ("STRING", {"forceInput": True}),
                 "suffix": ("STRING", {"forceInput": True}),
             }
@@ -173,7 +193,6 @@ class LikeJLoadTextFile:
         s_str = str(suffix) if suffix is not None else ""
         t_str = str(text) if text is not None else ""
 
-        # 過濾掉空白項目並用空一行（\n\n）連接
         parts = [p for p in [p_str, t_str, s_str] if p.strip()]
         result = "\n\n".join(parts)
 
