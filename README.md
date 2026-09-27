@@ -180,7 +180,7 @@
 
 ## LikeJ Record Audio
 
-   > idrea from : https://github.com/diodiogod/TTS-Audio-Suite
+   > idea from : https://github.com/diodiogod/TTS-Audio-Suite
 
 <img width="877" height="455" alt="image" src="https://github.com/user-attachments/assets/4ed22472-3b5b-4ba9-bbce-137acecd2a09" />
 
