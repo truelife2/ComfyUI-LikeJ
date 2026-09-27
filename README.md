@@ -178,6 +178,11 @@
 
 <img width="1515" height="796" alt="image" src="https://github.com/user-attachments/assets/2e93207c-b53b-4f31-b9f8-9d875fb1eeed" />
 
+## LikeJ Record Audio
+
+   > idea from : https://github.com/diodiogod/TTS-Audio-Suite
+
+<img width="877" height="455" alt="image" src="https://github.com/user-attachments/assets/4ed22472-3b5b-4ba9-bbce-137acecd2a09" />
 
 
 
