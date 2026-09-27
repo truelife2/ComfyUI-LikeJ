@@ -347,7 +347,7 @@ app.registerExtension({
             <button type="button" id="likej-upload" style="flex:1; height:24px; line-height:22px; background:#242424; color:#ccc; border:1px solid #3d3d3d; border-radius:4px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; outline:none;">📂 Upload</button>
             <button type="button" id="likej-reload" style="flex:1; height:24px; line-height:22px; background:#242424; color:#ccc; border:1px solid #3d3d3d; border-radius:4px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; outline:none;">🔄 Reload</button>
             <button type="button" id="likej-save" style="flex:1; height:24px; line-height:22px; background:#242424; color:#ccc; border:1px solid #3d3d3d; border-radius:4px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; outline:none;">💾 Save</button>
-            <button type="button" id="likej-delete" style="flex:1; height:24px; line-height:22px; background:#242424; color:#e53e3e; border:1px solid #3d3d3d; border-radius:4px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; outline:none;">🗑️ Delete</button>
+            <button type="button" id="likej-delete" style="flex:1; height:24px; line-height:22px; background:#242424; color:#ccc; border:1px solid #3d3d3d; border-radius:4px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; outline:none;">🗑️ Delete</button>
         `;
 
         const btns = btnContainer.querySelectorAll("button");
