@@ -22,6 +22,7 @@ from . import likejimagearrange
 from . import likejimageslots
 from . import likejrecaud
 from . import likejvidsnap
+from . import likejvidclip
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -50,6 +51,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJImageSlots": likejimageslots.LikeJImageSlots,
     "LikeJRecAud": likejrecaud.LikeJRecordAudio,
     "LikeJVideoSnapshot": likejvidsnap.LikeJVideoSnapshot,
+    "LikeJVideoClip": likejvidclip.LikeJVideoClip,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -79,6 +81,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJImageSlots": "LikeJ Image Slots",
     "LikeJRecAud": "LikeJ Record Audio",
     "LikeJVideoSnapshot": "LikeJ Video Snapshot",
+    "LikeJVideoClip": "LikeJ Video Clip",
 }
 
 WEB_DIRECTORY = "./web"
