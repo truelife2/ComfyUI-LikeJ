@@ -87,8 +87,7 @@
 
 ## LikeJ Load Text File
    
-<img width="530" height="689" alt="image" src="https://github.com/user-attachments/assets/175911d4-d1e6-4aa4-a53d-dbddae093e68" />
-
+<img width="543" height="713" alt="image" src="https://github.com/user-attachments/assets/0a9234d2-97dd-49a3-adaf-86eb77993320" />
 
 ## LikeJ Load Images
    > Load images idea from:
