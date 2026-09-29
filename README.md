@@ -95,7 +95,7 @@
 <img width="436" height="745" alt="image" src="https://github.com/user-attachments/assets/7d8ad422-7a29-4c31-b5d8-f49c68d9dc76" />
 <img width="397" height="231" alt="image" src="https://github.com/user-attachments/assets/1219811b-c158-4a3a-ba2c-6277ddca520a" />
 
-## LikeJ Switch To FlowIn (Any)
+## LikeJ Auto Switch
    > idea from:
    > https://github.com/rgthree/rgthree-comfy
 <img width="287" height="154" alt="image" src="https://github.com/user-attachments/assets/acc614d6-dd33-4788-9f86-5d6e7b853c8f" />
@@ -190,7 +190,8 @@
 
 ## LikeJ Video Clip
 
-<img width="748" height="618" alt="image" src="https://github.com/user-attachments/assets/04a84419-5b7c-40a1-b153-79376bbb76ac" />
+<img width="482" height="631" alt="image" src="https://github.com/user-attachments/assets/feaa9f95-a642-4e4d-8c08-be28fb4109b4" />
+
 
 
 
