@@ -1,13 +1,11 @@
 import logging
 
-# Attempt to import ExecutionBlocker from ComfyUI execution engine
 try:
     from execution import ExecutionBlocker
 except ImportError:
     try:
         from comfy_execution.graph import ExecutionBlocker
     except ImportError:
-        # Compatibility fallback for older engine versions
         class ExecutionBlocker:
             def __init__(self, value=None):
                 self.value = value
@@ -28,7 +26,7 @@ class LikeJLazyFloatSwitch:
                     "min": -999999.0, 
                     "max": 999999.0, 
                     "step": 0.01,
-                    "tooltip": "Input float value to evaluate against the threshold."
+                    "tooltip": "Input float value to evaluate against threshold."
                 }),
                 "threshold": ("FLOAT", {
                     "default": 1.0, 
@@ -40,7 +38,8 @@ class LikeJLazyFloatSwitch:
             },
             "optional": {
                 "input_data": ("*", {
-                    "tooltip": "Upstream data stream (IMAGE, LATENT, MODEL, etc.) evaluated lazily."
+                    "lazy": True,
+                    "tooltip": "Upstream data stream evaluated lazily."
                 }),
             }
         }
@@ -50,16 +49,28 @@ class LikeJLazyFloatSwitch:
     FUNCTION = "process"
     CATEGORY = "LikeJ/Logic"
 
-    def check_lazy_status(self, condition_value, threshold, input_data=None):
+    @classmethod
+    def IS_CHANGED(s, condition_value, threshold, **kwargs):
+        return (condition_value, threshold)
+
+    def check_lazy_status(self, condition_value=None, threshold=None, **kwargs):
+        if condition_value is None or threshold is None:
+            return ["condition_value", "threshold"]
+
         if condition_value >= threshold:
             return ["input_data"]
+        
         return []
 
-    def process(self, condition_value, threshold, input_data=None):
-        if condition_value >= threshold and input_data is not None:
-            return (input_data,)
+    def process(self, condition_value=None, threshold=None, **kwargs):
+        if condition_value is None or threshold is None:
+            logging.warning("[LikeJLazyFloatSwitch] Condition inputs are None. Blocking downstream.")
+            return (ExecutionBlocker(None),)
+
+        if condition_value >= threshold and kwargs.get("input_data") is not None:
+            return (kwargs["input_data"],)
         
-        logging.info("[LikeJLazyFloatSwitch] Condition not met or no input. Skipped upstream Group and blocked downstream nodes.")
+        logging.info("[LikeJLazyFloatSwitch] Condition not met. Blocking downstream execution.")
         return (ExecutionBlocker(None),)
 
 
@@ -75,15 +86,17 @@ class LikeJLazyBoolSwitch:
             "required": {
                 "boolean_state": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "If True, evaluates and outputs true_input. If False, evaluates and outputs false_input."
+                    "tooltip": "If True, lazily evaluates true_input. If False, lazily evaluates false_input."
                 }),
             },
             "optional": {
                 "true_input": ("*", {
-                    "tooltip": "Upstream data evaluated lazily when boolean_state is True."
+                    "lazy": True,
+                    "tooltip": "Upstream data stream evaluated lazily when boolean_state is True."
                 }),
                 "false_input": ("*", {
-                    "tooltip": "Upstream data evaluated lazily when boolean_state is False."
+                    "lazy": True,
+                    "tooltip": "Upstream data stream evaluated lazily when boolean_state is False."
                 }),
             }
         }
@@ -93,20 +106,35 @@ class LikeJLazyBoolSwitch:
     FUNCTION = "process"
     CATEGORY = "LikeJ/Logic"
 
-    def check_lazy_status(self, boolean_state, true_input=None, false_input=None):
-        # Lazily request ONLY the active branch
-        if boolean_state:
-            return ["true_input"]
-        return ["false_input"]
+    @classmethod
+    def IS_CHANGED(s, boolean_state, **kwargs):
+        return boolean_state
 
-    def process(self, boolean_state, true_input=None, false_input=None):
+    def check_lazy_status(self, boolean_state=None, **kwargs):
+        # 階段 1：若 boolean_state 尚未計算，要求引擎評估 boolean_state
+        if boolean_state is None:
+            return ["boolean_state"]
+
+        # 階段 2：若 boolean_state 算出來是明確的 True/False，才拉取單一分支
+        if boolean_state is True or boolean_state == 1:
+            return ["true_input"]
+        elif boolean_state is False or boolean_state == 0:
+            return ["false_input"]
+
+        # 階段 3：若上游傳來的開關結果依然是 None/無效，兩條分支都不拉取！
+        return []
+
+    def process(self, boolean_state=None, **kwargs):
+        # 無效開關訊號，直接 Block 下游
+        if boolean_state is None:
+            logging.warning("[LikeJLazyBoolSwitch] boolean_state is None. Blocking downstream execution.")
+            return (ExecutionBlocker(None),)
+
         if boolean_state:
-            if true_input is not None:
-                return (true_input,)
-            logging.info("[LikeJLazyBoolSwitch] State is True, but 'true_input' is not provided.")
+            if kwargs.get("true_input") is not None:
+                return (kwargs["true_input"],)
             return (ExecutionBlocker(None),)
         else:
-            if false_input is None:
-                logging.info("[LikeJLazyBoolSwitch] State is False, but 'false_input' is not provided.")
-                return (ExecutionBlocker(None),)
-            return (false_input,)
+            if kwargs.get("false_input") is not None:
+                return (kwargs["false_input"],)
+            return (ExecutionBlocker(None),)
