@@ -1,9 +1,9 @@
 import { app } from "../../scripts/app.js";
 
 app.registerExtension({
-    name: "LikeJ.SwitchToFlowIn",
+    name: "LikeJ.SwitchAuto",
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name !== "LikeJSwitchToFlowIn") return;
+        if (nodeData.name !== "LikeJSwitchAuto") return;
 
         nodeType.prototype.ensureWidget = function () {
             let widget = this.widgets?.find(w => w.name === "active_status");

@@ -10,7 +10,7 @@ from . import likejpathparse
 from . import likejallpinyin
 from . import likejloadtextfile
 from . import likejloadimages
-from . import likejswitchtoflowin
+from . import likejswitchauto
 from . import likejimageresize
 from . import likejpose3d
 from . import likejoutputtrigger
@@ -23,6 +23,7 @@ from . import likejimageslots
 from . import likejrecaud
 from . import likejvidsnap
 from . import likejvidclip
+from . import likejswitch
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -38,7 +39,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJAllPinyin": likejallpinyin.LikeJAllPinyin,
     "LikeJLoadTextFile": likejloadtextfile.LikeJLoadTextFile,
     "LikeJLoadImages": likejloadimages.LikeJLoadImages,
-    "LikeJSwitchToFlowIn": likejswitchtoflowin.LikeJSwitchToFlowIn,
+    "LikeJSwitchAuto": likejswitchauto.LikeJSwitchAuto,
     "LikeJImageResize": likejimageresize.LikeJImageResize,
     "LikeJPose3d": likejpose3d.LikeJPose3d,
     "LikeJOutputTrigger": likejoutputtrigger.LikeJOutputTrigger,
@@ -52,6 +53,8 @@ NODE_CLASS_MAPPINGS = {
     "LikeJRecAud": likejrecaud.LikeJRecordAudio,
     "LikeJVideoSnapshot": likejvidsnap.LikeJVideoSnapshot,
     "LikeJVideoClip": likejvidclip.LikeJVideoClip,
+    "LikeJLazyFloatSwitch": likejswitch.LikeJLazyFloatSwitch,
+    "LikeJLazyBoolSwitch": likejswitch.LikeJLazyBoolSwitch,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -68,7 +71,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJAllPinyin": "LikeJ All Pinyin",
     "LikeJLoadTextFile": "LikeJ Load Text File",
     "LikeJLoadImages": "LikeJ Load Images",
-    "LikeJSwitchToFlowIn": "Likej Switch To FlowIn (Any)",
+    "LikeJSwitchAuto": "LikeJ Auto Switch",
     "LikeJImageResize": "LikeJ Image Resize (Outpaint)",
     "LikeJPose3d": "LikeJ 3D Pose Editor",
     "LikeJOutputTrigger": "LikeJ Output Trigger",
@@ -82,6 +85,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJRecAud": "LikeJ Record Audio",
     "LikeJVideoSnapshot": "LikeJ Video Snapshot",
     "LikeJVideoClip": "LikeJ Video Clip",
+    "LikeJLazyFloatSwitch": "LikeJ Lazy Float Switch",
+    "LikeJLazyBoolSwitch": "LikeJ Lazy Bool Switch",
 }
 
 WEB_DIRECTORY = "./web"

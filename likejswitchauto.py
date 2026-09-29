@@ -1,4 +1,8 @@
-class LikeJSwitchToFlowIn:
+class LikeJSwitchAuto:
+    """
+    Auto Switch: Scans inputs sequentially (input_1, input_2, ...) 
+    and automatically outputs the first non-None value.
+    """
     def __init__(self):
         pass
 
@@ -6,13 +10,16 @@ class LikeJSwitchToFlowIn:
     def INPUT_TYPES(s):
         return {
             "required": {},
-            "optional": {"input_1": ("*",)}
+            "optional": {
+                "input_1": ("*", {"tooltip": "Primary input stream."}),
+                "input_2": ("*", {"tooltip": "Secondary fallback stream if input_1 is None."}),
+            }
         }
 
     RETURN_TYPES = ("*",)
     RETURN_NAMES = ("output",)
     FUNCTION = "switch_first_valid"
-    CATEGORY = "LikeJ"
+    CATEGORY = "LikeJ/Logic"
 
     @classmethod
     def VALIDATE_INPUTS(s, **kwargs):
@@ -25,11 +32,12 @@ class LikeJSwitchToFlowIn:
             except (IndexError, ValueError):
                 return 999
 
+        # 按 input_1, input_2, input_3... 順序排序
         input_keys = sorted([k for k in kwargs.keys() if k.startswith("input_")], key=extract_index)
 
         for key in input_keys:
             val = kwargs[key]
             if val is not None:
-                return {"ui": {"text": [f"{key}"]}, "result": (val,)}
+                return {"ui": {"text": [f"Selected: {key}"]}, "result": (val,)}
 
-        return {"ui": {"text": ["None"]}, "result": (None,)}
+        return {"ui": {"text": ["Selected: None"]}, "result": (None,)}

@@ -11,7 +11,7 @@ def clean_path(path_str):
         return ""
     return path_str.strip('\'"')
 
-# 獨立 API 端點：/likej/view_video_clip
+# API endpoint: /likej/view_video_clip
 @PromptServer.instance.routes.get("/likej/view_video_clip")
 async def view_video_clip(request):
     raw_path = request.query.get("path", "")
@@ -38,14 +38,23 @@ class LikeJVideoClip:
                 "video_path": ("STRING", {
                     "default": "", 
                     "multiline": False, 
-                    "placeholder": "Enter video path (e.g. clip.mp4 or C:/videos/clip.mp4)"
+                    "placeholder": "Enter video path (e.g. clip.mp4 or C:/videos/clip.mp4)",
+                    "tooltip": "Path to the video file to clip."
                 }),
-                "start_frame": ("INT", {"default": 0, "min": 0, "max": 999999, "step": 1}),
-                "end_frame": ("INT", {"default": -1, "min": -1, "max": 999999, "step": 1, "tooltip": "-1 means end of video"}),
-            },
-            "optional": {
-                "images": ("IMAGE",),
-                "audio": ("AUDIO",),
+                "start_frame": ("INT", {
+                    "default": 0, 
+                    "min": 0, 
+                    "max": 999999, 
+                    "step": 1,
+                    "tooltip": "Starting frame index for video clipping."
+                }),
+                "end_frame": ("INT", {
+                    "default": -1, 
+                    "min": -1, 
+                    "max": 999999, 
+                    "step": 1, 
+                    "tooltip": "Ending frame index (-1 means clip until the end of the video)."
+                }),
             }
         }
 
@@ -54,9 +63,9 @@ class LikeJVideoClip:
     FUNCTION = "clip_video_components"
     CATEGORY = "LikeJ/Video"
 
-    def clip_video_components(self, video_path, start_frame, end_frame, images=None, audio=None):
+    def clip_video_components(self, video_path, start_frame, end_frame):
         out_images = None
-        out_audio = audio
+        out_audio = None
         fps = 24.0
 
         clean_p = clean_path(video_path)
@@ -64,7 +73,7 @@ class LikeJVideoClip:
         if clean_p and not os.path.isabs(clean_p):
             real_path = os.path.join(folder_paths.get_input_directory(), clean_p)
 
-        # Mode A: Load directly from video_path
+        # Load directly from video_path
         if real_path and os.path.exists(real_path) and os.path.isfile(real_path):
             cap = cv2.VideoCapture(real_path)
             detected_fps = cap.get(cv2.CAP_PROP_FPS)
@@ -105,24 +114,7 @@ class LikeJVideoClip:
             except Exception:
                 pass
 
-        # Mode B: Fallback to input images Tensor
-        elif images is not None:
-            total_input_frames = images.shape[0]
-            actual_start = max(0, min(start_frame, total_input_frames - 1))
-            actual_end = total_input_frames if (end_frame == -1 or end_frame >= total_input_frames) else max(actual_start + 1, total_input_frames)
-            out_images = images[actual_start:actual_end]
-
-            if audio is not None and "waveform" in audio and "sample_rate" in audio:
-                waveform = audio["waveform"]
-                sample_rate = audio["sample_rate"]
-                sample_start = int((actual_start / fps) * sample_rate)
-                sample_end = int((actual_end / fps) * sample_rate)
-                out_audio = {
-                    "waveform": waveform[..., sample_start:sample_end],
-                    "sample_rate": sample_rate
-                }
-
         if out_images is None:
-            raise ValueError(f"[LikeJVideoClip] Error: Unable to load video from path '{video_path}' and no IMAGE input provided.")
+            raise ValueError(f"[LikeJVideoClip] Error: Unable to load video from path '{video_path}'. Please check if the path exists.")
 
         return (out_images, out_audio, fps, out_images.shape[0])
