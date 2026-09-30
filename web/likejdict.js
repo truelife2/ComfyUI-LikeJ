@@ -7,29 +7,14 @@ app.registerExtension({
 
         const MIN_WIDTH = 480;
 
-        // 確保 extra.kv_data 被正確序列化保存至工作流 JSON
-        const originalSerialize = nodeType.prototype.serialize;
-        nodeType.prototype.serialize = function (o) {
-            if (this.saveData) {
-                this.saveData();
-            }
-            let res = originalSerialize ? originalSerialize.apply(this, arguments) || o : o || {};
-            res.extra = res.extra || {};
-            if (this.properties && this.properties["kv_data"]) {
-                res.extra["kv_data"] = this.properties["kv_data"];
-            }
-            return res;
-        };
-
         const onNodeCreated = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             if (onNodeCreated) onNodeCreated.apply(this, arguments);
 
-            // 限制最小寬度
             if (this.size) {
                 this.size[0] = Math.max(this.size[0], MIN_WIDTH);
             } else {
-                this.size = [MIN_WIDTH, 120];
+                this.size = [MIN_WIDTH, 140];
             }
 
             const onResize = this.onResize;
@@ -40,21 +25,39 @@ app.registerExtension({
                 }
             };
 
-            this.properties = this.properties || {};
-            this.properties["kv_data"] = this.properties["kv_data"] || [];
+            // 初始化確保建立隱藏的 kv_json widget
+            this.widgets = this.widgets || [];
+            let kvJsonWidget = this.widgets.find(w => w.name === "kv_json");
+            if (!kvJsonWidget) {
+                kvJsonWidget = this.addWidget("string", "kv_json", "[]", () => {}, { hidden: true });
+            }
+            if (kvJsonWidget) {
+                kvJsonWidget.type = "hidden";
+                kvJsonWidget.computeSize = () => [0, -4];
+            }
 
-            let kvData = this.properties["kv_data"];
-
-            this.saveData = () => {
-                this.properties["kv_data"] = kvData;
-            };
-
-            const loadData = () => {
-                if (this.properties && Array.isArray(this.properties["kv_data"])) {
-                    kvData = this.properties["kv_data"];
-                } else {
+            let kvData = [];
+            if (kvJsonWidget && kvJsonWidget.value) {
+                try {
+                    kvData = JSON.parse(kvJsonWidget.value);
+                } catch (e) {
                     kvData = [];
-                    this.properties["kv_data"] = kvData;
+                }
+            }
+
+            const syncToWidget = () => {
+                const jsonStr = JSON.stringify(kvData);
+                if (kvJsonWidget) {
+                    kvJsonWidget.value = jsonStr;
+                }
+                this.properties = this.properties || {};
+                this.properties["kv_data"] = kvData;
+
+                if (typeof this.setDirtyCanvas === "function") {
+                    this.setDirtyCanvas(true, true);
+                }
+                if (app.graph) {
+                    app.graph.setDirtyCanvas(true, true);
                 }
             };
 
@@ -82,7 +85,7 @@ app.registerExtension({
                         e.preventDefault();
                         e.stopPropagation();
                         kvData.splice(i, 1);
-                        this.saveData();
+                        syncToWidget();
                         renderRows();
                     };
 
@@ -94,7 +97,7 @@ app.registerExtension({
                     keyInput.style.cssText = "flex: 1; min-width: 80px; padding: 2px 6px; height: 24px; font-size: 11px; border-radius: 4px; border: 1px solid var(--border-color, #3f3f46); background: var(--comfy-input-bg, #18181b); color: var(--input-text, #e4e4e7); box-sizing: border-box;";
                     keyInput.oninput = (e) => {
                         item.key = e.target.value;
-                        this.saveData();
+                        syncToWidget();
                     };
 
                     const typeSelect = document.createElement("select");
@@ -109,7 +112,7 @@ app.registerExtension({
                     });
                     typeSelect.onchange = (e) => {
                         item.type = e.target.value;
-                        this.saveData();
+                        syncToWidget();
                     };
 
                     const valInput = document.createElement("input");
@@ -120,7 +123,7 @@ app.registerExtension({
                     valInput.style.cssText = "flex: 1.5; min-width: 100px; padding: 2px 6px; height: 24px; font-size: 11px; border-radius: 4px; border: 1px solid var(--border-color, #3f3f46); background: var(--comfy-input-bg, #18181b); color: var(--input-text, #e4e4e7); box-sizing: border-box;";
                     valInput.oninput = (e) => {
                         item.value = e.target.value;
-                        this.saveData();
+                        syncToWidget();
                     };
 
                     row.appendChild(btnRemove);
@@ -145,21 +148,15 @@ app.registerExtension({
                     e.stopPropagation();
                     const nextIdx = kvData.length + 1;
                     kvData.push({ key: `Key_${nextIdx}`, type: "STRING", value: "" });
-                    this.saveData();
+                    syncToWidget();
                     renderRows();
                 };
 
                 bottomBar.appendChild(btnAdd);
                 rowsContainer.appendChild(bottomBar);
 
-                if (typeof this.setDirtyCanvas === "function") {
-                    this.setDirtyCanvas(true, true);
-                } else if (app.graph) {
-                    app.graph.setDirtyCanvas(true, true);
-                }
-
                 if (typeof this.setSize === "function") {
-                    const minHeight = 80 + kvData.length * 28;
+                    const minHeight = 90 + kvData.length * 28;
                     const currentWidth = Math.max(this.size[0] || 0, MIN_WIDTH);
                     this.setSize([currentWidth, minHeight]);
                 }
@@ -168,15 +165,24 @@ app.registerExtension({
             const onConfigure = this.onConfigure;
             this.onConfigure = function(info) {
                 if (onConfigure) onConfigure.apply(this, arguments);
-                if (info && info.extra && Array.isArray(info.extra["kv_data"])) {
-                    this.properties = this.properties || {};
-                    this.properties["kv_data"] = info.extra["kv_data"];
+                let targetData = null;
+                if (info && info.widgets_values) {
+                    const kvWidgetIndex = this.widgets?.findIndex(w => w.name === "kv_json");
+                    if (kvWidgetIndex >= 0 && info.widgets_values[kvWidgetIndex] !== undefined) {
+                        try { targetData = JSON.parse(info.widgets_values[kvWidgetIndex]); } catch(e) {}
+                    }
                 }
-                loadData();
+                if (!targetData && info && info.extra && Array.isArray(info.extra["kv_data"])) {
+                    targetData = info.extra["kv_data"];
+                }
+                if (Array.isArray(targetData)) {
+                    kvData = targetData;
+                    if (kvJsonWidget) kvJsonWidget.value = JSON.stringify(kvData);
+                }
                 renderRows();
             };
 
-            loadData();
+            syncToWidget();
             mainContainer.appendChild(rowsContainer);
             this.addDOMWidget("kv_container", "kv_editor", mainContainer, { label: "" });
 

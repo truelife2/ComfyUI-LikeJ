@@ -1,7 +1,6 @@
 import json
 
 def parse_and_validate_value(val, val_type, key_name="", node_name="LikeJDictionary"):
-    # Allow None and empty strings (empty strings are treated as None for non-STRING/RAW types)
     if val is None or (isinstance(val, str) and val.strip() == "" and val_type not in ("STRING", "RAW")):
         return None
 
@@ -60,11 +59,14 @@ class LikeJDictionary:
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": {},
+            "required": {
+                "override_from_input": ("BOOLEAN", {"default": False, "label_on": "true", "label_off": "false"}),
+            },
             "optional": {
                 "dictionary": ("DICT",),
             },
             "hidden": {
+                "kv_json": ("STRING", {"default": "[]"}),
                 "extra_pnginfo": "EXTRA_PNGINFO",
                 "unique_id": "UNIQUE_ID",
             }
@@ -75,41 +77,22 @@ class LikeJDictionary:
     FUNCTION = "create_dict"
     CATEGORY = "LikeJ"
 
-    # 動態監聽 extra_pnginfo 中的 kv_data 變更，完美解決快取未更新問題且不顯現 UI 框
     @classmethod
-    def IS_CHANGED(s, dictionary=None, extra_pnginfo=None, unique_id=None, **kwargs):
-        if extra_pnginfo and isinstance(extra_pnginfo, dict) and "workflow" in extra_pnginfo:
-            workflow = extra_pnginfo.get("workflow", {})
-            nodes = workflow.get("nodes", [])
-            for node in nodes:
-                if str(node.get("id")) == str(unique_id):
-                    kv_data = node.get("extra", {}).get("kv_data") or node.get("properties", {}).get("kv_data")
-                    return str(kv_data)
-        return float("nan")
+    def IS_CHANGED(s, override_from_input=False, dictionary=None, kv_json="[]", extra_pnginfo=None, unique_id=None, **kwargs):
+        # 透過 hidden 的 kv_json 改變來觸發重新執行
+        return kv_json
 
-    def create_dict(self, dictionary=None, extra_pnginfo=None, unique_id=None, **kwargs):
-        out_dict = dictionary.copy() if isinstance(dictionary, dict) else {}
-        raw_kv_data = None
+    def create_dict(self, override_from_input=False, dictionary=None, kv_json="[]", extra_pnginfo=None, unique_id=None, **kwargs):
+        in_dict = dictionary.copy() if isinstance(dictionary, dict) else {}
+        ui_dict = {}
 
-        if extra_pnginfo and isinstance(extra_pnginfo, dict) and "workflow" in extra_pnginfo:
-            workflow = extra_pnginfo.get("workflow", {})
-            nodes = workflow.get("nodes", [])
-            for node in nodes:
-                if str(node.get("id")) == str(unique_id):
-                    if "extra" in node and "kv_data" in node["extra"]:
-                        raw_kv_data = node["extra"]["kv_data"]
-                    elif "properties" in node and "kv_data" in node["properties"]:
-                        raw_kv_data = node["properties"]["kv_data"]
-                    break
-
-        if isinstance(raw_kv_data, str):
-            try:
-                data = json.loads(raw_kv_data)
-            except:
-                data = []
-        elif isinstance(raw_kv_data, (list, dict)):
-            data = raw_kv_data
-        else:
+        data = []
+        try:
+            if isinstance(kv_json, str):
+                data = json.loads(kv_json)
+            elif isinstance(kv_json, (list, dict)):
+                data = kv_json
+        except:
             data = []
 
         if isinstance(data, list):
@@ -124,12 +107,19 @@ class LikeJDictionary:
                 if not key:
                     continue
 
-                out_dict[key] = parse_and_validate_value(val, val_type, key_name=key, node_name="LikeJDictionary")
+                ui_dict[key] = parse_and_validate_value(val, val_type, key_name=key, node_name="LikeJDictionary")
 
         elif isinstance(data, dict):
-            out_dict.update(data)
+            ui_dict.update(data)
 
-        return (out_dict,)
+        if override_from_input:
+            res_dict = ui_dict
+            res_dict.update(in_dict)
+        else:
+            res_dict = in_dict
+            res_dict.update(ui_dict)
+
+        return (res_dict,)
 
 
 class LikeJDictionaryGet:
@@ -153,14 +143,28 @@ class LikeJDictionaryGet:
         return f"{key}_{type}_{float('nan')}"
 
     def get_value(self, dictionary, key, type):
-        if not isinstance(dictionary, dict):
-            raise TypeError("[LikeJDictionaryGet] Invalid input dictionary format!")
+        if dictionary is None:
+            dict_obj = {}
+        elif isinstance(dictionary, dict):
+            dict_obj = dictionary
+        elif isinstance(dictionary, str):
+            try:
+                dict_obj = json.loads(dictionary)
+                if not isinstance(dict_obj, dict):
+                    dict_obj = {}
+            except:
+                dict_obj = {}
+        else:
+            dict_obj = {}
 
         target_key = str(key).strip()
 
-        if target_key not in dictionary:
+        if not target_key:
+            raise ValueError("[LikeJDictionaryGet] Target 'key' cannot be empty!")
+
+        if target_key not in dict_obj:
             found_key = None
-            for k in dictionary.keys():
+            for k in dict_obj.keys():
                 if str(k).strip() == target_key:
                     found_key = k
                     break
@@ -168,9 +172,10 @@ class LikeJDictionaryGet:
             if found_key is not None:
                 target_key = found_key
             else:
-                raise KeyError(f"[LikeJDictionaryGet] Key '{target_key}' not found in dictionary! Available keys: {list(dictionary.keys())}")
+                available_keys = list(dict_obj.keys())
+                raise KeyError(f"[LikeJDictionaryGet] Key '{target_key}' not found in dictionary! Current available keys in dict: {available_keys}")
 
-        val = dictionary[target_key]
+        val = dict_obj[target_key]
         res = parse_and_validate_value(val, type, key_name=target_key, node_name="LikeJDictionaryGet")
 
         return (res,)
