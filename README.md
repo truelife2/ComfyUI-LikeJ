@@ -201,7 +201,7 @@
 
 ## LikeJ Dictionary / LikeJ Dictionary Get
 
-<img width="848" height="211" alt="image" src="https://github.com/user-attachments/assets/67bc9882-5bea-41b4-b8e6-5c56572eee75" />
+<img width="821" height="226" alt="image" src="https://github.com/user-attachments/assets/caf21516-4aee-4966-a8e7-5dc09359f3e7" />
 
 <img width="326" height="382" alt="image" src="https://github.com/user-attachments/assets/d87961da-d711-4317-8dd1-6a4a92492d7c" />
 
