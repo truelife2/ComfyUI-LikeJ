@@ -1,7 +1,8 @@
 import json
 
 def parse_and_validate_value(val, val_type, key_name="", node_name="LikeJDictionary"):
-    if val is None or (isinstance(val, str) and val.strip() == "" and val_type not in ("STRING", "RAW")):
+    # Allow None and empty strings (empty strings are treated as None for non-STRING/ANY types)
+    if val is None or (isinstance(val, str) and val.strip() == "" and val_type not in ("STRING", "ANY")):
         return None
 
     if val_type == "INT":
@@ -40,7 +41,8 @@ def parse_and_validate_value(val, val_type, key_name="", node_name="LikeJDiction
         else:
             raise ValueError(f"[{node_name}] Key '{key_name}' value '{val}' cannot be converted to BOOLEAN!")
 
-    elif val_type == "RAW":
+    elif val_type == "ANY":
+        # 如果是字串格式且有內容，嘗試看看能不能解析 JSON，不行就直接回傳原始值或物件
         if isinstance(val, str) and val.strip() != "":
             try:
                 return json.loads(val)
@@ -66,7 +68,7 @@ class LikeJDictionary:
                 "dictionary": ("DICT",),
             },
             "hidden": {
-                "kv_json": ("STRING", {"default": "[]"}),
+                "kv_json": ("STRING", "[]"),
                 "extra_pnginfo": "EXTRA_PNGINFO",
                 "unique_id": "UNIQUE_ID",
             }
@@ -78,11 +80,10 @@ class LikeJDictionary:
     CATEGORY = "LikeJ"
 
     @classmethod
-    def IS_CHANGED(s, override_from_input=False, dictionary=None, kv_json="[]", extra_pnginfo=None, unique_id=None, **kwargs):
-        # 透過 hidden 的 kv_json 改變來觸發重新執行
+    def IS_CHANGED(s, override_from_input=False, kv_json="[]", dictionary=None, extra_pnginfo=None, unique_id=None, **kwargs):
         return kv_json
 
-    def create_dict(self, override_from_input=False, dictionary=None, kv_json="[]", extra_pnginfo=None, unique_id=None, **kwargs):
+    def create_dict(self, override_from_input=False, kv_json="[]", dictionary=None, extra_pnginfo=None, unique_id=None, **kwargs):
         in_dict = dictionary.copy() if isinstance(dictionary, dict) else {}
         ui_dict = {}
 
@@ -129,7 +130,7 @@ class LikeJDictionaryGet:
             "required": {
                 "dictionary": ("DICT",),
                 "key": ("STRING", {"default": ""}),
-                "type": (["STRING", "INT", "FLOAT", "BOOLEAN", "RAW"], {"default": "STRING"}),
+                "type": (["STRING", "INT", "FLOAT", "BOOLEAN", "ANY"], {"default": "STRING"}),
             }
         }
 

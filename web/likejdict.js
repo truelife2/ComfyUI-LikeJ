@@ -25,7 +25,6 @@ app.registerExtension({
                 }
             };
 
-            // 初始化確保建立隱藏的 kv_json widget
             this.widgets = this.widgets || [];
             let kvJsonWidget = this.widgets.find(w => w.name === "kv_json");
             if (!kvJsonWidget) {
@@ -102,7 +101,9 @@ app.registerExtension({
 
                     const typeSelect = document.createElement("select");
                     typeSelect.style.cssText = "width: 85px; min-width: 85px; height: 24px; font-size: 11px; border-radius: 4px; border: 1px solid var(--border-color, #3f3f46); background: var(--comfy-input-bg, #18181b); color: #38bdf8; padding: 0 4px; cursor: pointer; box-sizing: border-box;";
-                    const types = ["STRING", "INT", "FLOAT", "BOOLEAN", "RAW"];
+                    
+                    // 將 types 改為支援 ANY
+                    const types = ["STRING", "INT", "FLOAT", "BOOLEAN", "ANY"];
                     types.forEach(t => {
                         const opt = document.createElement("option");
                         opt.value = t;
