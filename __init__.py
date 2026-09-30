@@ -25,6 +25,7 @@ from . import likejvidsnap
 from . import likejvidclip
 from . import likejswitch
 from . import likejdict
+from . import likejviddirector
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -58,6 +59,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJLazyBoolSwitch": likejswitch.LikeJLazyBoolSwitch,
     "LikeJDictionary": likejdict.LikeJDictionary,
     "LikeJDictionaryGet": likejdict.LikeJDictionaryGet,
+    "LikeJVideoDirector": likejviddirector.LikeJVideoDirector,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -92,6 +94,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJLazyBoolSwitch": "LikeJ Lazy Bool Switch",
     "LikeJDictionary": "LikeJ Dictionary",
     "LikeJDictionaryGet": "LikeJ Dictionary Get",
+    "LikeJVideoDirector": "LikeJ Video Director",
 }
 
 WEB_DIRECTORY = "./web"
