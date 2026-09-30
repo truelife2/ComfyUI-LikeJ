@@ -193,7 +193,11 @@
 
 <img width="482" height="631" alt="image" src="https://github.com/user-attachments/assets/feaa9f95-a642-4e4d-8c08-be28fb4109b4" />
 
+## LikeJ Lazy Bool Switch / LikeJ Lazy Float Switch
 
+<img width="313" height="211" alt="image" src="https://github.com/user-attachments/assets/12c23b2b-bef8-49ad-80cd-3de5c9526e04" />
+
+<img width="289" height="149" alt="image" src="https://github.com/user-attachments/assets/843ebd6d-22ac-4496-bba2-20e3fce6bdbe" />
 
 
 
