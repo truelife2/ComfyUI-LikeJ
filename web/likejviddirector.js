@@ -39,7 +39,7 @@ const moveItem = (arr, idx, dir) => {
 const validateValue = (val, type) => {
     if (val === "" || val === null || val === undefined) return { valid: true, error: "" };
     const t = String(type).toUpperCase();
-    
+
     if (t === "INT") {
         if (isNaN(Number(val)) || !Number.isInteger(Number(val))) {
             return { valid: false, error: "輸入值必須為整數 (INT)" };
@@ -171,6 +171,17 @@ app.registerExtension({
                 fileAudio: $("#file_audio")
             };
 
+            // 📏 Prompt 框高度儲存與監聽邏輯
+            const savePromptHeight = () => {
+                const h = els.inputPrompt.style.height;
+                if (h && h !== node.properties.prompt_height) {
+                    node.properties.prompt_height = h;
+                    node.setDirtyCanvas(true, true);
+                }
+            };
+            new ResizeObserver(savePromptHeight).observe(els.inputPrompt);
+            els.inputPrompt.addEventListener("mouseup", savePromptHeight);
+
             const getData = () => {
                 try {
                     const raw = node.extra_info?.scenes_json || node.properties?.scenes_json;
@@ -253,7 +264,7 @@ app.registerExtension({
                     data.global_dict.forEach((gItem, idx) => {
                         const row = document.createElement("div");
                         row.style.cssText = "display: flex; gap: 8px; align-items: center; background: #2a2a2a; padding: 6px 8px; border-radius: 4px;";
-                        
+
                         const curType = String(gItem.type || "STRING").toUpperCase();
 
                         row.innerHTML = `
@@ -326,6 +337,11 @@ app.registerExtension({
             }
 
             function renderUI() {
+                // 📏 恢復已儲存的 Prompt 框高度
+                if (node.properties?.prompt_height) {
+                    els.inputPrompt.style.height = node.properties.prompt_height;
+                }
+
                 const data = getData();
                 const list = data.scenes;
                 const totalDur = list.reduce((sum, s) => sum + (parseFloat(s.duration) || 0), 0);
