@@ -199,11 +199,18 @@
 
 <img width="289" height="149" alt="image" src="https://github.com/user-attachments/assets/843ebd6d-22ac-4496-bba2-20e3fce6bdbe" />
 
-## LikeJ Dictionary / LikeJ Dictionary Get
+## LikeJ Dictionary / LikeJ Dictionary Get / LikeJ Dictionary Gets
 
 <img width="821" height="226" alt="image" src="https://github.com/user-attachments/assets/caf21516-4aee-4966-a8e7-5dc09359f3e7" />
 
 <img width="319" height="391" alt="image" src="https://github.com/user-attachments/assets/0a524bf8-1b26-4841-a083-be6f843cd718" />
 
+<img width="465" height="205" alt="image" src="https://github.com/user-attachments/assets/dd43c912-1f5c-4986-93cc-27791582945c" />
 
-  
+
+# LikeJ Any Unpacker / LikeJ Image Unpacker / LikeJ Audio Unpacker
+
+<img width="300" height="422" alt="image" src="https://github.com/user-attachments/assets/9694f757-92ea-4f85-a53a-bae655a5ec31" />
+
+<img width="291" height="260" alt="image" src="https://github.com/user-attachments/assets/d163d13b-0f1f-4d76-addf-7ab239876cd4" />
+
