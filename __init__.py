@@ -26,6 +26,7 @@ from . import likejvidclip
 from . import likejswitch
 from . import likejdict
 from . import likejviddirector
+from . import likejunpacker
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -61,6 +62,9 @@ NODE_CLASS_MAPPINGS = {
     "LikeJDictionaryGet": likejdict.LikeJDictionaryGet,
     "LikeJDictionaryGets": likejdict.LikeJDictionaryGets,
     "LikeJVideoDirector": likejviddirector.LikeJVideoDirector,
+    "LikeJListUnpacker": likejunpacker.LikeJListUnpacker,
+    "LikeJImageUnpacker": likejunpacker.LikeJImageUnpacker,
+    "LikeJAudioUnpacker": likejunpacker.LikeJAudioUnpacker,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -97,6 +101,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJDictionaryGet": "LikeJ Dictionary Get",
     "LikeJDictionaryGets": "LikeJ Dictionary Gets",
     "LikeJVideoDirector": "LikeJ Video Director",
+    "LikeJListUnpacker": "LikeJ Any Unpacker",
+    "LikeJImageUnpacker": "LikeJ Image Unpacker",
+    "LikeJAudioUnpacker": "LikeJ Audio Unpacker",
 }
 
 WEB_DIRECTORY = "./web"
