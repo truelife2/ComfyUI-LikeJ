@@ -27,32 +27,53 @@ class LikeJVideoDirector:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "AUDIO", "STRING", "STRING", "FLOAT")
+    # 修改為 DICT 型態，以利對接 LikeJDictionaryGet / LikeJDictionaryGets 節點
+    RETURN_TYPES = ("IMAGE", "AUDIO", "STRING", "DICT", "FLOAT")
     RETURN_NAMES = ("images", "audios", "prompt", "dict_params", "duration")
     FUNCTION = "process"
     CATEGORY = "LikeJ/Video"
 
     def _parse_value(self, val_str, val_type):
-        """根據指定型態進行轉型"""
-        if val_type == "number":
+        """根據指定型態進行轉型，相容 STRING, INT, FLOAT, BOOLEAN, ANY 及舊版型態"""
+        if val_str is None:
+            return None
+
+        v_type = str(val_type).upper() if val_type else "STRING"
+
+        if v_type == "INT":
             try:
-                num = float(val_str)
-                return int(num) if num.is_integer() else num
+                if isinstance(val_str, bool):
+                    return int(val_str)
+                return int(float(val_str))
             except (ValueError, TypeError):
                 return 0
-        elif val_type == "boolean":
+
+        elif v_type in ("FLOAT", "NUMBER"):
+            try:
+                num = float(val_str)
+                return int(num) if v_type == "NUMBER" and num.is_integer() else num
+            except (ValueError, TypeError):
+                return 0.0
+
+        elif v_type == "BOOLEAN":
             if isinstance(val_str, bool):
                 return val_str
-            return str(val_str).lower() in ("true", "1", "yes")
-        elif val_type == "json":
+            return str(val_str).strip().lower() in ("true", "1", "yes", "t")
+
+        elif v_type in ("ANY", "JSON"):
             if isinstance(val_str, (dict, list)):
                 return val_str
-            try:
-                return json.loads(val_str)
-            except Exception:
-                return {}
-        else: # string
-            return str(val_str) if val_str is not None else ""
+            if isinstance(val_str, str) and val_str.strip() != "":
+                try:
+                    return json.loads(val_str)
+                except Exception:
+                    return val_str
+            return val_str
+
+        else:  # STRING
+            if isinstance(val_str, (dict, list)):
+                return json.dumps(val_str, ensure_ascii=False)
+            return str(val_str)
 
     def _load_images_batch(self, image_list):
         if not image_list or not isinstance(image_list, list) or len(image_list) == 0:
@@ -170,7 +191,7 @@ class LikeJVideoDirector:
             k = g_item.get("key")
             if not k:
                 continue
-            k_type = g_item.get("type", "string")
+            k_type = g_item.get("type", "STRING")
             k_default = g_item.get("default", "")
             final_dict[k] = self._parse_value(k_default, k_type)
 
@@ -187,12 +208,10 @@ class LikeJVideoDirector:
                     use_default = param_obj.get("use_default", True)
                     if not use_default:
                         val = param_obj.get("value")
-                        val_type = g_item.get("type", "string")
+                        val_type = g_item.get("type", "STRING")
                         final_dict[k] = self._parse_value(val, val_type)
                 else:
-                    final_dict[k] = param_obj
-
-        dict_params_str = json.dumps(final_dict, ensure_ascii=False)
+                    final_dict[k] = self._parse_value(param_obj, g_item.get("type", "STRING"))
 
         # 4. 載入媒體檔案
         images_list = selected_scene.get("images", [])
@@ -201,6 +220,7 @@ class LikeJVideoDirector:
         audios_list = selected_scene.get("audios", [])
         audio_data = self._load_audio_data(audios_list)
 
-        print(f"[LikeJVideoDirector] 當前 Clip 輸出 -> 圖片數: {len(images_list)}, 音訊數: {len(audios_list)}, Dict: {dict_params_str}, 時長: {duration}s")
+        print(f"[LikeJVideoDirector] 當前 Clip 輸出 -> 圖片數: {len(images_list)}, 音訊數: {len(audios_list)}, Dict: {final_dict}, 時長: {duration}s")
 
-        return (images_tensor, audio_data, prompt, dict_params_str, duration)
+        # 此處第 4 個回傳值 directly 輸出 Python dict 物件，可直接對接 LikeJDictionaryGet / Gets
+        return (images_tensor, audio_data, prompt, final_dict, duration)

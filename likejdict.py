@@ -180,3 +180,96 @@ class LikeJDictionaryGet:
         res = parse_and_validate_value(val, type, key_name=target_key, node_name="LikeJDictionaryGet")
 
         return (res,)
+
+
+class LikeJDictionaryGets:
+    MAX_OUTPUTS = 32
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "dictionary": ("DICT",),
+            },
+            "hidden": {
+                "keys_json": ("STRING", "[]"),
+                "extra_pnginfo": "EXTRA_PNGINFO",
+                "unique_id": "UNIQUE_ID",
+            }
+        }
+
+    # 宣告 32 個彈性型態腳位，防止前端動態增加 Slot 時 ComfyUI 後端驗證溢位
+    RETURN_TYPES = ("*",) * MAX_OUTPUTS
+    RETURN_NAMES = tuple(f"val_{i+1}" for i in range(MAX_OUTPUTS))
+    FUNCTION = "get_values"
+    CATEGORY = "LikeJ"
+
+    @classmethod
+    def IS_CHANGED(s, dictionary=None, keys_json="[]", extra_pnginfo=None, unique_id=None, **kwargs):
+        return keys_json
+
+    def get_values(self, dictionary=None, keys_json="[]", extra_pnginfo=None, unique_id=None, **kwargs):
+        dict_obj = dictionary if isinstance(dictionary, dict) else {}
+
+        # 1. 優先從 hidden extra_pnginfo (即 Workflow node.extra_info) 提取前端傳入的 JSON 結構
+        extracted_json = keys_json
+        if extra_pnginfo and isinstance(extra_pnginfo, dict):
+            workflow = extra_pnginfo.get("workflow", {})
+            nodes = workflow.get("nodes", [])
+            for n in nodes:
+                if str(n.get("id")) == str(unique_id):
+                    extra_info = n.get("extra_info", {})
+                    properties = n.get("properties", {})
+                    extracted_json = extra_info.get("keys_json") or extra_info.get("kv_json") or properties.get("keys_json") or extracted_json
+                    break
+
+        # 2. 解析 JSON 內容
+        data = []
+        try:
+            if isinstance(extracted_json, str):
+                data = json.loads(extracted_json)
+            elif isinstance(extracted_json, (list, dict)):
+                data = extracted_json
+        except:
+            data = []
+
+        results = []
+
+        # 3. 讀取並轉型各 Key 的數值
+        if isinstance(data, list):
+            for item in data:
+                if isinstance(item, dict):
+                    key = str(item.get("key", "")).strip()
+                    val_type = item.get("type", "ANY")
+                else:
+                    key = str(item).strip()
+                    val_type = "ANY"
+
+                if not key:
+                    continue
+
+                val = None
+                if key in dict_obj:
+                    val = dict_obj[key]
+                else:
+                    for k, v in dict_obj.items():
+                        if str(k).strip() == key:
+                            val = v
+                            break
+
+                parsed_val = parse_and_validate_value(val, val_type, key_name=key, node_name="LikeJDictionaryGets")
+                results.append(parsed_val)
+
+        elif isinstance(data, dict):
+            for k, val_type in data.items():
+                key = str(k).strip()
+                val = dict_obj.get(key)
+                parsed_val = parse_and_validate_value(val, str(val_type), key_name=key, node_name="LikeJDictionaryGets")
+                results.append(parsed_val)
+
+        # 4. 補齊長度至 MAX_OUTPUTS (32)，解決第 2 個及後續腳位驗證時 tuple index out of range 的錯誤
+        while len(results) < self.MAX_OUTPUTS:
+            results.append(None)
+
+        return tuple(results)
+

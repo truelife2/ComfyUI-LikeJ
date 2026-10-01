@@ -59,6 +59,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJLazyBoolSwitch": likejswitch.LikeJLazyBoolSwitch,
     "LikeJDictionary": likejdict.LikeJDictionary,
     "LikeJDictionaryGet": likejdict.LikeJDictionaryGet,
+    "LikeJDictionaryGets": likejdict.LikeJDictionaryGets,
     "LikeJVideoDirector": likejviddirector.LikeJVideoDirector,
 }
 
@@ -94,6 +95,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJLazyBoolSwitch": "LikeJ Lazy Bool Switch",
     "LikeJDictionary": "LikeJ Dictionary",
     "LikeJDictionaryGet": "LikeJ Dictionary Get",
+    "LikeJDictionaryGets": "LikeJ Dictionary Gets",
     "LikeJVideoDirector": "LikeJ Video Director",
 }
 

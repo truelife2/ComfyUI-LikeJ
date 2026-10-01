@@ -35,19 +35,31 @@ const moveItem = (arr, idx, dir) => {
     return true;
 };
 
-// 🔍 資料型態與語法驗證函式
+// 🔍 資料型態與語法驗證函式 (支援 STRING, INT, FLOAT, BOOLEAN, ANY)
 const validateValue = (val, type) => {
     if (val === "" || val === null || val === undefined) return { valid: true, error: "" };
-    if (type === "number") {
-        if (isNaN(Number(val))) return { valid: false, error: "輸入值必須為有效的數字" };
-    } else if (type === "boolean") {
+    const t = String(type).toUpperCase();
+    
+    if (t === "INT") {
+        if (isNaN(Number(val)) || !Number.isInteger(Number(val))) {
+            return { valid: false, error: "輸入值必須為整數 (INT)" };
+        }
+    } else if (t === "FLOAT" || t === "NUMBER") {
+        if (isNaN(Number(val))) {
+            return { valid: false, error: "輸入值必須為有效的數字" };
+        }
+    } else if (t === "BOOLEAN") {
         const str = String(val).trim().toLowerCase();
-        if (!["true", "false", "1", "0"].includes(str)) return { valid: false, error: "必須為 true 或 false" };
-    } else if (type === "json") {
-        try {
-            JSON.parse(typeof val === "string" ? val : JSON.stringify(val));
-        } catch (e) {
-            return { valid: false, error: "必須為合法的 JSON 格式（例：{\"key\": \"value\"}）" };
+        if (!["true", "false", "1", "0", "t", "f", "yes", "no"].includes(str)) {
+            return { valid: false, error: "必須為 true 或 false" };
+        }
+    } else if (t === "ANY" || t === "JSON") {
+        if (typeof val === "string" && (val.trim().startsWith("{") || val.trim().startsWith("["))) {
+            try {
+                JSON.parse(val);
+            } catch (e) {
+                return { valid: false, error: "語法不符合合法 JSON 格式" };
+            }
         }
     }
     return { valid: true, error: "" };
@@ -215,7 +227,7 @@ app.registerExtension({
                 const dialog = document.createElement("div");
                 dialog.style.cssText = `
                     background: #222; border: 1px solid #444; border-radius: 8px;
-                    width: 600px; max-width: 90vw; max-height: 80vh;
+                    width: 620px; max-width: 90vw; max-height: 80vh;
                     display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
                 `;
 
@@ -241,13 +253,17 @@ app.registerExtension({
                     data.global_dict.forEach((gItem, idx) => {
                         const row = document.createElement("div");
                         row.style.cssText = "display: flex; gap: 8px; align-items: center; background: #2a2a2a; padding: 6px 8px; border-radius: 4px;";
+                        
+                        const curType = String(gItem.type || "STRING").toUpperCase();
+
                         row.innerHTML = `
                             <input type="text" placeholder="Key 名稱" value="${gItem.key || ""}" style="width: 120px; background:#181818; color:#fff; border:1px solid #444; border-radius:3px; padding:4px;" data-field="key">
-                            <select style="background:#181818; color:#fff; border:1px solid #444; border-radius:3px; padding:4px;" data-field="type">
-                                <option value="string" ${gItem.type === "string" ? "selected" : ""}>String (字串)</option>
-                                <option value="number" ${gItem.type === "number" ? "selected" : ""}>Number (數值)</option>
-                                <option value="boolean" ${gItem.type === "boolean" ? "selected" : ""}>Boolean (布林)</option>
-                                <option value="json" ${gItem.type === "json" ? "selected" : ""}>JSON (物件)</option>
+                            <select style="background:#181818; color:#38bdf8; border:1px solid #444; border-radius:3px; padding:4px; font-weight:bold;" data-field="type">
+                                <option value="STRING" ${curType === "STRING" ? "selected" : ""}>STRING</option>
+                                <option value="INT" ${curType === "INT" ? "selected" : ""}>INT</option>
+                                <option value="FLOAT" ${curType === "FLOAT" || curType === "NUMBER" ? "selected" : ""}>FLOAT</option>
+                                <option value="BOOLEAN" ${curType === "BOOLEAN" ? "selected" : ""}>BOOLEAN</option>
+                                <option value="ANY" ${curType === "ANY" || curType === "JSON" ? "selected" : ""}>ANY</option>
                             </select>
                             <input type="text" placeholder="主場預設值" value="${gItem.default ?? ""}" style="flex: 1; background:#181818; color:#fff; border:1px solid #444; border-radius:3px; padding:4px;" data-field="default">
                             <button style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:4px 8px; cursor:pointer;" data-del="${idx}">🗑️</button>
@@ -263,7 +279,7 @@ app.registerExtension({
                 };
 
                 dialog.querySelector("#modal_add_key_btn").onclick = () => {
-                    data.global_dict.push({ key: `key_${data.global_dict.length + 1}`, type: "string", default: "" });
+                    data.global_dict.push({ key: `key_${data.global_dict.length + 1}`, type: "STRING", default: "" });
                     renderModalList();
                 };
 
@@ -344,7 +360,7 @@ app.registerExtension({
                 data.global_dict.forEach((gItem) => {
                     if (!gItem.key) return;
                     const keyName = gItem.key;
-                    const keyType = gItem.type || "string";
+                    const keyType = String(gItem.type || "STRING").toUpperCase();
                     const globalDefVal = gItem.default ?? "";
 
                     const clipParam = activeScene.dict_params[keyName] || { use_default: true, value: globalDefVal };
@@ -356,17 +372,35 @@ app.registerExtension({
                     const isDefault = clipParam.use_default !== false;
 
                     let inputHtml = "";
-                    if (keyType === "boolean") {
+                    if (keyType === "BOOLEAN") {
                         const curVal = isDefault ? globalDefVal : clipParam.value;
                         inputHtml = `
                             <select ${isDefault ? "disabled" : ""} style="flex:1; background:#111; color:${isDefault ? "#888" : "#fff"}; border:1px solid #444; border-radius:3px; padding:2px;" data-val-input>
                                 <option value="true" ${String(curVal) === "true" ? "selected" : ""}>true</option>
                                 <option value="false" ${String(curVal) === "false" ? "selected" : ""}>false</option>
                             </select>`;
+                    } else if (keyType === "INT") {
+                        const curVal = isDefault ? globalDefVal : (clipParam.value ?? "");
+                        inputHtml = `
+                            <input type="number" step="1" 
+                                   value="${curVal}" 
+                                   placeholder="${isDefault ? `(預設: ${globalDefVal})` : ''}" 
+                                   ${isDefault ? "disabled" : ""} 
+                                   style="flex:1; background:#111; color:${isDefault ? "#888" : "#fff"}; border:1px solid #444; border-radius:3px; padding:2px;" 
+                                   data-val-input>`;
+                    } else if (keyType === "FLOAT" || keyType === "NUMBER") {
+                        const curVal = isDefault ? globalDefVal : (clipParam.value ?? "");
+                        inputHtml = `
+                            <input type="number" step="any" 
+                                   value="${curVal}" 
+                                   placeholder="${isDefault ? `(預設: ${globalDefVal})` : ''}" 
+                                   ${isDefault ? "disabled" : ""} 
+                                   style="flex:1; background:#111; color:${isDefault ? "#888" : "#fff"}; border:1px solid #444; border-radius:3px; padding:2px;" 
+                                   data-val-input>`;
                     } else {
                         const curVal = isDefault ? globalDefVal : (clipParam.value ?? "");
                         inputHtml = `
-                            <input type="${keyType === 'number' ? 'number' : 'text'}" 
+                            <input type="text" 
                                    value="${curVal}" 
                                    placeholder="${isDefault ? `(預設: ${globalDefVal})` : ''}" 
                                    ${isDefault ? "disabled" : ""} 
@@ -396,7 +430,6 @@ app.registerExtension({
                         const vRes = validateValue(val, keyType);
 
                         if (!vRes.valid) {
-                            // 顯現紅框與 tooltip 警示
                             valInput.style.borderColor = "#ff4d4d";
                             valInput.title = vRes.error;
                         } else {
