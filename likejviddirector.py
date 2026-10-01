@@ -13,13 +13,12 @@ except ImportError:
 
 class LikeJVideoDirector:
     """
-    ComfyUI Video Director Node (無 Input 腳位，純 Hidden extra_info 驅動)
+    ComfyUI Video Director Node (No inputs, driven by hidden extra_info)
     """
     
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            # 100% 零 Input 腳位，不建立任何輸入連線點
             "required": {},
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -27,14 +26,17 @@ class LikeJVideoDirector:
             }
         }
 
-    # 修改為 DICT 型態，以利對接 LikeJDictionaryGet / LikeJDictionaryGets 節點
     RETURN_TYPES = ("IMAGE", "AUDIO", "STRING", "DICT", "FLOAT")
     RETURN_NAMES = ("images", "audios", "prompt", "dict_params", "duration")
+    
+    # Declare images and audios as LIST outputs
+    OUTPUT_IS_LIST = (True, True, False, False, False)
+    
     FUNCTION = "process"
     CATEGORY = "LikeJ/Video"
 
     def _parse_value(self, val_str, val_type):
-        """根據指定型態進行轉型，相容 STRING, INT, FLOAT, BOOLEAN, ANY 及舊版型態"""
+        """Parse value based on specified type, compatible with STRING, INT, FLOAT, BOOLEAN, ANY"""
         if val_str is None:
             return None
 
@@ -76,76 +78,77 @@ class LikeJVideoDirector:
             return str(val_str)
 
     def _load_images_batch(self, image_list):
+        # 1. No image configured: return [None]
         if not image_list or not isinstance(image_list, list) or len(image_list) == 0:
-            return None
+            return [None]
 
         tensors = []
         for item in image_list:
             if not item:
                 continue
-            try:
-                fname = item.get("name") if isinstance(item, dict) else item
-                subfolder = item.get("subfolder", "") if isinstance(item, dict) else ""
-                
-                if subfolder:
-                    fname = os.path.join(subfolder, fname)
+            
+            fname = item.get("name") if isinstance(item, dict) else item
+            subfolder = item.get("subfolder", "") if isinstance(item, dict) else ""
+            
+            if subfolder:
+                fname = os.path.join(subfolder, fname)
 
-                filepath = folder_paths.get_annotated_filepath(fname)
-                if os.path.exists(filepath):
-                    img = Image.open(filepath)
-                    img = ImageOps.exif_transpose(img).convert("RGB")
-                    img_arr = np.array(img).astype(np.float32) / 255.0
-                    tensors.append(torch.from_numpy(img_arr)[None, ...])
-                else:
-                    print(f"[LikeJVideoDirector] 找不到圖像檔案: {filepath}")
+            filepath = folder_paths.get_annotated_filepath(fname)
+            
+            # 2. Configured but file missing: raise FileNotFoundError
+            if not os.path.exists(filepath):
+                raise FileNotFoundError(f"[LikeJVideoDirector] Image file not found: {filepath}")
+
+            try:
+                img = Image.open(filepath)
+                img = ImageOps.exif_transpose(img).convert("RGB")
+                img_arr = np.array(img).astype(np.float32) / 255.0
+                tensors.append(torch.from_numpy(img_arr)[None, ...])
             except Exception as e:
-                print(f"[LikeJVideoDirector] 加載圖像發生錯誤: {e}")
+                raise RuntimeError(f"[LikeJVideoDirector] Failed to load image file ({filepath}): {str(e)}")
 
-        if tensors:
-            try:
-                return torch.cat(tensors, dim=0)
-            except Exception:
-                return tensors[0]
-        else:
-            return None
+        return tensors if len(tensors) > 0 else [None]
 
     def _load_audio_data(self, audio_list):
+        # 1. No audio configured: return [None]
         if not audio_list or not isinstance(audio_list, list) or len(audio_list) == 0:
-            return None
+            return [None]
             
         audio_results = []
         for item in audio_list:
             if not item:
                 continue
+
+            if not HAS_TORCHAUDIO:
+                raise RuntimeError("[LikeJVideoDirector] Audio configured, but torchaudio module is not installed!")
+
+            fname = item.get("name") if isinstance(item, dict) else item
+            subfolder = item.get("subfolder", "") if isinstance(item, dict) else ""
+            
+            if subfolder:
+                fname = os.path.join(subfolder, fname)
+
+            filepath = folder_paths.get_annotated_filepath(fname)
+
+            # 2. Configured but file missing: raise FileNotFoundError
+            if not os.path.exists(filepath):
+                raise FileNotFoundError(f"[LikeJVideoDirector] Audio file not found: {filepath}")
+
             try:
-                fname = item.get("name") if isinstance(item, dict) else item
-                subfolder = item.get("subfolder", "") if isinstance(item, dict) else ""
+                waveform, sample_rate = torchaudio.load(filepath)
+                if waveform.ndim == 2:
+                    waveform = waveform.unsqueeze(0)
                 
-                if subfolder:
-                    fname = os.path.join(subfolder, fname)
-
-                filepath = folder_paths.get_annotated_filepath(fname)
-                if os.path.exists(filepath) and HAS_TORCHAUDIO:
-                    waveform, sample_rate = torchaudio.load(filepath)
-                    if waveform.ndim == 2:
-                        waveform = waveform.unsqueeze(0)
-                    
-                    audio_results.append({
-                        "waveform": waveform,
-                        "sample_rate": sample_rate
-                    })
-                else:
-                    print(f"[LikeJVideoDirector] 找不到音訊檔案或未安裝 torchaudio: {filepath}")
+                audio_results.append({
+                    "waveform": waveform,
+                    "sample_rate": sample_rate
+                })
             except Exception as e:
-                print(f"[LikeJVideoDirector] 加載音訊發生錯誤: {e}")
+                raise RuntimeError(f"[LikeJVideoDirector] Failed to load audio file ({filepath}): {str(e)}")
 
-        if audio_results:
-            return audio_results[0]
-        else:
-            return None
+        return audio_results if len(audio_results) > 0 else [None]
 
     def process(self, unique_id=None, extra_pnginfo=None):
-        # 從 ComfyUI 隱藏傳入的 extra_pnginfo 提取 Workflow 中該節點的 node.extra_info
         scenes_json = "{}"
         if extra_pnginfo and isinstance(extra_pnginfo, dict):
             workflow = extra_pnginfo.get("workflow", {})
@@ -160,7 +163,7 @@ class LikeJVideoDirector:
         try:
             raw_data = json.loads(scenes_json) if isinstance(scenes_json, str) else scenes_json
         except Exception as e:
-            print(f"[LikeJVideoDirector] 解析 scenes_json 失敗: {e}")
+            print(f"[LikeJVideoDirector] Failed to parse scenes_json: {e}")
             raw_data = {}
 
         if isinstance(raw_data, list):
@@ -176,17 +179,17 @@ class LikeJVideoDirector:
         if not isinstance(scenes, list) or len(scenes) == 0:
             scenes = [{}]
 
-        # 1. 取得當前選取的 Clip (selected == True)
+        # 1. Get current clip (selected == True)
         selected_scene = next((s for s in scenes if s.get("selected")), scenes[0])
 
-        # 2. 提取基本資訊
+        # 2. Extract basic info
         duration = float(selected_scene.get("duration", 3.0))
         prompt = str(selected_scene.get("prompt", ""))
 
-        # 3. 處理與合併 Dict 參數
+        # 3. Process and merge Dict parameters
         final_dict = {}
 
-        # (A) 填入全域預設值
+        # (A) Global defaults
         for g_item in global_defs:
             k = g_item.get("key")
             if not k:
@@ -195,7 +198,7 @@ class LikeJVideoDirector:
             k_default = g_item.get("default", "")
             final_dict[k] = self._parse_value(k_default, k_type)
 
-        # (B) 合併 Clip 的專屬覆蓋值
+        # (B) Clip specific overrides
         clip_dict_raw = selected_scene.get("dict_params", {})
         if isinstance(clip_dict_raw, dict):
             for g_item in global_defs:
@@ -213,14 +216,13 @@ class LikeJVideoDirector:
                 else:
                     final_dict[k] = self._parse_value(param_obj, g_item.get("type", "STRING"))
 
-        # 4. 載入媒體檔案
+        # 4. Load media files (raises Exception if configured files are missing)
         images_list = selected_scene.get("images", [])
-        images_tensor = self._load_images_batch(images_list)
+        images_tensor_list = self._load_images_batch(images_list)
 
         audios_list = selected_scene.get("audios", [])
-        audio_data = self._load_audio_data(audios_list)
+        audio_tensor_list = self._load_audio_data(audios_list)
 
-        print(f"[LikeJVideoDirector] 當前 Clip 輸出 -> 圖片數: {len(images_list)}, 音訊數: {len(audios_list)}, Dict: {final_dict}, 時長: {duration}s")
+        print(f"[LikeJVideoDirector] Current Clip Output -> Images: {len(images_tensor_list)}, Audios: {len(audio_tensor_list)}, Dict: {final_dict}, Duration: {duration}s")
 
-        # 此處第 4 個回傳值 directly 輸出 Python dict 物件，可直接對接 LikeJDictionaryGet / Gets
-        return (images_tensor, audio_data, prompt, final_dict, duration)
+        return (images_tensor_list, audio_tensor_list, prompt, final_dict, duration)

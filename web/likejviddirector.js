@@ -35,7 +35,6 @@ const moveItem = (arr, idx, dir) => {
     return true;
 };
 
-// 🔍 資料型態與語法驗證函式 (支援 STRING, INT, FLOAT, BOOLEAN, ANY)
 const validateValue = (val, type) => {
     if (val === "" || val === null || val === undefined) return { valid: true, error: "" };
     const t = String(type).toUpperCase();
@@ -171,7 +170,6 @@ app.registerExtension({
                 fileAudio: $("#file_audio")
             };
 
-            // 📏 Prompt 框高度儲存與監聽邏輯
             const savePromptHeight = () => {
                 const h = els.inputPrompt.style.height;
                 if (h && h !== node.properties.prompt_height) {
@@ -182,13 +180,14 @@ app.registerExtension({
             new ResizeObserver(savePromptHeight).observe(els.inputPrompt);
             els.inputPrompt.addEventListener("mouseup", savePromptHeight);
 
+            const getActiveScene = scenes => scenes.find(s => s.selected) || scenes[0];
+
+            // 1. 純粹的資料讀取函式，無任何 DOM 側瀉影響
             const getData = () => {
                 try {
                     const raw = node.extra_info?.scenes_json || node.properties?.scenes_json;
                     let parsed = typeof raw === "string" ? JSON.parse(raw) : (raw || {});
-                    if (Array.isArray(parsed)) {
-                        parsed = { global_dict: [], scenes: parsed };
-                    }
+                    if (Array.isArray(parsed)) parsed = { global_dict: [], scenes: parsed };
                     parsed.global_dict = parsed.global_dict || [];
                     parsed.scenes = parsed.scenes || [];
                     if (parsed.scenes.length > 0 && !parsed.scenes.some(s => s.selected)) {
@@ -197,6 +196,18 @@ app.registerExtension({
                     return parsed;
                 } catch (e) {
                     return { global_dict: [], scenes: [] };
+                }
+            };
+
+            // 2. 僅在「切換/新增/刪除 Clip 上下文」前，把當前畫面上的值保存到舊 Clip 物件中
+            const syncActiveInputs = (data) => {
+                const active = getActiveScene(data.scenes);
+                if (active) {
+                    if (els.inputPrompt) active.prompt = els.inputPrompt.value;
+                    if (els.inputDuration) {
+                        const val = parseFloat(els.inputDuration.value);
+                        active.duration = isNaN(val) ? 3.0 : val;
+                    }
                 }
             };
 
@@ -212,15 +223,12 @@ app.registerExtension({
                 node.setDirtyCanvas(true, true);
             };
 
-            const getActiveScene = scenes => scenes.find(s => s.selected) || scenes[0];
-
             // 🪟 開窗彈窗 Modal 邏輯
-            els.btnOpenModal.onclick = () => {
-                openDictModal();
-            };
+            els.btnOpenModal.onclick = () => openDictModal();
 
             function openDictModal() {
                 const data = getData();
+                syncActiveInputs(data);
 
                 const overlay = document.createElement("div");
                 overlay.style.cssText = `
@@ -277,7 +285,7 @@ app.registerExtension({
                                 <option value="ANY" ${curType === "ANY" || curType === "JSON" ? "selected" : ""}>ANY</option>
                             </select>
                             <input type="text" placeholder="主場預設值" value="${gItem.default ?? ""}" style="flex: 1; background:#181818; color:#fff; border:1px solid #444; border-radius:3px; padding:4px;" data-field="default">
-                            <button style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:4px 8px; cursor:pointer;" data-del="${idx}">🗑️</button>
+                            <button style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:4px 8px; cursor:pointer;" data-del="${idx}">🗑</button>
                         `;
 
                         row.querySelector('[data-field="key"]').oninput = (e) => { gItem.key = e.target.value; };
@@ -294,38 +302,30 @@ app.registerExtension({
                     renderModalList();
                 };
 
-                // 🛑 驗證全域設定的主邏輯
                 const validateGlobalDict = () => {
                     const keys = new Set();
                     for (let i = 0; i < data.global_dict.length; i++) {
                         const item = data.global_dict[i];
                         const keyName = (item.key || "").trim();
 
-                        if (!keyName) {
-                            return `第 ${i + 1} 列的 Key 名稱不可為空！`;
-                        }
-                        if (keys.has(keyName)) {
-                            return `重複的 Key 名稱：「${keyName}」！Key 名稱必須唯一。`;
-                        }
+                        if (!keyName) return `第 ${i + 1} 列的 Key 名稱不可為空！`;
+                        if (keys.has(keyName)) return `重複的 Key 名稱：「${keyName}」！Key 名稱必須唯一。`;
                         keys.add(keyName);
 
-                        // 驗證預設值是否符合選定的型態
                         const defVal = item.default ?? "";
                         if (defVal !== "") {
                             const res = validateValue(defVal, item.type);
-                            if (!res.valid) {
-                                return `Key 「${keyName}」的預設值類型不符合 [${item.type}]：\n${res.error} (當前輸入: "${defVal}")`;
-                            }
+                            if (!res.valid) return `Key 「${keyName}」的預設值類型不符合 [${item.type}]：\n${res.error} (當前輸入: "${defVal}")`;
                         }
                     }
-                    return null; // 無錯誤
+                    return null;
                 };
 
                 const saveAndCloseModal = () => {
                     const errorMsg = validateGlobalDict();
                     if (errorMsg) {
                         alert(`⚠️ 設定資料無效，無法儲存：\n\n${errorMsg}`);
-                        return; // 阻止儲存與關閉
+                        return;
                     }
                     saveData(data, renderUI);
                     document.body.removeChild(overlay);
@@ -337,7 +337,6 @@ app.registerExtension({
             }
 
             function renderUI() {
-                // 📏 恢復已儲存的 Prompt 框高度
                 if (node.properties?.prompt_height) {
                     els.inputPrompt.style.height = node.properties.prompt_height;
                 }
@@ -353,10 +352,13 @@ app.registerExtension({
                     const isActive = !!s.selected;
                     card.style.cssText = `flex: 0 0 auto; padding: 6px 10px; background: ${isActive ? "#007acc" : "#2d2d2d"}; border: 2px solid ${isActive ? "#00a2ff" : "#444"}; border-radius: 6px; cursor: pointer; text-align: center; user-select: none;`;
                     card.innerHTML = `<div style="font-weight: bold; color: ${isActive ? "#fff" : "#ccc"};">#${idx}</div><div style="font-size: 10px; opacity: 0.8; margin-top: 2px;">${s.duration || 0}s | 🖼️${(s.images || []).length} 🎵${(s.audios || []).length}</div>`;
+                    
                     card.onclick = () => {
-                        list.forEach(item => item.selected = false);
-                        s.selected = true;
-                        saveData(data, renderUI);
+                        const freshData = getData();
+                        syncActiveInputs(freshData); // 保存當前 Clip 輸入值
+                        freshData.scenes.forEach(item => item.selected = false);
+                        if (freshData.scenes[idx]) freshData.scenes[idx].selected = true;
+                        saveData(freshData, renderUI);
                     };
                     els.stripContainer.appendChild(card);
                 });
@@ -368,10 +370,11 @@ app.registerExtension({
                 activeScene.audios = activeScene.audios || [];
                 activeScene.dict_params = activeScene.dict_params || {};
 
+                // 正確為當前選中的 Clip 填入對應的 Duration 和 Prompt
                 els.inputDuration.value = activeScene.duration ?? 3.0;
                 els.inputPrompt.value = activeScene.prompt ?? "";
 
-                // 渲染當前 Clip 的 Dict 設定
+                // 渲染 Dict 設定
                 els.clipDictContainer.innerHTML = data.global_dict.length === 0 ? `<span style="color:#777;">尚未設定全域 Dict 範本（請點擊上方按鈕開窗編輯）。</span>` : "";
                 data.global_dict.forEach((gItem) => {
                     if (!gItem.key) return;
@@ -395,19 +398,10 @@ app.registerExtension({
                                 <option value="true" ${String(curVal) === "true" ? "selected" : ""}>true</option>
                                 <option value="false" ${String(curVal) === "false" ? "selected" : ""}>false</option>
                             </select>`;
-                    } else if (keyType === "INT") {
+                    } else if (keyType === "INT" || keyType === "FLOAT" || keyType === "NUMBER") {
                         const curVal = isDefault ? globalDefVal : (clipParam.value ?? "");
                         inputHtml = `
-                            <input type="number" step="1" 
-                                   value="${curVal}" 
-                                   placeholder="${isDefault ? `(預設: ${globalDefVal})` : ''}" 
-                                   ${isDefault ? "disabled" : ""} 
-                                   style="flex:1; background:#111; color:${isDefault ? "#888" : "#fff"}; border:1px solid #444; border-radius:3px; padding:2px;" 
-                                   data-val-input>`;
-                    } else if (keyType === "FLOAT" || keyType === "NUMBER") {
-                        const curVal = isDefault ? globalDefVal : (clipParam.value ?? "");
-                        inputHtml = `
-                            <input type="number" step="any" 
+                            <input type="number" step="${keyType === "INT" ? "1" : "any"}" 
                                    value="${curVal}" 
                                    placeholder="${isDefault ? `(預設: ${globalDefVal})` : ''}" 
                                    ${isDefault ? "disabled" : ""} 
@@ -433,11 +427,15 @@ app.registerExtension({
                     `;
 
                     row.querySelector('[data-use-default]').onchange = (e) => {
-                        clipParam.use_default = e.target.checked;
-                        if (!clipParam.use_default && clipParam.value === undefined) {
-                            clipParam.value = globalDefVal;
+                        const freshData = getData();
+                        const active = getActiveScene(freshData.scenes);
+                        if (active) {
+                            const p = active.dict_params[keyName] || { use_default: true, value: globalDefVal };
+                            p.use_default = e.target.checked;
+                            if (!p.use_default && p.value === undefined) p.value = globalDefVal;
+                            active.dict_params[keyName] = p;
                         }
-                        saveData(data, renderUI);
+                        saveData(freshData, renderUI);
                     };
 
                     const valInput = row.querySelector('[data-val-input]');
@@ -451,8 +449,14 @@ app.registerExtension({
                         } else {
                             valInput.style.borderColor = "#444";
                             valInput.title = "";
-                            clipParam.value = val;
-                            saveData(data);
+                            const freshData = getData();
+                            const active = getActiveScene(freshData.scenes);
+                            if (active) {
+                                const p = active.dict_params[keyName] || { use_default: true, value: globalDefVal };
+                                p.value = val;
+                                active.dict_params[keyName] = p;
+                                saveData(freshData);
+                            }
                         }
                     };
 
@@ -466,9 +470,14 @@ app.registerExtension({
                     const item = document.createElement("div");
                     item.style.cssText = `flex: 0 0 auto; padding: 2px; border: 2px solid ${isSel ? "#00a2ff" : "#444"}; border-radius: 4px; cursor: pointer; background: #151515;`;
                     item.innerHTML = `<img src="${ApiService.getMediaUrl(imgItem)}" style="width: 48px; height: 48px; object-fit: cover; display: block; border-radius: 2px;">`;
+                    
                     item.onclick = () => {
-                        activeScene.selected_img_idx = iIdx;
-                        saveData(data, renderUI);
+                        const freshData = getData();
+                        const active = getActiveScene(freshData.scenes);
+                        if (active) {
+                            active.selected_img_idx = iIdx;
+                            saveData(freshData, renderUI);
+                        }
                     };
                     els.imgListBox.appendChild(item);
                 });
@@ -480,16 +489,22 @@ app.registerExtension({
                     item.style.cssText = `flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; padding: 4px; border: 1px solid ${isSel ? "#00a2ff" : "#444"}; background: ${isSel ? "#004477" : "#1f1f1f"}; border-radius: 4px; cursor: pointer;`;
                     const fileNameStr = typeof audioItem === "object" ? audioItem.name : audioItem;
                     item.innerHTML = `<div style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px;" title="${fileNameStr}">#${aIdx} ${fileNameStr}</div><audio src="${ApiService.getMediaUrl(audioItem)}" controls style="width: 140px; height: 26px;"></audio>`;
+                    
                     item.onclick = (e) => {
                         if (e.target.tagName.toLowerCase() === "audio") return;
-                        activeScene.selected_audio_idx = aIdx;
-                        saveData(data, renderUI);
+                        const freshData = getData();
+                        const active = getActiveScene(freshData.scenes);
+                        if (active) {
+                            active.selected_audio_idx = aIdx;
+                            saveData(freshData, renderUI);
+                        }
                     };
                     els.audioListBox.appendChild(item);
                 });
             }
 
-            els.inputDuration.oninput = () => {
+            // 輸入框即時更新對應當前 Clip
+            els.inputDuration.oninput = els.inputDuration.onchange = () => {
                 const data = getData();
                 const active = getActiveScene(data.scenes);
                 if (active) {
@@ -499,17 +514,18 @@ app.registerExtension({
                 }
             };
 
-            els.inputPrompt.oninput = () => {
+            els.inputPrompt.oninput = els.inputPrompt.onchange = () => {
                 const data = getData();
                 const active = getActiveScene(data.scenes);
                 if (active) {
                     active.prompt = els.inputPrompt.value;
-                    saveData(data);
+                    saveData(data); // 僅更新數據，不刷 UI 保持打字焦點
                 }
             };
 
             $("#btn_add_clip").onclick = () => {
                 const data = getData();
+                syncActiveInputs(data);
                 data.scenes.forEach(s => s.selected = false);
                 data.scenes.push({ duration: 5.0, prompt: "", images: [], audios: [], dict_params: {}, selected: true });
                 saveData(data, renderUI);
@@ -518,6 +534,7 @@ app.registerExtension({
             $("#btn_del_clip").onclick = () => {
                 const data = getData();
                 if (data.scenes.length <= 1) return;
+                syncActiveInputs(data);
                 const idx = data.scenes.findIndex(s => s.selected);
                 data.scenes.splice(idx, 1);
                 data.scenes[Math.min(idx, data.scenes.length - 1)].selected = true;
@@ -526,12 +543,14 @@ app.registerExtension({
 
             $("#btn_left_clip").onclick = () => {
                 const data = getData();
+                syncActiveInputs(data);
                 const idx = data.scenes.findIndex(s => s.selected);
                 if (idx > 0 && moveItem(data.scenes, idx, -1)) saveData(data, renderUI);
             };
 
             $("#btn_right_clip").onclick = () => {
                 const data = getData();
+                syncActiveInputs(data);
                 const idx = data.scenes.findIndex(s => s.selected);
                 if (idx !== -1 && idx < data.scenes.length - 1 && moveItem(data.scenes, idx, 1)) saveData(data, renderUI);
             };

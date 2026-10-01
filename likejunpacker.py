@@ -2,6 +2,7 @@ import torch
 
 class LikeJListUnpacker:
     MAX_OUTPUTS = 32
+    INPUT_IS_LIST = True  # 宣告接收 List 輸入
 
     @classmethod
     def INPUT_TYPES(s):
@@ -17,10 +18,12 @@ class LikeJListUnpacker:
     CATEGORY = "LikeJ"
 
     def unpack(self, input_list):
-        if not isinstance(input_list, (list, tuple)):
-            items = [input_list]
-        else:
-            items = list(input_list)
+        items = []
+        for item in input_list:
+            if isinstance(item, list):
+                items.extend(item)
+            else:
+                items.append(item)
 
         res = []
         for i in range(self.MAX_OUTPUTS):
@@ -33,6 +36,7 @@ class LikeJListUnpacker:
 
 class LikeJImageUnpacker:
     MAX_OUTPUTS = 32
+    INPUT_IS_LIST = True  # 宣告接收 List 輸入
 
     @classmethod
     def INPUT_TYPES(s):
@@ -49,15 +53,25 @@ class LikeJImageUnpacker:
 
     def unpack(self, images):
         img_list = []
-        if isinstance(images, list):
-            img_list = images
-        elif isinstance(images, torch.Tensor):
-            if len(images.shape) == 4 and images.shape[0] > 1:
-                img_list = [images[i:i+1] for i in range(images.shape[0])]
-            else:
-                img_list = [images]
-        else:
-            img_list = [images]
+        for item in images:
+            if item is None:
+                continue
+            elif isinstance(item, list):
+                for sub_item in item:
+                    if sub_item is None:
+                        continue
+                    if isinstance(sub_item, torch.Tensor):
+                        if len(sub_item.shape) == 4 and sub_item.shape[0] > 1:
+                            for i in range(sub_item.shape[0]):
+                                img_list.append(sub_item[i:i+1])
+                        else:
+                            img_list.append(sub_item)
+            elif isinstance(item, torch.Tensor):
+                if len(item.shape) == 4 and item.shape[0] > 1:
+                    for i in range(item.shape[0]):
+                        img_list.append(item[i:i+1])
+                else:
+                    img_list.append(item)
 
         res = []
         for i in range(self.MAX_OUTPUTS):
@@ -70,6 +84,7 @@ class LikeJImageUnpacker:
 
 class LikeJAudioUnpacker:
     MAX_OUTPUTS = 32
+    INPUT_IS_LIST = True  # 宣告接收 List 輸入
 
     @classmethod
     def INPUT_TYPES(s):
@@ -82,14 +97,19 @@ class LikeJAudioUnpacker:
     RETURN_TYPES = tuple(["AUDIO"] * MAX_OUTPUTS)
     RETURN_NAMES = tuple([f"audio_{i}" for i in range(MAX_OUTPUTS)])
     FUNCTION = "unpack"
-    CATEGORY = "LikeJ"
+    Category = "LikeJ"
 
     def unpack(self, audios):
         audio_list = []
-        if isinstance(audios, list):
-            audio_list = audios
-        else:
-            audio_list = [audios]
+        for item in audios:
+            if item is None:
+                continue
+            elif isinstance(item, list):
+                for sub_item in item:
+                    if sub_item is not None:
+                        audio_list.append(sub_item)
+            else:
+                audio_list.append(item)
 
         res = []
         for i in range(self.MAX_OUTPUTS):
@@ -98,4 +118,3 @@ class LikeJAudioUnpacker:
             else:
                 res.append(None)
         return tuple(res)
-
