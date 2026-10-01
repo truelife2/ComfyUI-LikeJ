@@ -198,7 +198,7 @@ app.registerExtension({
                     propName: "kv_data",
                     hasValue: true,
                     addBtnText: "+ Add Key-Value",
-                    createDefaultItem: (idx) => ({ key: `Key_${idx}`, type: "STRING", value: "" })
+                    createDefaultItem: (idx) => ({ key: `key_${idx}`, type: "STRING", value: "" })
                 });
             };
 
