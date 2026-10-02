@@ -110,7 +110,6 @@ app.registerExtension({
                     <button id="btn_del_clip" style="flex:1; padding:4px; background:#882d2d; color:#fff; border:none; border-radius:4px; cursor:pointer;">🗑️️ 刪除</button>
                     <button id="btn_left_clip" style="flex:1; padding:4px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;">◀ 左移</button>
                     <button id="btn_right_clip" style="flex:1; padding:4px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;">▶ 右移</button>
-               
                 </div>
 
                 <hr style="border:0; border-top:1px solid #333; margin:2px 0;">
@@ -218,7 +217,7 @@ app.registerExtension({
                     if (els.inputPrompt) active.prompt = els.inputPrompt.value;
                     if (els.inputDuration) {
                         const val = parseFloat(els.inputDuration.value);
-                        active.duration = isNaN(val) ? 3.0 : val;
+                        active.duration = isNaN(val) ? 5.0 : val;
                     }
                 }
             };
@@ -667,7 +666,7 @@ app.registerExtension({
                 activeScene.audios = activeScene.audios || [];
                 activeScene.dict_params = activeScene.dict_params || {};
 
-                els.inputDuration.value = activeScene.duration ?? 3.0;
+                els.inputDuration.value = activeScene.duration ?? 5.0;
                 els.inputPrompt.value = activeScene.prompt ?? "";
 
                 // 3. 渲染 Dict 設定
@@ -804,7 +803,7 @@ app.registerExtension({
                 const active = getActiveScene(data.scenes);
                 if (active) {
                     let val = parseFloat(els.inputDuration.value);
-                    active.duration = isNaN(val) ? 3.0 : val;
+                    active.duration = isNaN(val) ? 5.0 : val;
                     saveData(data, renderUI);
                 }
             };
@@ -909,7 +908,7 @@ app.registerExtension({
 
             let data = getData();
             if (data.scenes.length === 0) {
-                data.scenes = [{ duration: 3.0, prompt: "", videos: [], selected_video_idx: 0, video: null, images: [], audios: [], dict_params: {}, selected: true }];
+                data.scenes = [{ duration: 5.0, prompt: "", videos: [], selected_video_idx: 0, video: null, images: [], audios: [], dict_params: {}, selected: true }];
             }
             saveData(data);
 
@@ -920,7 +919,8 @@ app.registerExtension({
             };
 
             renderUI();
-            node.setSize([380, 560]);
+
+            node.setSize([500, 500]);
         };
     }
 });
