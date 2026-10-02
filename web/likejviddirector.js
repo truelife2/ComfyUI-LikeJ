@@ -19,9 +19,20 @@ const ApiService = {
         }
         return null;
     },
+    async getVideos(type = "output") {
+        try {
+            const resp = await api.fetchApi(`/likej/list_videos?type=${type}`);
+            if (resp.ok) {
+                return await resp.json();
+            }
+        } catch (e) {
+            console.error("[LikeJVideoDirector] 獲取影片列表失敗:", e);
+        }
+        return [];
+    },
     getMediaUrl(fileObj) {
         if (!fileObj) return "";
-        const filename = typeof fileObj === "string" ? fileObj : (fileObj.name || "");
+        const filename = typeof fileObj === "string" ? fileObj : (fileObj.filename || fileObj.name || "");
         const subfolder = typeof fileObj === "string" ? "" : (fileObj.subfolder || "");
         const type = typeof fileObj === "string" ? "input" : (fileObj.type || "input");
         return api.apiURL(`/view?${new URLSearchParams({ filename, subfolder, type })}`);
@@ -94,10 +105,12 @@ app.registerExtension({
                 <div id="strip_container" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px;"></div>
                 
                 <div style="display: flex; gap: 4px;">
+                    <button id="btn_manage_videos" style="flex:1; padding:4px; background: #2d5a88; color: #fff; border:none; border-radius:4px; cursor:pointer;">🎬 設定分鏡影片</button>
                     <button id="btn_add_clip" style="flex:1; padding:4px; background:#2d5a88; color:#fff; border:none; border-radius:4px; cursor:pointer;">➕ 新增分鏡</button>
-                    <button id="btn_del_clip" style="flex:1; padding:4px; background:#882d2d; color:#fff; border:none; border-radius:4px; cursor:pointer;">🗑️ 刪除</button>
+                    <button id="btn_del_clip" style="flex:1; padding:4px; background:#882d2d; color:#fff; border:none; border-radius:4px; cursor:pointer;">🗑️️ 刪除</button>
                     <button id="btn_left_clip" style="flex:1; padding:4px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;">◀ 左移</button>
                     <button id="btn_right_clip" style="flex:1; padding:4px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;">▶ 右移</button>
+               
                 </div>
 
                 <hr style="border:0; border-top:1px solid #333; margin:2px 0;">
@@ -163,6 +176,7 @@ app.registerExtension({
                 stripContainer: $("#strip_container"),
                 inputDuration: $("#input_duration"),
                 inputPrompt: $("#input_prompt"),
+                btnManageVideos: $("#btn_manage_videos"),
                 clipDictContainer: $("#clip_dict_container"),
                 imgListBox: $("#img_list_box"),
                 fileImg: $("#file_img"),
@@ -182,7 +196,6 @@ app.registerExtension({
 
             const getActiveScene = scenes => scenes.find(s => s.selected) || scenes[0];
 
-            // 1. 純粹的資料讀取函式，無任何 DOM 側瀉影響
             const getData = () => {
                 try {
                     const raw = node.extra_info?.scenes_json || node.properties?.scenes_json;
@@ -199,7 +212,6 @@ app.registerExtension({
                 }
             };
 
-            // 2. 僅在「切換/新增/刪除 Clip 上下文」前，把當前畫面上的值保存到舊 Clip 物件中
             const syncActiveInputs = (data) => {
                 const active = getActiveScene(data.scenes);
                 if (active) {
@@ -223,7 +235,266 @@ app.registerExtension({
                 node.setDirtyCanvas(true, true);
             };
 
-            // 🪟 開窗彈窗 Modal 邏輯
+            // 🎬 影片管理與選用彈窗 Modal 邏輯
+            function openVideoManageModal(sceneIdx) {
+                const data = getData();
+                syncActiveInputs(data);
+                const scene = data.scenes[sceneIdx];
+                if (!scene) return;
+
+                scene.videos = scene.videos || (scene.video ? [scene.video] : []);
+                scene.selected_video_idx = scene.selected_video_idx ?? 0;
+
+                let currentType = "output";
+                let videoList = [];
+                let selectedFileObj = null;
+
+                const overlay = document.createElement("div");
+                overlay.style.cssText = `
+                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                    background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px);
+                    display: flex; align-items: center; justify-content: center;
+                    z-index: 10000; font-family: sans-serif; color: #ddd; font-size: 12px;
+                `;
+
+                const stopEvent = e => e.stopPropagation();
+                overlay.addEventListener("mousedown", stopEvent);
+                overlay.addEventListener("pointerdown", stopEvent);
+                overlay.addEventListener("wheel", stopEvent);
+
+                const dialog = document.createElement("div");
+                dialog.style.cssText = `
+                    background: #222; border: 1px solid #444; border-radius: 8px;
+                    width: 600px; max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden;
+                `;
+
+                dialog.innerHTML = `
+                    <div style="padding: 12px 16px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a;">
+                        <span style="font-size: 14px; font-weight: bold; color: #4db8ff;">🎬 分鏡 #${sceneIdx} 獨立影片清單管理</span>
+                        <button id="modal_close_btn" style="background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer;">✖</button>
+                    </div>
+                    <div style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
+                        
+                        <!-- 1. 當前分鏡影片清單 -->
+                        <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: bold; color: #ffca28;">1. 當前分鏡已選影片 (點擊選擇為主要影片)</span>
+                                <div style="display: flex; gap: 4px;">
+                                    <button id="btn_modal_left" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">◀ 左移</button>
+                                    <button id="btn_modal_right" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">▶ 右移</button>
+                                    <button id="btn_modal_del" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">🗑️ 刪除</button>
+                                </div>
+                            </div>
+                            <div id="modal_scene_videos_box" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 70px; align-items: center;"></div>
+                        </div>
+
+                        <!-- 2. 從伺服器選擇並新增影片 -->
+                        <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 10px;">
+                            <span style="font-weight: bold; color: #4db8ff;">2. 從伺服器選擇並新增影片至清單</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: bold;">來源切換：</span>
+                                <button id="btn_tab_input" style="padding: 4px 12px; border-radius: 4px; border: 1px solid #444; cursor: pointer; background: #333; color: #ccc;">Input 影片庫</button>
+                                <button id="btn_tab_output" style="padding: 4px 12px; border-radius: 4px; border: 1px solid #444; cursor: pointer; background: #333; color: #ccc;">Output 輸出庫</button>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: bold;">選擇檔案：</span>
+                                <select id="select_video_file" style="flex: 1; background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;"></select>
+                            </div>
+                            <div style="background: #111; border: 1px solid #333; border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center; min-height: 140px;">
+                                <video id="modal_video_player" controls style="max-width: 100%; max-height: 180px; border-radius: 4px; display: none;"></video>
+                                <div id="modal_no_video_tip" style="color: #777;">未選擇影片或目錄無影片檔</div>
+                            </div>
+                            <button id="modal_add_to_list_btn" style="background: #2d5a88; color: #fff; border: 1px solid #4a82b8; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">➕ 新增選取影片至此分鏡清單</button>
+                        </div>
+
+                    </div>
+                    <div style="padding: 12px 16px; border-top: 1px solid #333; display: flex; justify-content: flex-end; background: #1a1a1a;">
+                        <button id="modal_finish_btn" style="background: #28a745; color: #fff; border: none; padding: 6px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">完成並儲存</button>
+                    </div>
+                `;
+
+                overlay.appendChild(dialog);
+                document.body.appendChild(overlay);
+
+                const btnInput = dialog.querySelector("#btn_tab_input");
+                const btnOutput = dialog.querySelector("#btn_tab_output");
+                const selectFile = dialog.querySelector("#select_video_file");
+                const videoPlayer = dialog.querySelector("#modal_video_player");
+                const noVideoTip = dialog.querySelector("#modal_no_video_tip");
+
+                // 渲染彈窗上半部：分鏡影片清單
+                const renderModalSceneVideos = () => {
+                    const container = dialog.querySelector("#modal_scene_videos_box");
+                    container.innerHTML = scene.videos.length === 0 ? `<div style="color:#777; font-size:11px;">目前此分鏡暫無影片，請從下方選擇並新增。</div>` : "";
+
+                    scene.videos.forEach((vidItem, vIdx) => {
+                        const isSel = vIdx === scene.selected_video_idx;
+                        const item = document.createElement("div");
+                        item.style.cssText = `
+                            flex: 0 0 auto; width: 90px; padding: 4px; 
+                            border: 2px solid ${isSel ? "#00a2ff" : "#444"}; 
+                            background: ${isSel ? "#004477" : "#222"}; 
+                            border-radius: 4px; cursor: pointer; text-align: center;
+                        `;
+                        const vUrl = ApiService.getMediaUrl(vidItem);
+                        const fname = vidItem.filename || "video";
+
+                        item.innerHTML = `
+                            <video src="${vUrl}" autoplay loop muted playsinline style="width: 100%; height: 50px; object-fit: cover; display: block; border-radius: 2px; pointer-events: none; background: #000;"></video>
+                            <div style="font-size: 9px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;" title="${fname}">#${vIdx} ${fname}</div>
+                        `;
+
+                        item.onclick = () => {
+                            scene.selected_video_idx = vIdx;
+                            scene.video = scene.videos[vIdx];
+                            renderModalSceneVideos();
+                        };
+                        container.appendChild(item);
+                    });
+                };
+
+                // 當前清單控制按鈕事件
+                dialog.querySelector("#btn_modal_del").onclick = () => {
+                    if (scene.videos.length > 0) {
+                        const idx = scene.selected_video_idx || 0;
+                        scene.videos.splice(idx, 1);
+                        scene.selected_video_idx = Math.max(0, idx - 1);
+                        scene.video = scene.videos[scene.selected_video_idx] || null;
+                        renderModalSceneVideos();
+                    }
+                };
+
+                dialog.querySelector("#btn_modal_left").onclick = () => {
+                    if (scene.videos.length > 1) {
+                        const idx = scene.selected_video_idx || 0;
+                        if (moveItem(scene.videos, idx, -1)) {
+                            scene.selected_video_idx = idx - 1;
+                            scene.video = scene.videos[scene.selected_video_idx];
+                            renderModalSceneVideos();
+                        }
+                    }
+                };
+
+                dialog.querySelector("#btn_modal_right").onclick = () => {
+                    if (scene.videos.length > 1) {
+                        const idx = scene.selected_video_idx || 0;
+                        if (moveItem(scene.videos, idx, 1)) {
+                            scene.selected_video_idx = idx + 1;
+                            scene.video = scene.videos[scene.selected_video_idx];
+                            renderModalSceneVideos();
+                        }
+                    }
+                };
+
+                const updateTabStyles = () => {
+                    if (currentType === "input") {
+                        btnInput.style.background = "#2d5a88";
+                        btnInput.style.color = "#fff";
+                        btnInput.style.borderColor = "#00a2ff";
+                        btnOutput.style.background = "#333";
+                        btnOutput.style.color = "#ccc";
+                        btnOutput.style.borderColor = "#444";
+                    } else {
+                        btnOutput.style.background = "#2d5a88";
+                        btnOutput.style.color = "#fff";
+                        btnOutput.style.borderColor = "#00a2ff";
+                        btnInput.style.background = "#333";
+                        btnInput.style.color = "#ccc";
+                        btnInput.style.borderColor = "#444";
+                    }
+                };
+
+                const updatePreview = () => {
+                    if (selectedFileObj) {
+                        videoPlayer.src = ApiService.getMediaUrl(selectedFileObj);
+                        videoPlayer.style.display = "block";
+                        noVideoTip.style.display = "none";
+                    } else {
+                        videoPlayer.src = "";
+                        videoPlayer.style.display = "none";
+                        noVideoTip.style.display = "block";
+                    }
+                };
+
+                const loadVideoList = async (type) => {
+                    currentType = type;
+                    updateTabStyles();
+                    selectFile.innerHTML = `<option value="">載入中...</option>`;
+                    videoList = await ApiService.getVideos(type);
+                    selectFile.innerHTML = "";
+
+                    if (videoList.length === 0) {
+                        selectFile.innerHTML = `<option value="">(此資料夾暫無影片檔案)</option>`;
+                        selectedFileObj = null;
+                    } else {
+                        videoList.forEach((v, i) => {
+                            const opt = document.createElement("option");
+                            opt.value = i;
+                            const dateStr = v.mtime ? new Date(v.mtime * 1000).toLocaleString() : "";
+                            const pathStr = v.subfolder ? `${v.subfolder}/${v.filename}` : v.filename;
+                            opt.textContent = `${pathStr} (${dateStr})`;
+                            selectFile.appendChild(opt);
+                        });
+
+                        selectFile.selectedIndex = 0;
+                        selectedFileObj = videoList[0];
+                    }
+                    updatePreview();
+                };
+
+                btnInput.onclick = () => loadVideoList("input");
+                btnOutput.onclick = () => loadVideoList("output");
+
+                selectFile.onchange = () => {
+                    const idx = parseInt(selectFile.value);
+                    if (!isNaN(idx) && videoList[idx]) {
+                        selectedFileObj = videoList[idx];
+                    } else {
+                        selectedFileObj = null;
+                    }
+                    updatePreview();
+                };
+
+                dialog.querySelector("#modal_add_to_list_btn").onclick = () => {
+                    if (selectedFileObj) {
+                        const existIdx = scene.videos.findIndex(v =>
+                            v.filename === selectedFileObj.filename &&
+                            (v.subfolder || "") === (selectedFileObj.subfolder || "") &&
+                            (v.type || "output") === (selectedFileObj.type || "output")
+                        );
+
+                        if (existIdx !== -1) {
+                            scene.selected_video_idx = existIdx;
+                        } else {
+                            scene.videos.push(selectedFileObj);
+                            scene.selected_video_idx = scene.videos.length - 1;
+                        }
+                        scene.video = scene.videos[scene.selected_video_idx];
+                        renderModalSceneVideos();
+                    }
+                };
+
+                const closeModalAndSave = () => {
+                    const freshData = getData();
+                    syncActiveInputs(freshData);
+                    if (freshData.scenes[sceneIdx]) {
+                        freshData.scenes[sceneIdx].videos = scene.videos;
+                        freshData.scenes[sceneIdx].selected_video_idx = scene.selected_video_idx;
+                        freshData.scenes[sceneIdx].video = scene.video;
+                        saveData(freshData, renderUI);
+                    }
+                    document.body.removeChild(overlay);
+                };
+
+                dialog.querySelector("#modal_close_btn").onclick = closeModalAndSave;
+                dialog.querySelector("#modal_finish_btn").onclick = closeModalAndSave;
+
+                renderModalSceneVideos();
+                loadVideoList(currentType);
+            }
+
+            // 🪟 全域 Dict 開窗彈窗
             els.btnOpenModal.onclick = () => openDictModal();
 
             function openDictModal() {
@@ -346,16 +617,40 @@ app.registerExtension({
                 const totalDur = list.reduce((sum, s) => sum + (parseFloat(s.duration) || 0), 0);
                 els.infoBar.innerText = `Clips: ${list.length} | 總時長: ${totalDur.toFixed(1)}s`;
 
+                // 1. 渲染頂部分鏡卡 (直接嵌入影片縮圖與預覽)
                 els.stripContainer.innerHTML = "";
                 list.forEach((s, idx) => {
+                    s.videos = s.videos || (s.video ? [s.video] : []);
+                    s.selected_video_idx = s.selected_video_idx ?? 0;
+                    const activeVid = s.videos[s.selected_video_idx] || s.video;
+                    const vidUrl = activeVid ? ApiService.getMediaUrl(activeVid) : "";
+
                     const card = document.createElement("div");
                     const isActive = !!s.selected;
-                    card.style.cssText = `flex: 0 0 auto; padding: 6px 10px; background: ${isActive ? "#007acc" : "#2d2d2d"}; border: 2px solid ${isActive ? "#00a2ff" : "#444"}; border-radius: 6px; cursor: pointer; text-align: center; user-select: none;`;
-                    card.innerHTML = `<div style="font-weight: bold; color: ${isActive ? "#fff" : "#ccc"};">#${idx}</div><div style="font-size: 10px; opacity: 0.8; margin-top: 2px;">${s.duration || 0}s | 🖼️${(s.images || []).length} 🎵${(s.audios || []).length}</div>`;
-                    
+                    card.style.cssText = `
+                        flex: 0 0 auto; width: 85px; padding: 5px; 
+                        background: ${isActive ? "#007acc" : "#2d2d2d"}; 
+                        border: 2px solid ${isActive ? "#00a2ff" : "#444"}; 
+                        border-radius: 6px; cursor: pointer; text-align: center; user-select: none;
+                        display: flex; flex-direction: column; align-items: center; gap: 4px;
+                    `;
+
+                    let previewHtml = "";
+                    if (vidUrl) {
+                        previewHtml = `<video src="${vidUrl}" autoplay loop muted playsinline style="width: 100%; height: 50px; object-fit: cover; border-radius: 4px; pointer-events: none; background: #000;"></video>`;
+                    } else {
+                        previewHtml = `<div style="width: 100%; height: 50px; background: #181818; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px; border: 1px dashed #444;">無影片</div>`;
+                    }
+
+                    card.innerHTML = `
+                        <div style="font-weight: bold; color: ${isActive ? "#fff" : "#ccc"}; font-size: 11px;">#${idx} (${s.duration || 0}s)</div>
+                        ${previewHtml}
+                        <div style="font-size: 9px; opacity: 0.85; color: #ddd; margin-top: 1px;">🎬${s.videos.length} 🖼️${(s.images || []).length} 🎵${(s.audios || []).length}</div>
+                    `;
+
                     card.onclick = () => {
                         const freshData = getData();
-                        syncActiveInputs(freshData); // 保存當前 Clip 輸入值
+                        syncActiveInputs(freshData);
                         freshData.scenes.forEach(item => item.selected = false);
                         if (freshData.scenes[idx]) freshData.scenes[idx].selected = true;
                         saveData(freshData, renderUI);
@@ -366,15 +661,16 @@ app.registerExtension({
                 const activeScene = getActiveScene(list);
                 if (!activeScene) return;
 
+                activeScene.videos = activeScene.videos || (activeScene.video ? [activeScene.video] : []);
+                activeScene.selected_video_idx = activeScene.selected_video_idx ?? 0;
                 activeScene.images = activeScene.images || [];
                 activeScene.audios = activeScene.audios || [];
                 activeScene.dict_params = activeScene.dict_params || {};
 
-                // 正確為當前選中的 Clip 填入對應的 Duration 和 Prompt
                 els.inputDuration.value = activeScene.duration ?? 3.0;
                 els.inputPrompt.value = activeScene.prompt ?? "";
 
-                // 渲染 Dict 設定
+                // 3. 渲染 Dict 設定
                 els.clipDictContainer.innerHTML = data.global_dict.length === 0 ? `<span style="color:#777;">尚未設定全域 Dict 範本（請點擊上方按鈕開窗編輯）。</span>` : "";
                 data.global_dict.forEach((gItem) => {
                     if (!gItem.key) return;
@@ -463,14 +759,14 @@ app.registerExtension({
                     els.clipDictContainer.appendChild(row);
                 });
 
-                // 媒體資源列表渲染
+                // 4. 媒體資源列表渲染 (圖片與音訊)
                 els.imgListBox.innerHTML = activeScene.images.length === 0 ? `<span style="font-size:10px; color:#777; align-self:center;">暫無參考圖</span>` : "";
                 activeScene.images.forEach((imgItem, iIdx) => {
                     const isSel = iIdx === (activeScene.selected_img_idx || 0);
                     const item = document.createElement("div");
                     item.style.cssText = `flex: 0 0 auto; padding: 2px; border: 2px solid ${isSel ? "#00a2ff" : "#444"}; border-radius: 4px; cursor: pointer; background: #151515;`;
                     item.innerHTML = `<img src="${ApiService.getMediaUrl(imgItem)}" style="width: 48px; height: 48px; object-fit: cover; display: block; border-radius: 2px;">`;
-                    
+
                     item.onclick = () => {
                         const freshData = getData();
                         const active = getActiveScene(freshData.scenes);
@@ -489,7 +785,7 @@ app.registerExtension({
                     item.style.cssText = `flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; padding: 4px; border: 1px solid ${isSel ? "#00a2ff" : "#444"}; background: ${isSel ? "#004477" : "#1f1f1f"}; border-radius: 4px; cursor: pointer;`;
                     const fileNameStr = typeof audioItem === "object" ? audioItem.name : audioItem;
                     item.innerHTML = `<div style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px;" title="${fileNameStr}">#${aIdx} ${fileNameStr}</div><audio src="${ApiService.getMediaUrl(audioItem)}" controls style="width: 140px; height: 26px;"></audio>`;
-                    
+
                     item.onclick = (e) => {
                         if (e.target.tagName.toLowerCase() === "audio") return;
                         const freshData = getData();
@@ -503,7 +799,6 @@ app.registerExtension({
                 });
             }
 
-            // 輸入框即時更新對應當前 Clip
             els.inputDuration.oninput = els.inputDuration.onchange = () => {
                 const data = getData();
                 const active = getActiveScene(data.scenes);
@@ -519,15 +814,22 @@ app.registerExtension({
                 const active = getActiveScene(data.scenes);
                 if (active) {
                     active.prompt = els.inputPrompt.value;
-                    saveData(data); // 僅更新數據，不刷 UI 保持打字焦點
+                    saveData(data);
                 }
+            };
+
+            els.btnManageVideos.onclick = () => {
+                const data = getData();
+                const active = getActiveScene(data.scenes);
+                const activeIdx = data.scenes.findIndex(s => s === active);
+                openVideoManageModal(activeIdx);
             };
 
             $("#btn_add_clip").onclick = () => {
                 const data = getData();
                 syncActiveInputs(data);
                 data.scenes.forEach(s => s.selected = false);
-                data.scenes.push({ duration: 5.0, prompt: "", images: [], audios: [], dict_params: {}, selected: true });
+                data.scenes.push({ duration: 5.0, prompt: "", videos: [], selected_video_idx: 0, video: null, images: [], audios: [], dict_params: {}, selected: true });
                 saveData(data, renderUI);
             };
 
@@ -607,7 +909,7 @@ app.registerExtension({
 
             let data = getData();
             if (data.scenes.length === 0) {
-                data.scenes = [{ duration: 3.0, prompt: "", images: [], audios: [], dict_params: {}, selected: true }];
+                data.scenes = [{ duration: 3.0, prompt: "", videos: [], selected_video_idx: 0, video: null, images: [], audios: [], dict_params: {}, selected: true }];
             }
             saveData(data);
 
@@ -618,7 +920,7 @@ app.registerExtension({
             };
 
             renderUI();
-            node.setSize([380, 580]);
+            node.setSize([380, 560]);
         };
     }
 });
