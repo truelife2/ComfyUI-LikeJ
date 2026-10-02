@@ -1,6 +1,9 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
+// ==========================================
+// 1. API 服務封裝
+// ==========================================
 const ApiService = {
     async uploadFile(file, type = "image") {
         if (!file) return null;
@@ -19,17 +22,17 @@ const ApiService = {
         }
         return null;
     },
+
     async getVideos(type = "output") {
         try {
             const resp = await api.fetchApi(`/likej/list_videos?type=${type}`);
-            if (resp.ok) {
-                return await resp.json();
-            }
+            if (resp.ok) return await resp.json();
         } catch (e) {
             console.error("[LikeJVideoDirector] 獲取影片列表失敗:", e);
         }
         return [];
     },
+
     getMediaUrl(fileObj) {
         if (!fileObj) return "";
         const filename = typeof fileObj === "string" ? fileObj : (fileObj.filename || fileObj.name || "");
@@ -39,6 +42,9 @@ const ApiService = {
     }
 };
 
+// ==========================================
+// 2. 通用工具函式
+// ==========================================
 const moveItem = (arr, idx, dir) => {
     const target = idx + dir;
     if (target < 0 || target >= arr.length) return false;
@@ -75,6 +81,53 @@ const validateValue = (val, type) => {
     return { valid: true, error: "" };
 };
 
+// 通用 Modal 彈窗建立器
+const createModal = ({ title, width = "600px", bodyHtml, footerHtml, onClose }) => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 10000; font-family: sans-serif; color: #ddd; font-size: 12px;
+    `;
+
+    const stopEvents = e => e.stopPropagation();
+    ["mousedown", "pointerdown", "wheel", "keydown"].forEach(evt => overlay.addEventListener(evt, stopEvents));
+
+    const dialog = document.createElement("div");
+    dialog.style.cssText = `
+        background: #222; border: 1px solid #444; border-radius: 8px;
+        width: ${width}; max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden;
+    `;
+
+    dialog.innerHTML = `
+        <div style="padding: 12px 16px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a;">
+            <span style="font-size: 14px; font-weight: bold; color: #4db8ff;">${title}</span>
+            <button id="modal_close_x" style="background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer;">✖</button>
+        </div>
+        <div id="modal_body_content" style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+            ${bodyHtml}
+        </div>
+        ${footerHtml ? `<div style="padding: 12px 16px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a;">${footerHtml}</div>` : ""}
+    `;
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const closeModal = () => {
+        if (onClose) onClose();
+        if (overlay.parentNode) document.body.removeChild(overlay);
+    };
+
+    dialog.querySelector("#modal_close_x").onclick = closeModal;
+
+    return { overlay, dialog, closeModal };
+};
+
+// ==========================================
+// 3. ComfyUI 擴充節點註冊
+// ==========================================
 app.registerExtension({
     name: "LikeJ.VideoDirector",
     async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -88,6 +141,7 @@ app.registerExtension({
             node.extra_info = node.extra_info || {};
             node.properties = node.properties || {};
 
+            // 建立 UI 容器
             const container = document.createElement("div");
             container.style.cssText = `
                 display: flex; flex-direction: column; gap: 8px;
@@ -107,7 +161,7 @@ app.registerExtension({
                 <div style="display: flex; gap: 4px;">
                     <button id="btn_manage_videos" style="flex:1; padding:4px; background: #2d5a88; color: #fff; border:none; border-radius:4px; cursor:pointer;">🎬 設定分鏡影片</button>
                     <button id="btn_add_clip" style="flex:1; padding:4px; background:#2d5a88; color:#fff; border:none; border-radius:4px; cursor:pointer;">➕ 新增分鏡</button>
-                    <button id="btn_del_clip" style="flex:1; padding:4px; background:#882d2d; color:#fff; border:none; border-radius:4px; cursor:pointer;">🗑️️ 刪除</button>
+                    <button id="btn_del_clip" style="flex:1; padding:4px; background:#882d2d; color:#fff; border:none; border-radius:4px; cursor:pointer;">🗑 刪除</button>
                     <button id="btn_left_clip" style="flex:1; padding:4px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;">◀ 左移</button>
                     <button id="btn_right_clip" style="flex:1; padding:4px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;">▶ 右移</button>
                 </div>
@@ -164,8 +218,12 @@ app.registerExtension({
             `;
 
             node.addDOMWidget("scenes_json_dom", "dom", container, {
-                getValue() { return node.extra_info?.scenes_json || "{}"; },
-                setValue(v) { node.extra_info = node.extra_info || {}; node.extra_info.scenes_json = v; }
+                getValue() { return JSON.stringify(node._scenesCache || getData()); },
+                setValue(v) { 
+                    node.extra_info = node.extra_info || {}; 
+                    node.extra_info.scenes_json = v; 
+                    node._scenesCache = null; 
+                }
             });
 
             const $ = sel => container.querySelector(sel);
@@ -183,6 +241,7 @@ app.registerExtension({
                 fileAudio: $("#file_audio")
             };
 
+            // ResizeObserver 監聽 Prompt 高度，並處理卸載銷毀防止記憶體洩漏
             const savePromptHeight = () => {
                 const h = els.inputPrompt.style.height;
                 if (h && h !== node.properties.prompt_height) {
@@ -190,12 +249,20 @@ app.registerExtension({
                     node.setDirtyCanvas(true, true);
                 }
             };
-            new ResizeObserver(savePromptHeight).observe(els.inputPrompt);
+            const resizeObserver = new ResizeObserver(savePromptHeight);
+            resizeObserver.observe(els.inputPrompt);
             els.inputPrompt.addEventListener("mouseup", savePromptHeight);
 
-            const getActiveScene = scenes => scenes.find(s => s.selected) || scenes[0];
+            const onRemoved = this.onRemoved;
+            this.onRemoved = function () {
+                if (onRemoved) onRemoved.apply(this, arguments);
+                resizeObserver.disconnect();
+            };
 
+            // 數據快取與存取
             const getData = () => {
+                if (node._scenesCache) return node._scenesCache;
+
                 try {
                     const raw = node.extra_info?.scenes_json || node.properties?.scenes_json;
                     let parsed = typeof raw === "string" ? JSON.parse(raw) : (raw || {});
@@ -205,11 +272,15 @@ app.registerExtension({
                     if (parsed.scenes.length > 0 && !parsed.scenes.some(s => s.selected)) {
                         parsed.scenes[0].selected = true;
                     }
+                    node._scenesCache = parsed;
                     return parsed;
                 } catch (e) {
-                    return { global_dict: [], scenes: [] };
+                    node._scenesCache = { global_dict: [], scenes: [] };
+                    return node._scenesCache;
                 }
             };
+
+            const getActiveScene = scenes => scenes.find(s => s.selected) || scenes[0];
 
             const syncActiveInputs = (data) => {
                 const active = getActiveScene(data.scenes);
@@ -223,6 +294,7 @@ app.registerExtension({
             };
 
             const saveData = (data, renderCb) => {
+                node._scenesCache = data;
                 const jsonStr = JSON.stringify(data);
                 node.extra_info = node.extra_info || {};
                 node.properties = node.properties || {};
@@ -234,7 +306,7 @@ app.registerExtension({
                 node.setDirtyCanvas(true, true);
             };
 
-            // 🎬 影片管理與選用彈窗 Modal 邏輯
+            // 🎬 影片管理彈窗
             function openVideoManageModal(sceneIdx) {
                 const data = getData();
                 syncActiveInputs(data);
@@ -248,73 +320,62 @@ app.registerExtension({
                 let videoList = [];
                 let selectedFileObj = null;
 
-                const overlay = document.createElement("div");
-                overlay.style.cssText = `
-                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                    background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px);
-                    display: flex; align-items: center; justify-content: center;
-                    z-index: 10000; font-family: sans-serif; color: #ddd; font-size: 12px;
+                const bodyHtml = `
+                    <!-- 1. 當前分鏡影片清單 -->
+                    <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-weight: bold; color: #ffca28;">1. 當前分鏡已選影片 (點擊選擇為主要影片)</span>
+                            <div style="display: flex; gap: 4px;">
+                                <button id="btn_modal_left" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">◀ 左移</button>
+                                <button id="btn_modal_right" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">▶ 右移</button>
+                                <button id="btn_modal_del" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">🗑️ 刪除</button>
+                            </div>
+                        </div>
+                        <div id="modal_scene_videos_box" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 70px; align-items: center;"></div>
+                    </div>
+
+                    <!-- 2. 從伺服器選擇並新增影片 -->
+                    <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 10px;">
+                        <span style="font-weight: bold; color: #4db8ff;">2. 從伺服器選擇並新增影片至清單</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: bold;">來源切換：</span>
+                            <button id="btn_tab_input" style="padding: 4px 12px; border-radius: 4px; border: 1px solid #444; cursor: pointer; background: #333; color: #ccc;">Input 影片庫</button>
+                            <button id="btn_tab_output" style="padding: 4px 12px; border-radius: 4px; border: 1px solid #444; cursor: pointer; background: #333; color: #ccc;">Output 輸出庫</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: bold;">選擇檔案：</span>
+                            <select id="select_video_file" style="flex: 1; background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;"></select>
+                        </div>
+                        <div style="background: #111; border: 1px solid #333; border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center; min-height: 140px;">
+                            <video id="modal_video_player" controls style="max-width: 100%; max-height: 180px; border-radius: 4px; display: none;"></video>
+                            <div id="modal_no_video_tip" style="color: #777;">未選擇影片或目錄無影片檔</div>
+                        </div>
+                        <button id="modal_add_to_list_btn" style="background: #2d5a88; color: #fff; border: 1px solid #4a82b8; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">➕ 新增選取影片至此分鏡清單</button>
+                    </div>
                 `;
 
-                const stopEvent = e => e.stopPropagation();
-                overlay.addEventListener("mousedown", stopEvent);
-                overlay.addEventListener("pointerdown", stopEvent);
-                overlay.addEventListener("wheel", stopEvent);
-
-                const dialog = document.createElement("div");
-                dialog.style.cssText = `
-                    background: #222; border: 1px solid #444; border-radius: 8px;
-                    width: 600px; max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column;
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden;
-                `;
-
-                dialog.innerHTML = `
-                    <div style="padding: 12px 16px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a;">
-                        <span style="font-size: 14px; font-weight: bold; color: #4db8ff;">🎬 分鏡 #${sceneIdx} 獨立影片清單管理</span>
-                        <button id="modal_close_btn" style="background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer;">✖</button>
-                    </div>
-                    <div style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
-                        
-                        <!-- 1. 當前分鏡影片清單 -->
-                        <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <span style="font-weight: bold; color: #ffca28;">1. 當前分鏡已選影片 (點擊選擇為主要影片)</span>
-                                <div style="display: flex; gap: 4px;">
-                                    <button id="btn_modal_left" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">◀ 左移</button>
-                                    <button id="btn_modal_right" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">▶ 右移</button>
-                                    <button id="btn_modal_del" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">🗑️ 刪除</button>
-                                </div>
-                            </div>
-                            <div id="modal_scene_videos_box" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 70px; align-items: center;"></div>
-                        </div>
-
-                        <!-- 2. 從伺服器選擇並新增影片 -->
-                        <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 10px;">
-                            <span style="font-weight: bold; color: #4db8ff;">2. 從伺服器選擇並新增影片至清單</span>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-weight: bold;">來源切換：</span>
-                                <button id="btn_tab_input" style="padding: 4px 12px; border-radius: 4px; border: 1px solid #444; cursor: pointer; background: #333; color: #ccc;">Input 影片庫</button>
-                                <button id="btn_tab_output" style="padding: 4px 12px; border-radius: 4px; border: 1px solid #444; cursor: pointer; background: #333; color: #ccc;">Output 輸出庫</button>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-weight: bold;">選擇檔案：</span>
-                                <select id="select_video_file" style="flex: 1; background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;"></select>
-                            </div>
-                            <div style="background: #111; border: 1px solid #333; border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center; min-height: 140px;">
-                                <video id="modal_video_player" controls style="max-width: 100%; max-height: 180px; border-radius: 4px; display: none;"></video>
-                                <div id="modal_no_video_tip" style="color: #777;">未選擇影片或目錄無影片檔</div>
-                            </div>
-                            <button id="modal_add_to_list_btn" style="background: #2d5a88; color: #fff; border: 1px solid #4a82b8; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;">➕ 新增選取影片至此分鏡清單</button>
-                        </div>
-
-                    </div>
-                    <div style="padding: 12px 16px; border-top: 1px solid #333; display: flex; justify-content: flex-end; background: #1a1a1a;">
+                const footerHtml = `
+                    <div style="display: flex; justify-content: flex-end; width: 100%;">
                         <button id="modal_finish_btn" style="background: #28a745; color: #fff; border: none; padding: 6px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">完成並儲存</button>
                     </div>
                 `;
 
-                overlay.appendChild(dialog);
-                document.body.appendChild(overlay);
+                const { dialog, closeModal } = createModal({
+                    title: `🎬 分鏡 #${sceneIdx} 獨立影片清單管理`,
+                    width: "600px",
+                    bodyHtml,
+                    footerHtml,
+                    onClose: () => {
+                        const freshData = getData();
+                        syncActiveInputs(freshData);
+                        if (freshData.scenes[sceneIdx]) {
+                            freshData.scenes[sceneIdx].videos = scene.videos;
+                            freshData.scenes[sceneIdx].selected_video_idx = scene.selected_video_idx;
+                            freshData.scenes[sceneIdx].video = scene.video;
+                            saveData(freshData, renderUI);
+                        }
+                    }
+                });
 
                 const btnInput = dialog.querySelector("#btn_tab_input");
                 const btnOutput = dialog.querySelector("#btn_tab_output");
@@ -322,7 +383,6 @@ app.registerExtension({
                 const videoPlayer = dialog.querySelector("#modal_video_player");
                 const noVideoTip = dialog.querySelector("#modal_no_video_tip");
 
-                // 渲染彈窗上半部：分鏡影片清單
                 const renderModalSceneVideos = () => {
                     const container = dialog.querySelector("#modal_scene_videos_box");
                     container.innerHTML = scene.videos.length === 0 ? `<div style="color:#777; font-size:11px;">目前此分鏡暫無影片，請從下方選擇並新增。</div>` : "";
@@ -340,7 +400,7 @@ app.registerExtension({
                         const fname = vidItem.filename || "video";
 
                         item.innerHTML = `
-                            <video src="${vUrl}" autoplay loop muted playsinline style="width: 100%; height: 50px; object-fit: cover; display: block; border-radius: 2px; pointer-events: none; background: #000;"></video>
+                            <video src="${vUrl}" muted playsinline style="width: 100%; height: 50px; object-fit: cover; display: block; border-radius: 2px; pointer-events: none; background: #000;"></video>
                             <div style="font-size: 9px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;" title="${fname}">#${vIdx} ${fname}</div>
                         `;
 
@@ -353,7 +413,6 @@ app.registerExtension({
                     });
                 };
 
-                // 當前清單控制按鈕事件
                 dialog.querySelector("#btn_modal_del").onclick = () => {
                     if (scene.videos.length > 0) {
                         const idx = scene.selected_video_idx || 0;
@@ -387,21 +446,9 @@ app.registerExtension({
                 };
 
                 const updateTabStyles = () => {
-                    if (currentType === "input") {
-                        btnInput.style.background = "#2d5a88";
-                        btnInput.style.color = "#fff";
-                        btnInput.style.borderColor = "#00a2ff";
-                        btnOutput.style.background = "#333";
-                        btnOutput.style.color = "#ccc";
-                        btnOutput.style.borderColor = "#444";
-                    } else {
-                        btnOutput.style.background = "#2d5a88";
-                        btnOutput.style.color = "#fff";
-                        btnOutput.style.borderColor = "#00a2ff";
-                        btnInput.style.background = "#333";
-                        btnInput.style.color = "#ccc";
-                        btnInput.style.borderColor = "#444";
-                    }
+                    const isInput = currentType === "input";
+                    btnInput.style.cssText += `background: ${isInput ? "#2d5a88" : "#333"}; color: ${isInput ? "#fff" : "#ccc"}; border-color: ${isInput ? "#00a2ff" : "#444"};`;
+                    btnOutput.style.cssText += `background: ${!isInput ? "#2d5a88" : "#333"}; color: ${!isInput ? "#fff" : "#ccc"}; border-color: ${!isInput ? "#00a2ff" : "#444"};`;
                 };
 
                 const updatePreview = () => {
@@ -447,11 +494,7 @@ app.registerExtension({
 
                 selectFile.onchange = () => {
                     const idx = parseInt(selectFile.value);
-                    if (!isNaN(idx) && videoList[idx]) {
-                        selectedFileObj = videoList[idx];
-                    } else {
-                        selectedFileObj = null;
-                    }
+                    selectedFileObj = (!isNaN(idx) && videoList[idx]) ? videoList[idx] : null;
                     updatePreview();
                 };
 
@@ -474,20 +517,7 @@ app.registerExtension({
                     }
                 };
 
-                const closeModalAndSave = () => {
-                    const freshData = getData();
-                    syncActiveInputs(freshData);
-                    if (freshData.scenes[sceneIdx]) {
-                        freshData.scenes[sceneIdx].videos = scene.videos;
-                        freshData.scenes[sceneIdx].selected_video_idx = scene.selected_video_idx;
-                        freshData.scenes[sceneIdx].video = scene.video;
-                        saveData(freshData, renderUI);
-                    }
-                    document.body.removeChild(overlay);
-                };
-
-                dialog.querySelector("#modal_close_btn").onclick = closeModalAndSave;
-                dialog.querySelector("#modal_finish_btn").onclick = closeModalAndSave;
+                dialog.querySelector("#modal_finish_btn").onclick = closeModal;
 
                 renderModalSceneVideos();
                 loadVideoList(currentType);
@@ -500,40 +530,17 @@ app.registerExtension({
                 const data = getData();
                 syncActiveInputs(data);
 
-                const overlay = document.createElement("div");
-                overlay.style.cssText = `
-                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-                    background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px);
-                    display: flex; align-items: center; justify-content: center;
-                    z-index: 10000; font-family: sans-serif; color: #ddd; font-size: 12px;
+                const footerHtml = `
+                    <button id="modal_add_key_btn" style="background: #2d5a88; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">➕ 新增 Key</button>
+                    <button id="modal_save_btn" style="background: #28a745; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">儲存並關閉</button>
                 `;
 
-                const stopEvent = e => e.stopPropagation();
-                overlay.addEventListener("mousedown", stopEvent);
-                overlay.addEventListener("pointerdown", stopEvent);
-                overlay.addEventListener("wheel", stopEvent);
-
-                const dialog = document.createElement("div");
-                dialog.style.cssText = `
-                    background: #222; border: 1px solid #444; border-radius: 8px;
-                    width: 620px; max-width: 90vw; max-height: 80vh;
-                    display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.8);
-                `;
-
-                dialog.innerHTML = `
-                    <div style="padding: 12px 16px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a;">
-                        <span style="font-size: 14px; font-weight: bold; color: #4db8ff;">⚙️ 全域 Dict 參數範本設定 (開窗視窗)</span>
-                        <button id="modal_close_btn" style="background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer;">✖</button>
-                    </div>
-                    <div style="padding: 12px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px;" id="modal_list_container"></div>
-                    <div style="padding: 12px; border-top: 1px solid #333; display: flex; justify-content: space-between; background: #1a1a1a;">
-                        <button id="modal_add_key_btn" style="background: #2d5a88; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">➕ 新增 Key</button>
-                        <button id="modal_save_btn" style="background: #28a745; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">儲存並關閉</button>
-                    </div>
-                `;
-
-                overlay.appendChild(dialog);
-                document.body.appendChild(overlay);
+                const { dialog, closeModal } = createModal({
+                    title: "⚙️ 全域 Dict 參數範本設定 (開窗視窗)",
+                    width: "620px",
+                    bodyHtml: `<div id="modal_list_container" style="display: flex; flex-direction: column; gap: 8px;"></div>`,
+                    footerHtml
+                });
 
                 const renderModalList = () => {
                     const listContainer = dialog.querySelector("#modal_list_container");
@@ -542,7 +549,6 @@ app.registerExtension({
                     data.global_dict.forEach((gItem, idx) => {
                         const row = document.createElement("div");
                         row.style.cssText = "display: flex; gap: 8px; align-items: center; background: #2a2a2a; padding: 6px 8px; border-radius: 4px;";
-
                         const curType = String(gItem.type || "STRING").toUpperCase();
 
                         row.innerHTML = `
@@ -558,9 +564,9 @@ app.registerExtension({
                             <button style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:4px 8px; cursor:pointer;" data-del="${idx}">🗑</button>
                         `;
 
-                        row.querySelector('[data-field="key"]').oninput = (e) => { gItem.key = e.target.value; };
-                        row.querySelector('[data-field="type"]').onchange = (e) => { gItem.type = e.target.value; renderModalList(); };
-                        row.querySelector('[data-field="default"]').oninput = (e) => { gItem.default = e.target.value; };
+                        row.querySelector('[data-field="key"]').oninput = e => { gItem.key = e.target.value; };
+                        row.querySelector('[data-field="type"]').onchange = e => { gItem.type = e.target.value; renderModalList(); };
+                        row.querySelector('[data-field="default"]').oninput = e => { gItem.default = e.target.value; };
                         row.querySelector('[data-del]').onclick = () => { data.global_dict.splice(idx, 1); renderModalList(); };
 
                         listContainer.appendChild(row);
@@ -591,21 +597,20 @@ app.registerExtension({
                     return null;
                 };
 
-                const saveAndCloseModal = () => {
+                dialog.querySelector("#modal_save_btn").onclick = () => {
                     const errorMsg = validateGlobalDict();
                     if (errorMsg) {
                         alert(`⚠️ 設定資料無效，無法儲存：\n\n${errorMsg}`);
                         return;
                     }
                     saveData(data, renderUI);
-                    document.body.removeChild(overlay);
+                    closeModal();
                 };
 
-                dialog.querySelector("#modal_close_btn").onclick = () => document.body.removeChild(overlay);
-                dialog.querySelector("#modal_save_btn").onclick = saveAndCloseModal;
                 renderModalList();
             }
 
+            // UI 渲染主邏輯
             function renderUI() {
                 if (node.properties?.prompt_height) {
                     els.inputPrompt.style.height = node.properties.prompt_height;
@@ -616,7 +621,7 @@ app.registerExtension({
                 const totalDur = list.reduce((sum, s) => sum + (parseFloat(s.duration) || 0), 0);
                 els.infoBar.innerText = `Clips: ${list.length} | 總時長: ${totalDur.toFixed(1)}s`;
 
-                // 1. 渲染頂部分鏡卡 (直接嵌入影片縮圖與預覽)
+                // 1. 渲染頂部分鏡卡
                 els.stripContainer.innerHTML = "";
                 list.forEach((s, idx) => {
                     s.videos = s.videos || (s.video ? [s.video] : []);
@@ -634,12 +639,9 @@ app.registerExtension({
                         display: flex; flex-direction: column; align-items: center; gap: 4px;
                     `;
 
-                    let previewHtml = "";
-                    if (vidUrl) {
-                        previewHtml = `<video src="${vidUrl}" autoplay loop muted playsinline style="width: 100%; height: 50px; object-fit: cover; border-radius: 4px; pointer-events: none; background: #000;"></video>`;
-                    } else {
-                        previewHtml = `<div style="width: 100%; height: 50px; background: #181818; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px; border: 1px dashed #444;">無影片</div>`;
-                    }
+                    const previewHtml = vidUrl 
+                        ? `<video src="${vidUrl}" muted playsinline style="width: 100%; height: 50px; object-fit: cover; border-radius: 4px; pointer-events: none; background: #000;"></video>`
+                        : `<div style="width: 100%; height: 50px; background: #181818; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px; border: 1px dashed #444;">無影片</div>`;
 
                     card.innerHTML = `
                         <div style="font-weight: bold; color: ${isActive ? "#fff" : "#ccc"}; font-size: 11px;">#${idx} (${s.duration || 0}s)</div>
@@ -669,7 +671,7 @@ app.registerExtension({
                 els.inputDuration.value = activeScene.duration ?? 5.0;
                 els.inputPrompt.value = activeScene.prompt ?? "";
 
-                // 3. 渲染 Dict 設定
+                // 2. 渲染 Dict 設定區
                 els.clipDictContainer.innerHTML = data.global_dict.length === 0 ? `<span style="color:#777;">尚未設定全域 Dict 範本（請點擊上方按鈕開窗編輯）。</span>` : "";
                 data.global_dict.forEach((gItem) => {
                     if (!gItem.key) return;
@@ -682,7 +684,6 @@ app.registerExtension({
 
                     const row = document.createElement("div");
                     row.style.cssText = "display: flex; gap: 6px; align-items: center; background: #202020; padding: 4px; border-radius: 4px;";
-
                     const isDefault = clipParam.use_default !== false;
 
                     let inputHtml = "";
@@ -758,7 +759,7 @@ app.registerExtension({
                     els.clipDictContainer.appendChild(row);
                 });
 
-                // 4. 媒體資源列表渲染 (圖片與音訊)
+                // 3. 媒體資源列表渲染 (圖片與音訊)
                 els.imgListBox.innerHTML = activeScene.images.length === 0 ? `<span style="font-size:10px; color:#777; align-self:center;">暫無參考圖</span>` : "";
                 activeScene.images.forEach((imgItem, iIdx) => {
                     const isSel = iIdx === (activeScene.selected_img_idx || 0);
@@ -798,6 +799,7 @@ app.registerExtension({
                 });
             }
 
+            // 事件監聽繫結
             els.inputDuration.oninput = els.inputDuration.onchange = () => {
                 const data = getData();
                 const active = getActiveScene(data.scenes);
@@ -856,9 +858,11 @@ app.registerExtension({
                 if (idx !== -1 && idx < data.scenes.length - 1 && moveItem(data.scenes, idx, 1)) saveData(data, renderUI);
             };
 
+            // 媒體資源（圖片、音訊）控制器封裝
             const setupAssetControls = (type, btnAdd, btnDel, btnLeft, btnRight, fileInput) => {
                 const key = type === "img" ? "images" : "audios";
                 const selKey = type === "img" ? "selected_img_idx" : "selected_audio_idx";
+
                 $(btnAdd).onclick = () => fileInput.click();
                 fileInput.onchange = async () => {
                     if (fileInput.files.length > 0) {
@@ -875,6 +879,7 @@ app.registerExtension({
                         fileInput.value = "";
                     }
                 };
+
                 $(btnDel).onclick = () => {
                     const data = getData();
                     const active = getActiveScene(data.scenes);
@@ -885,6 +890,7 @@ app.registerExtension({
                         saveData(data, renderUI);
                     }
                 };
+
                 $(btnLeft).onclick = () => {
                     const data = getData();
                     const active = getActiveScene(data.scenes);
@@ -893,6 +899,7 @@ app.registerExtension({
                         if (moveItem(active[key], idx, -1)) { active[selKey] = idx - 1; saveData(data, renderUI); }
                     }
                 };
+
                 $(btnRight).onclick = () => {
                     const data = getData();
                     const active = getActiveScene(data.scenes);
@@ -906,6 +913,7 @@ app.registerExtension({
             setupAssetControls("img", "#btn_add_img", "#btn_del_img", "#btn_left_img", "#btn_right_img", els.fileImg);
             setupAssetControls("audio", "#btn_add_audio", "#btn_del_audio", "#btn_left_audio", "#btn_right_audio", els.fileAudio);
 
+            // 初始化資料與 UI
             let data = getData();
             if (data.scenes.length === 0) {
                 data.scenes = [{ duration: 5.0, prompt: "", videos: [], selected_video_idx: 0, video: null, images: [], audios: [], dict_params: {}, selected: true }];
@@ -915,11 +923,11 @@ app.registerExtension({
             const onConfigure = this.onConfigure;
             this.onConfigure = function () {
                 if (onConfigure) onConfigure.apply(this, arguments);
+                node._scenesCache = null;
                 renderUI();
             };
 
             renderUI();
-
             node.setSize([500, 500]);
         };
     }
