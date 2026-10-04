@@ -310,34 +310,6 @@ class LikeJVideoDirector:
                 else:
                     final_dict[k] = self._parse_value(param_obj, g_item.get("type", "STRING"))
 
-        # 4. 解析選取的影片路徑並注入 final_dict (支援獨立影片清單)
-        videos_list = selected_scene.get("videos", [])
-        video_info = None
-
-        if isinstance(videos_list, list) and len(videos_list) > 0:
-            sel_idx = selected_scene.get("selected_video_idx", 0)
-            if 0 <= sel_idx < len(videos_list):
-                video_info = videos_list[sel_idx]
-            else:
-                video_info = videos_list[0]
-        
-        # 舊格式降級備用
-        if not video_info:
-            video_info = selected_scene.get("video")
-
-        video_path = ""
-        if video_info:
-            if isinstance(video_info, dict):
-                fname = video_info.get("filename", "")
-                subfolder = video_info.get("subfolder", "")
-                vtype = video_info.get("type", "output")
-                base_dir = folder_paths.get_input_directory() if vtype == "input" else folder_paths.get_output_directory()
-                video_path = os.path.join(base_dir, subfolder, fname) if subfolder else os.path.join(base_dir, fname)
-            elif isinstance(video_info, str):
-                video_path = video_info
-
-        final_dict["video_path"] = video_path
-
         # 5. 載入媒體資源
         images_list = selected_scene.get("images", [])
         images_tensor_list = self._load_images_batch(images_list)
@@ -345,6 +317,6 @@ class LikeJVideoDirector:
         audios_list = selected_scene.get("audios", [])
         audio_tensor_list = self._load_audio_data(audios_list)
 
-        print(f"[LikeJVideoDirector] Current Clip Output -> Video: {video_path or 'None'}, Images: {len(images_tensor_list)}, Audios: {len(audio_tensor_list)}, Duration: {duration}s")
+        print(f"[LikeJVideoDirector] Current Clip Output -> Images: {len(images_tensor_list)}, Audios: {len(audio_tensor_list)}, Duration: {duration}s")
 
         return (images_tensor_list, audio_tensor_list, prompt, final_dict, duration)
