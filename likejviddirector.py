@@ -6,6 +6,7 @@ from PIL import Image, ImageOps
 import folder_paths
 from server import PromptServer
 from aiohttp import web
+import cv2
 
 try:
     import torchaudio
@@ -13,7 +14,9 @@ try:
 except ImportError:
     HAS_TORCHAUDIO = False
 
-# 註冊 API：掃描 input/output 目錄中的影片檔案
+# ==========================================
+# API 1：掃描 input/output 目錄中的影片檔案
+# ==========================================
 @PromptServer.instance.routes.get("/likej/list_videos")
 async def list_videos(request):
     folder_type = request.query.get("type", "output")
@@ -44,6 +47,70 @@ async def list_videos(request):
     # 依修改時間倒序排列（最新的在最前）
     files_list.sort(key=lambda x: x["mtime"], reverse=True)
     return web.json_response(files_list)
+
+
+# ==========================================
+# API 2：從指定影片中擷取首幀 (first) 或尾幀 (last)
+# ==========================================
+@PromptServer.instance.routes.post("/likej/extract_frame")
+async def extract_frame(request):
+    try:
+        data = await request.json()
+        filename = data.get("filename", "")
+        subfolder = data.get("subfolder", "")
+        folder_type = data.get("type", "output")
+        position = data.get("position", "last")  # "first" 或 "last"
+
+        if folder_type == "input":
+            base_dir = folder_paths.get_input_directory()
+        else:
+            base_dir = folder_paths.get_output_directory()
+
+        video_path = os.path.join(base_dir, subfolder, filename) if subfolder else os.path.join(base_dir, filename)
+
+        if not os.path.exists(video_path):
+            return web.json_response({"success": False, "error": f"影片檔案不存在: {video_path}"}, status=400)
+
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return web.json_response({"success": False, "error": "無法開啟並讀取影片檔案"}, status=400)
+
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames <= 0:
+            cap.release()
+            return web.json_response({"success": False, "error": "影片總幀數無效或為 0"}, status=400)
+
+        # 決定讀取幀的索引位置
+        target_frame = total_frames - 1 if position == "last" else 0
+        cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+        ret, frame = cap.read()
+        cap.release()
+
+        if not ret or frame is None:
+            return web.json_response({"success": False, "error": f"無法擷取影片第 {target_frame} 幀"}, status=400)
+
+        # 儲存擷取的畫面至 input 資料夾
+        input_dir = folder_paths.get_input_directory()
+        clean_name = os.path.splitext(os.path.basename(filename))[0]
+        out_filename = f"frame_{clean_name}_{position}_{target_frame}.png"
+        out_filepath = os.path.join(input_dir, out_filename)
+
+        # BGR 轉 RGB 並儲存為 PNG
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(frame_rgb)
+        img.save(out_filepath)
+
+        return web.json_response({
+            "success": True,
+            "image": {
+                "name": out_filename,
+                "subfolder": "",
+                "type": "input"
+            }
+        })
+    except Exception as e:
+        print(f"[LikeJVideoDirector] 抽幀 API 處理失敗: {e}")
+        return web.json_response({"success": False, "error": str(e)}, status=500)
 
 
 class LikeJVideoDirector:

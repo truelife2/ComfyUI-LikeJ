@@ -23,6 +23,32 @@ const ApiService = {
         return null;
     },
 
+    async extractFrame(videoObj, position = "last") {
+        if (!videoObj) return null;
+        const filename = typeof videoObj === "string" ? videoObj : (videoObj.filename || videoObj.name || "");
+        const subfolder = typeof videoObj === "string" ? "" : (videoObj.subfolder || "");
+        const type = typeof videoObj === "string" ? "output" : (videoObj.type || "output");
+
+        try {
+            const resp = await api.fetchApi("/likej/extract_frame", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ filename, subfolder, type, position })
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.success) {
+                    return data.image;
+                } else {
+                    alert(`⚠️ 抽幀失敗: ${data.error}`);
+                }
+            }
+        } catch (e) {
+            console.error("[LikeJVideoDirector] 呼叫抽幀 API 失敗:", e);
+        }
+        return null;
+    },
+
     async getVideos(type = "output") {
         try {
             const resp = await api.fetchApi(`/likej/list_videos?type=${type}`);
@@ -43,7 +69,7 @@ const ApiService = {
 };
 
 // ==========================================
-// 2. 通用工具函式
+// 2. 通用工具函式與 Modal
 // ==========================================
 const moveItem = (arr, idx, dir) => {
     const target = idx + dir;
@@ -81,7 +107,6 @@ const validateValue = (val, type) => {
     return { valid: true, error: "" };
 };
 
-// 通用 Modal 彈窗建立器
 const createModal = ({ title, width = "600px", bodyHtml, footerHtml, onClose }) => {
     const overlay = document.createElement("div");
     overlay.style.cssText = `
@@ -125,6 +150,104 @@ const createModal = ({ title, width = "600px", bodyHtml, footerHtml, onClose }) 
     return { overlay, dialog, closeModal };
 };
 
+// 🎬 獨立影片放大播放與詳細資訊彈窗
+const openVideoPreviewModal = (videoObj) => {
+    if (!videoObj) return;
+    const videoUrl = ApiService.getMediaUrl(videoObj);
+    const fname = typeof videoObj === "string" ? videoObj : (videoObj.filename || videoObj.name || "video");
+    const type = typeof videoObj === "object" ? (videoObj.type || "output") : "output";
+
+    const { dialog, closeModal } = createModal({
+        title: `🎬 分鏡影片預覽與詳細資訊`,
+        width: "720px",
+        bodyHtml: `
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: center; align-items: center; background: #000; border-radius: 6px; overflow: hidden; min-height: 250px; padding: 10px;">
+                    <video id="preview_video_el" src="${videoUrl}" controls autoplay loop style="max-width: 100%; max-height: 55vh; display: block;"></video>
+                </div>
+                <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 10px; font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; color: #ccc;">
+                    <div><strong style="color: #4db8ff;">📄 檔案名稱：</strong><span style="word-break: break-all;">${fname}</span></div>
+                    <div><strong style="color: #4db8ff;">📐 影片解析度：</strong><span id="video_dimensions_info">載入中...</span></div>
+                    <div><strong style="color: #4db8ff;">⏱️ 影片總長度：</strong><span id="video_duration_info">載入中...</span></div>
+                    <div><strong style="color: #4db8ff;">🏷️ 資源類別：</strong><span>${type}</span></div>
+                </div>
+            </div>
+        `,
+        footerHtml: `
+            <div style="display: flex; justify-content: flex-end; width: 100%;">
+                <button id="btn_close_player" style="background: #444; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer;">關閉</button>
+            </div>
+        `
+    });
+
+    const vidEl = dialog.querySelector("#preview_video_el");
+    const dimInfo = dialog.querySelector("#video_dimensions_info");
+    const durInfo = dialog.querySelector("#video_duration_info");
+
+    if (vidEl) {
+        vidEl.onloadedmetadata = () => {
+            if (dimInfo) dimInfo.innerText = `${vidEl.videoWidth} × ${vidEl.videoHeight} px`;
+            if (durInfo) durInfo.innerText = `${vidEl.duration.toFixed(2)} 秒`;
+        };
+        vidEl.onerror = () => {
+            if (dimInfo) dimInfo.innerText = "無法讀取";
+            if (durInfo) durInfo.innerText = "無法讀取";
+        };
+    }
+
+    const btnClose = dialog.querySelector("#btn_close_player");
+    if (btnClose) btnClose.onclick = closeModal;
+};
+
+// 🖼️ 獨立圖片放大檢視與詳細資訊彈窗
+const openImagePreviewModal = (imgObj) => {
+    if (!imgObj) return;
+    const imgUrl = ApiService.getMediaUrl(imgObj);
+    const fname = typeof imgObj === "string" ? imgObj : (imgObj.filename || imgObj.name || "image");
+    const type = typeof imgObj === "object" ? (imgObj.type || "input") : "input";
+
+    const { dialog, closeModal } = createModal({
+        title: `🖼️ 參考圖片預覽與詳細資訊`,
+        width: "720px",
+        bodyHtml: `
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: center; align-items: center; background: #000; border-radius: 6px; overflow: hidden; min-height: 250px; padding: 10px;">
+                    <img id="preview_img_el" src="${imgUrl}" style="max-width: 100%; max-height: 55vh; object-fit: contain; display: block;" />
+                </div>
+                <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 10px; font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; color: #ccc;">
+                    <div style="grid-column: span 2;"><strong style="color: #4db8ff;">📄 檔案名稱：</strong><span style="word-break: break-all;">${fname}</span></div>
+                    <div><strong style="color: #4db8ff;">📐 圖片解析度：</strong><span id="img_dimensions_info">載入中...</span></div>
+                    <div><strong style="color: #4db8ff;">🏷️ 資源類別：</strong><span>${type}</span></div>
+                </div>
+            </div>
+        `,
+        footerHtml: `
+            <div style="display: flex; justify-content: flex-end; width: 100%;">
+                <button id="btn_close_img_player" style="background: #444; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer;">關閉</button>
+            </div>
+        `
+    });
+
+    const imgEl = dialog.querySelector("#preview_img_el");
+    const dimInfo = dialog.querySelector("#img_dimensions_info");
+    
+    if (imgEl && dimInfo) {
+        if (imgEl.complete && imgEl.naturalWidth) {
+            dimInfo.innerText = `${imgEl.naturalWidth} × ${imgEl.naturalHeight} px`;
+        } else {
+            imgEl.onload = () => {
+                dimInfo.innerText = `${imgEl.naturalWidth} × ${imgEl.naturalHeight} px`;
+            };
+            imgEl.onerror = () => {
+                dimInfo.innerText = "無法讀取";
+            };
+        }
+    }
+
+    const btnClose = dialog.querySelector("#btn_close_img_player");
+    if (btnClose) btnClose.onclick = closeModal;
+};
+
 // ==========================================
 // 3. ComfyUI 擴充節點註冊
 // ==========================================
@@ -141,7 +264,6 @@ app.registerExtension({
             node.extra_info = node.extra_info || {};
             node.properties = node.properties || {};
 
-            // 建立 UI 容器
             const container = document.createElement("div");
             container.style.cssText = `
                 display: flex; flex-direction: column; gap: 8px;
@@ -184,10 +306,12 @@ app.registerExtension({
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <span>🖼️ 參考圖片列表:</span>
                             <div style="display: flex; gap: 2px;">
+                                <button id="btn_add_prev_last" style="background:#005f73; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;" title="引用上一分鏡的最後一幀">⏮️ 前尾</button>
+                                <button id="btn_add_next_first" style="background:#005f73; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;" title="引用下一分鏡的第一幀">⏭ 後首</button>
                                 <button id="btn_add_img" style="background:#2d5a88; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">➕ 上傳</button>
                                 <button id="btn_left_img" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">◀</button>
                                 <button id="btn_right_img" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">▶</button>
-                                <button id="btn_del_img" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">🗑️</button>
+                                <button id="btn_del_img" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">🗑️️</button>
                             </div>
                         </div>
                         <input id="file_img" type="file" accept="image/*" style="display: none;">
@@ -202,7 +326,7 @@ app.registerExtension({
                                 <button id="btn_add_audio" style="background:#2d5a88; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">➕ 上傳</button>
                                 <button id="btn_left_audio" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">◀</button>
                                 <button id="btn_right_audio" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">▶</button>
-                                <button id="btn_del_audio" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">🗑️</button>
+                                <button id="btn_del_audio" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">🗑</button>
                             </div>
                         </div>
                         <input id="file_audio" type="file" accept="audio/*" style="display: none;">
@@ -211,7 +335,7 @@ app.registerExtension({
 
                     <!-- 當前 Clip 的 Dict 覆蓋區 -->
                     <div style="background: #282828; padding: 6px; border-radius: 4px; border: 1px solid #3d3d3d;">
-                        <div style="font-weight: bold; margin-bottom: 4px; color: #aaa;">⚙️ 當前 Clip Dict 覆蓋設定:</div>
+                        <div style="font-weight: bold; margin-bottom: 4px; color: #aaa;">⚙ 當前 Clip Dict 覆蓋設定:</div>
                         <div id="clip_dict_container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                     </div>
                 </div>
@@ -241,7 +365,6 @@ app.registerExtension({
                 fileAudio: $("#file_audio")
             };
 
-            // ResizeObserver 監聽 Prompt 高度，並處理卸載銷毀防止記憶體洩漏
             const savePromptHeight = () => {
                 const h = els.inputPrompt.style.height;
                 if (h && h !== node.properties.prompt_height) {
@@ -259,7 +382,6 @@ app.registerExtension({
                 resizeObserver.disconnect();
             };
 
-            // 數據快取與存取
             const getData = () => {
                 if (node._scenesCache) return node._scenesCache;
 
@@ -321,20 +443,18 @@ app.registerExtension({
                 let selectedFileObj = null;
 
                 const bodyHtml = `
-                    <!-- 1. 當前分鏡影片清單 -->
                     <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-weight: bold; color: #ffca28;">1. 當前分鏡已選影片 (點擊選擇為主要影片)</span>
+                            <span style="font-weight: bold; color: #ffca28;">1. 當前分鏡已選影片 (點擊切換，點擊 🔍 放大)</span>
                             <div style="display: flex; gap: 4px;">
                                 <button id="btn_modal_left" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">◀ 左移</button>
                                 <button id="btn_modal_right" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">▶ 右移</button>
                                 <button id="btn_modal_del" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">🗑️ 刪除</button>
                             </div>
                         </div>
-                        <div id="modal_scene_videos_box" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 70px; align-items: center;"></div>
+                        <div id="modal_scene_videos_box" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 75px; align-items: center;"></div>
                     </div>
 
-                    <!-- 2. 從伺服器選擇並新增影片 -->
                     <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 10px;">
                         <span style="font-weight: bold; color: #4db8ff;">2. 從伺服器選擇並新增影片至清單</span>
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -395,20 +515,40 @@ app.registerExtension({
                             border: 2px solid ${isSel ? "#00a2ff" : "#444"}; 
                             background: ${isSel ? "#004477" : "#222"}; 
                             border-radius: 4px; cursor: pointer; text-align: center;
+                            position: relative;
                         `;
                         const vUrl = ApiService.getMediaUrl(vidItem);
                         const fname = vidItem.filename || "video";
 
                         item.innerHTML = `
-                            <video src="${vUrl}" muted playsinline style="width: 100%; height: 50px; object-fit: cover; display: block; border-radius: 2px; pointer-events: none; background: #000;"></video>
+                            <div class="v-wrap" style="position: relative; width: 100%; height: 50px; background: #000; border-radius: 2px; overflow: hidden;">
+                                <video src="${vUrl}" loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none;"></video>
+                                <div class="zoom-btn" style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.7); color: #fff; font-size: 9px; padding: 1px 3px; border-radius: 2px; cursor: pointer; z-index: 2;" title="點擊放大播放與查看詳細資訊">🔍</div>
+                            </div>
                             <div style="font-size: 9px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;" title="${fname}">#${vIdx} ${fname}</div>
                         `;
+
+                        const vWrap = item.querySelector(".v-wrap");
+                        const vidEl = item.querySelector("video");
+                        const zoomBtn = item.querySelector(".zoom-btn");
+
+                        vWrap.onmouseenter = () => vidEl.play().catch(() => {});
+                        vWrap.onmouseleave = () => {
+                            vidEl.pause();
+                            vidEl.currentTime = 0;
+                        };
+
+                        zoomBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            openVideoPreviewModal(vidItem);
+                        };
 
                         item.onclick = () => {
                             scene.selected_video_idx = vIdx;
                             scene.video = scene.videos[vIdx];
                             renderModalSceneVideos();
                         };
+
                         container.appendChild(item);
                     });
                 };
@@ -639,15 +779,42 @@ app.registerExtension({
                         display: flex; flex-direction: column; align-items: center; gap: 4px;
                     `;
 
-                    const previewHtml = vidUrl 
-                        ? `<video src="${vidUrl}" muted playsinline style="width: 100%; height: 50px; object-fit: cover; border-radius: 4px; pointer-events: none; background: #000;"></video>`
-                        : `<div style="width: 100%; height: 50px; background: #181818; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px; border: 1px dashed #444;">無影片</div>`;
+                    const videoWrap = document.createElement("div");
+                    videoWrap.style.cssText = "position: relative; width: 100%; height: 50px; background: #000; border-radius: 4px; overflow: hidden;";
 
-                    card.innerHTML = `
-                        <div style="font-weight: bold; color: ${isActive ? "#fff" : "#ccc"}; font-size: 11px;">#${idx} (${s.duration || 0}s)</div>
-                        ${previewHtml}
-                        <div style="font-size: 9px; opacity: 0.85; color: #ddd; margin-top: 1px;">🎬${s.videos.length} 🖼️${(s.images || []).length} 🎵${(s.audios || []).length}</div>
-                    `;
+                    if (vidUrl) {
+                        videoWrap.innerHTML = `
+                            <video src="${vidUrl}" loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none;"></video>
+                            <div class="zoom-btn" style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.7); color: #fff; font-size: 9px; padding: 1px 3px; border-radius: 2px; cursor: pointer; z-index: 2;" title="點擊放大播放與查看詳細資訊">🔍</div>
+                        `;
+                        const vidEl = videoWrap.querySelector("video");
+                        const zoomBtn = videoWrap.querySelector(".zoom-btn");
+
+                        videoWrap.onmouseenter = () => vidEl.play().catch(() => {});
+                        videoWrap.onmouseleave = () => {
+                            vidEl.pause();
+                            vidEl.currentTime = 0;
+                        };
+
+                        zoomBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            openVideoPreviewModal(activeVid);
+                        };
+                    } else {
+                        videoWrap.innerHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px; border: 1px dashed #444;">無影片</div>`;
+                    }
+
+                    const titleEl = document.createElement("div");
+                    titleEl.style.cssText = `font-weight: bold; color: ${isActive ? "#fff" : "#ccc"}; font-size: 11px;`;
+                    titleEl.innerText = `#${idx} (${s.duration || 0}s)`;
+
+                    const metaEl = document.createElement("div");
+                    metaEl.style.cssText = "font-size: 9px; opacity: 0.85; color: #ddd; margin-top: 1px;";
+                    metaEl.innerText = `🎬${s.videos.length} 🖼️${(s.images || []).length} 🎵${(s.audios || []).length}`;
+
+                    card.appendChild(titleEl);
+                    card.appendChild(videoWrap);
+                    card.appendChild(metaEl);
 
                     card.onclick = () => {
                         const freshData = getData();
@@ -656,6 +823,7 @@ app.registerExtension({
                         if (freshData.scenes[idx]) freshData.scenes[idx].selected = true;
                         saveData(freshData, renderUI);
                     };
+
                     els.stripContainer.appendChild(card);
                 });
 
@@ -759,13 +927,27 @@ app.registerExtension({
                     els.clipDictContainer.appendChild(row);
                 });
 
-                // 3. 媒體資源列表渲染 (圖片與音訊)
+                // 3. 媒體資源列表渲染
                 els.imgListBox.innerHTML = activeScene.images.length === 0 ? `<span style="font-size:10px; color:#777; align-self:center;">暫無參考圖</span>` : "";
                 activeScene.images.forEach((imgItem, iIdx) => {
                     const isSel = iIdx === (activeScene.selected_img_idx || 0);
                     const item = document.createElement("div");
-                    item.style.cssText = `flex: 0 0 auto; padding: 2px; border: 2px solid ${isSel ? "#00a2ff" : "#444"}; border-radius: 4px; cursor: pointer; background: #151515;`;
-                    item.innerHTML = `<img src="${ApiService.getMediaUrl(imgItem)}" style="width: 48px; height: 48px; object-fit: cover; display: block; border-radius: 2px;">`;
+                    item.style.cssText = `flex: 0 0 auto; padding: 2px; border: 2px solid ${isSel ? "#00a2ff" : "#444"}; border-radius: 4px; cursor: pointer; background: #151515; position: relative;`;
+                    
+                    const imgUrl = ApiService.getMediaUrl(imgItem);
+                    item.innerHTML = `
+                        <div class="img-wrap" style="position: relative; width: 48px; height: 48px; border-radius: 2px; overflow: hidden;">
+                            <img src="${imgUrl}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                            <div class="zoom-btn" style="position: absolute; bottom: 1px; right: 1px; background: rgba(0,0,0,0.75); color: #fff; font-size: 8px; padding: 1px 2px; border-radius: 2px; cursor: pointer; z-index: 2;" title="點擊放大圖片與查看詳細資訊">🔍</div>
+                        </div>
+                    `;
+
+                    const zoomBtn = item.querySelector(".zoom-btn");
+
+                    zoomBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openImagePreviewModal(imgItem);
+                    };
 
                     item.onclick = () => {
                         const freshData = getData();
@@ -858,7 +1040,44 @@ app.registerExtension({
                 if (idx !== -1 && idx < data.scenes.length - 1 && moveItem(data.scenes, idx, 1)) saveData(data, renderUI);
             };
 
-            // 媒體資源（圖片、音訊）控制器封裝
+            const handleExtractFrame = async (offset, position) => {
+                const freshData = getData();
+                syncActiveInputs(freshData);
+
+                const curIdx = freshData.scenes.findIndex(s => s.selected);
+                if (curIdx === -1) return;
+
+                const targetIdx = curIdx + offset;
+                if (targetIdx < 0 || targetIdx >= freshData.scenes.length) {
+                    alert(offset < 0 ? "⚠️ 當前已經是第一個分鏡，沒有上一分鏡！" : "⚠️ 當前已經是最後一個分鏡，沒有下一分鏡！");
+                    return;
+                }
+
+                const targetScene = freshData.scenes[targetIdx];
+                const videos = targetScene.videos || (targetScene.video ? [targetScene.video] : []);
+                const selIdx = targetScene.selected_video_idx ?? 0;
+                const videoObj = videos[selIdx] || targetScene.video;
+
+                if (!videoObj) {
+                    alert(`⚠️ 分鏡 #${targetIdx} 尚未設定或選擇影片，無法擷取畫面！`);
+                    return;
+                }
+
+                const extractedImg = await ApiService.extractFrame(videoObj, position);
+                if (extractedImg) {
+                    const active = getActiveScene(freshData.scenes);
+                    if (active) {
+                        active.images = active.images || [];
+                        active.images.push(extractedImg);
+                        active.selected_img_idx = active.images.length - 1;
+                        saveData(freshData, renderUI);
+                    }
+                }
+            };
+
+            $("#btn_add_prev_last").onclick = () => handleExtractFrame(-1, "last");
+            $("#btn_add_next_first").onclick = () => handleExtractFrame(1, "first");
+
             const setupAssetControls = (type, btnAdd, btnDel, btnLeft, btnRight, fileInput) => {
                 const key = type === "img" ? "images" : "audios";
                 const selKey = type === "img" ? "selected_img_idx" : "selected_audio_idx";
@@ -913,7 +1132,6 @@ app.registerExtension({
             setupAssetControls("img", "#btn_add_img", "#btn_del_img", "#btn_left_img", "#btn_right_img", els.fileImg);
             setupAssetControls("audio", "#btn_add_audio", "#btn_del_audio", "#btn_left_audio", "#btn_right_audio", els.fileAudio);
 
-            // 初始化資料與 UI
             let data = getData();
             if (data.scenes.length === 0) {
                 data.scenes = [{ duration: 5.0, prompt: "", videos: [], selected_video_idx: 0, video: null, images: [], audios: [], dict_params: {}, selected: true }];
