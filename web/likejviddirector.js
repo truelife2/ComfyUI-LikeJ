@@ -65,11 +65,45 @@ const ApiService = {
         const subfolder = typeof fileObj === "string" ? "" : (fileObj.subfolder || "");
         const type = typeof fileObj === "string" ? "input" : (fileObj.type || "input");
         return api.apiURL(`/view?${new URLSearchParams({ filename, subfolder, type })}`);
-    }
+    },
+
+    async listProjects() {
+        try {
+            const resp = await api.fetchApi("/likej/list_projects");
+            if (resp.ok) return await resp.json();
+        } catch (e) {
+            console.error("[LikeJVideoDirector] 獲取專案列表失敗:", e);
+        }
+        return [];
+    },
+
+    async exportProject(projectName, scenesData) {
+        try {
+            const resp = await api.fetchApi("/likej/export_project", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ project_name: projectName, scenes_data: scenesData })
+            });
+            if (resp.ok) return await resp.json();
+        } catch (e) {
+            console.error("[LikeJVideoDirector] 匯出專案失敗:", e);
+        }
+        return { success: false, error: "網路或伺服器錯誤" };
+    },
+
+    async loadProject(projectName) {
+        try {
+            const resp = await api.fetchApi(`/likej/load_project?project_name=${encodeURIComponent(projectName)}`);
+            if (resp.ok) return await resp.json();
+        } catch (e) {
+            console.error("[LikeJVideoDirector] 載入專案失敗:", e);
+        }
+        return null;
+    },
 };
 
 // ==========================================
-// 2. 通用工具函式與 Modal
+// 2. 通用工具函式與 Modal 彈窗元件
 // ==========================================
 const moveItem = (arr, idx, dir) => {
     const target = idx + dir;
@@ -122,19 +156,19 @@ const createModal = ({ title, width = "600px", bodyHtml, footerHtml, onClose }) 
     const dialog = document.createElement("div");
     dialog.style.cssText = `
         background: #222; border: 1px solid #444; border-radius: 8px;
-        width: ${width}; max-width: 90vw; max-height: 85vh; display: flex; flex-direction: column;
+        width: ${width}; max-width: 90vw; max-height: 88vh; display: flex; flex-direction: column;
         box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden;
     `;
 
     dialog.innerHTML = `
-        <div style="padding: 12px 16px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a;">
+        <div style="padding: 12px 16px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; flex-shrink: 0;">
             <span style="font-size: 14px; font-weight: bold; color: #4db8ff;">${title}</span>
             <button id="modal_close_x" style="background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer;">✖</button>
         </div>
-        <div id="modal_body_content" style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+        <div id="modal_body_content" style="padding: 14px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin;">
             ${bodyHtml}
         </div>
-        ${footerHtml ? `<div style="padding: 12px 16px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a;">${footerHtml}</div>` : ""}
+        ${footerHtml ? `<div style="padding: 12px 16px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; flex-shrink: 0;">${footerHtml}</div>` : ""}
     `;
 
     overlay.appendChild(dialog);
@@ -150,7 +184,30 @@ const createModal = ({ title, width = "600px", bodyHtml, footerHtml, onClose }) 
     return { overlay, dialog, closeModal };
 };
 
-// 🎬 獨立影片放大播放與詳細資訊彈窗
+// 🗑️ 通用高質感確認彈窗
+const showConfirmModal = ({ title = "⚠️ 操作確認", message, confirmText = "確定刪除", cancelText = "取消", onConfirm }) => {
+    const bodyHtml = `
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
+            <div style="font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">⚠️️</div>
+            <div style="font-size: 13px; color: #eee; line-height: 1.5; flex: 1;">${message}</div>
+        </div>
+    `;
+    const footerHtml = `
+        <div style="display: flex; justify-content: flex-end; gap: 8px; width: 100%;">
+            <button id="modal_cancel_btn" style="background: #444; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer;">${cancelText}</button>
+            <button id="modal_confirm_btn" style="background: #d9534f; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold;">${confirmText}</button>
+        </div>
+    `;
+    const { dialog, closeModal } = createModal({ title, width: "400px", bodyHtml, footerHtml });
+
+    dialog.querySelector("#modal_cancel_btn").onclick = closeModal;
+    dialog.querySelector("#modal_confirm_btn").onclick = () => {
+        closeModal();
+        if (onConfirm) onConfirm();
+    };
+};
+
+// 🎬 獨立影片放大預覽彈窗
 const openVideoPreviewModal = (videoObj) => {
     if (!videoObj) return;
     const videoUrl = ApiService.getMediaUrl(videoObj);
@@ -199,7 +256,7 @@ const openVideoPreviewModal = (videoObj) => {
     if (btnClose) btnClose.onclick = closeModal;
 };
 
-// 🖼️ 獨立圖片放大檢視與詳細資訊彈窗
+// 🖼️ 獨立圖片放大預覽彈窗
 const openImagePreviewModal = (imgObj) => {
     if (!imgObj) return;
     const imgUrl = ApiService.getMediaUrl(imgObj);
@@ -230,7 +287,7 @@ const openImagePreviewModal = (imgObj) => {
 
     const imgEl = dialog.querySelector("#preview_img_el");
     const dimInfo = dialog.querySelector("#img_dimensions_info");
-    
+
     if (imgEl && dimInfo) {
         if (imgEl.complete && imgEl.naturalWidth) {
             dimInfo.innerText = `${imgEl.naturalWidth} × ${imgEl.naturalHeight} px`;
@@ -274,13 +331,17 @@ app.registerExtension({
 
             container.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <button id="btn_open_modal" style="padding: 4px 8px; background: #2d5a88; color: #fff; border: 1px solid #4a82b8; border-radius: 4px; cursor: pointer; font-weight: bold;">⚙️ 設定與全域 Dict (彈窗)</button>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <button id="btn_open_modal" style="padding: 4px 8px; background: #2d5a88; color: #fff; border: 1px solid #4a82b8; border-radius: 4px; cursor: pointer; font-weight: bold;">⚙️ 設定全域 Dict</button>
+                        <button id="btn_play_mode" style="padding: 4px 8px; background: #28a745; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">▶️ 播放模式</button>
+                        <button id="btn_export_proj" style="padding: 4px 6px; background: #d97706; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📦 匯出專案</button>
+                        <button id="btn_import_proj" style="padding: 4px 6px; background: #0284c7; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📂 匯入專案</button>                   </div>
                     <div id="info_bar" style="color: #aaa;">Clips: 0 | Total: 0s</div>
                 </div>
 
-                <div id="strip_container" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px;"></div>
+                <div id="strip_container" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin;"></div>
                 
-                <div style="display: flex; gap: 4px;">
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                     <button id="btn_manage_videos" style="flex:1; padding:4px; background: #2d5a88; color: #fff; border:none; border-radius:4px; cursor:pointer;">🎬 設定分鏡影片</button>
                     <button id="btn_add_clip" style="flex:1; padding:4px; background:#2d5a88; color:#fff; border:none; border-radius:4px; cursor:pointer;">➕ 新增分鏡</button>
                     <button id="btn_del_clip" style="flex:1; padding:4px; background:#882d2d; color:#fff; border:none; border-radius:4px; cursor:pointer;">🗑 刪除</button>
@@ -311,11 +372,11 @@ app.registerExtension({
                                 <button id="btn_add_img" style="background:#2d5a88; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">➕ 上傳</button>
                                 <button id="btn_left_img" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">◀</button>
                                 <button id="btn_right_img" style="background:#444; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">▶</button>
-                                <button id="btn_del_img" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">🗑️️</button>
+                                <button id="btn_del_img" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 5px; cursor:pointer;">🗑</button>
                             </div>
                         </div>
                         <input id="file_img" type="file" accept="image/*" style="display: none;">
-                        <div id="img_list_box" style="display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; min-height: 52px;"></div>
+                        <div id="img_list_box" style="display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; min-height: 52px; scrollbar-width: thin;"></div>
                     </div>
 
                     <!-- 參考音訊列表 -->
@@ -330,7 +391,7 @@ app.registerExtension({
                             </div>
                         </div>
                         <input id="file_audio" type="file" accept="audio/*" style="display: none;">
-                        <div id="audio_list_box" style="display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; min-height: 40px;"></div>
+                        <div id="audio_list_box" style="display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; min-height: 40px; scrollbar-width: thin;"></div>
                     </div>
 
                     <!-- 當前 Clip 的 Dict 覆蓋區 -->
@@ -343,10 +404,10 @@ app.registerExtension({
 
             node.addDOMWidget("scenes_json_dom", "dom", container, {
                 getValue() { return JSON.stringify(node._scenesCache || getData()); },
-                setValue(v) { 
-                    node.extra_info = node.extra_info || {}; 
-                    node.extra_info.scenes_json = v; 
-                    node._scenesCache = null; 
+                setValue(v) {
+                    node.extra_info = node.extra_info || {};
+                    node.extra_info.scenes_json = v;
+                    node._scenesCache = null;
                 }
             });
 
@@ -354,6 +415,9 @@ app.registerExtension({
             const els = {
                 infoBar: $("#info_bar"),
                 btnOpenModal: $("#btn_open_modal"),
+                btnPlayMode: $("#btn_play_mode"),
+                btnExportProj: $("#btn_export_proj"),
+                btnImportProj: $("#btn_import_proj"),
                 stripContainer: $("#strip_container"),
                 inputDuration: $("#input_duration"),
                 inputPrompt: $("#input_prompt"),
@@ -427,6 +491,412 @@ app.registerExtension({
                 if (renderCb) renderCb();
                 node.setDirtyCanvas(true, true);
             };
+// 📦 匯出專案彈窗邏輯
+            const openExportProjectModal = async () => {
+                const data = getData();
+                syncActiveInputs(data);
+
+                const projectList = await ApiService.listProjects();
+
+                const bodyHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="color: #ccc; font-size: 11px; line-height: 1.4;">
+                            匯出專案時，系統會建立專屬專案包，並將當前所有分鏡引用的<strong>影片、參考圖片、參考音訊檔全部複製備份</strong>至同一專案目錄內。
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label style="font-weight: bold; color: #ffca28;">下拉選擇已有專案 (進行覆蓋)：</label>
+                            <select id="select_existing_proj" style="background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;">
+                                <option value="">-- 請選擇已有專案，或直接在下方新建 --</option>
+                                ${projectList.map(p => `<option value="${p.name}">${p.name} (${new Date(p.mtime * 1000).toLocaleString()})</option>`).join("")}
+                            </select>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label style="font-weight: bold; color: #4db8ff;">專案名稱 (資料夾名稱)：</label>
+                            <input id="input_proj_name" type="text" placeholder="請輸入檔名/專案名稱" style="background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;">
+                        </div>
+
+                        <div id="export_status_tip" style="color: #888; font-size: 11px; min-height: 18px;"></div>
+                    </div>
+                `;
+
+                const footerHtml = `
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; width: 100%;">
+                        <button id="modal_cancel_export" style="background: #444; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer;">取消</button>
+                        <button id="modal_confirm_export" style="background: #d97706; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">🚀 開始匯出與備份</button>
+                    </div>
+                `;
+
+                const { dialog, closeModal } = createModal({
+                    title: "📦 匯出專案 (複製所有媒體檔案與設定)",
+                    width: "520px",
+                    bodyHtml,
+                    footerHtml
+                });
+
+                const selectProj = dialog.querySelector("#select_existing_proj");
+                const inputName = dialog.querySelector("#input_proj_name");
+                const statusTip = dialog.querySelector("#export_status_tip");
+
+                selectProj.onchange = () => {
+                    if (selectProj.value) {
+                        inputName.value = selectProj.value;
+                    }
+                };
+
+                dialog.querySelector("#modal_cancel_export").onclick = closeModal;
+
+                dialog.querySelector("#modal_confirm_export").onclick = async () => {
+                    const projName = inputName.value.trim();
+                    if (!projName) {
+                        alert("⚠️ 請輸入或選擇專案名稱！");
+                        return;
+                    }
+
+                    statusTip.innerText = "⏳ 正在複製媒體資源檔案並寫入專案包，請稍候...";
+                    statusTip.style.color = "#ffca28";
+
+                    const result = await ApiService.exportProject(projName, data);
+                    if (result && result.success) {
+                        saveData(result.scenes_data, renderUI);
+                        alert(`✅ 專案「${projName}」匯出成功！\n所有相關媒體資源已複製至 output/likej_projects/${projName}/`);
+                        closeModal();
+                    } else {
+                        statusTip.innerText = `❌ 匯出失敗: ${result?.error || "未知錯誤"}`;
+                        statusTip.style.color = "#ff4d4d";
+                    }
+                };
+            };
+
+            // 📂 匯入專案彈窗邏輯
+            const openImportProjectModal = async () => {
+                const projectList = await ApiService.listProjects();
+
+                if (projectList.length === 0) {
+                    alert("⚠️ 目前伺服器上尚無任何已匯出的專案包可供匯入！");
+                    return;
+                }
+
+                const bodyHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="color: #ccc; font-size: 11px;">
+                            選取要載入的專案包。匯入後會自動覆蓋當前節點的所有分鏡與媒體路徑。
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label style="font-weight: bold; color: #0284c7;">請選擇要載入的專案：</label>
+                            <select id="select_import_proj" style="background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;">
+                                ${projectList.map(p => `<option value="${p.name}">${p.name} (更新時間: ${new Date(p.mtime * 1000).toLocaleString()})</option>`).join("")}
+                            </select>
+                        </div>
+
+                        <div id="import_info_box" style="background: #1a1a1a; border: 1px solid #333; padding: 8px; border-radius: 4px; font-size: 11px; color: #aaa; min-height: 50px;">
+                            載入專案詳細資訊中...
+                        </div>
+                    </div>
+                `;
+
+                const footerHtml = `
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; width: 100%;">
+                        <button id="modal_cancel_import" style="background: #444; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer;">取消</button>
+                        <button id="modal_confirm_import" style="background: #0284c7; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">📂 確定匯入此專案</button>
+                    </div>
+                `;
+
+                const { dialog, closeModal } = createModal({
+                    title: "📂 匯入專案 (載入專案包與媒體庫)",
+                    width: "520px",
+                    bodyHtml,
+                    footerHtml
+                });
+
+                const selectProj = dialog.querySelector("#select_import_proj");
+                const infoBox = dialog.querySelector("#import_info_box");
+
+                const updateImportInfo = async () => {
+                    const pName = selectProj.value;
+                    if (!pName) return;
+                    infoBox.innerText = "⏳ 讀取專案資料中...";
+                    const res = await ApiService.loadProject(pName);
+                    if (res && res.success && res.scenes_data) {
+                        const sc = res.scenes_data.scenes || [];
+                        infoBox.innerHTML = `
+                            <div><strong style="color: #4db8ff;">專案名稱：</strong> ${pName}</div>
+                            <div><strong style="color: #ffca28;">分鏡數量：</strong> ${sc.length} 個</div>
+                            <div><strong style="color: #28a745;">全域 Dict 鍵數：</strong> ${(res.scenes_data.global_dict || []).length} 個</div>
+                        `;
+                    } else {
+                        infoBox.innerText = "⚠️ 無法讀取該專案資料";
+                    }
+                };
+
+                selectProj.onchange = updateImportInfo;
+                updateImportInfo();
+
+                dialog.querySelector("#modal_cancel_import").onclick = closeModal;
+
+                dialog.querySelector("#modal_confirm_import").onclick = () => {
+                    const pName = selectProj.value;
+                    if (!pName) return;
+
+                    showConfirmModal({
+                        title: "📂 匯入專案確認",
+                        message: `確定要載入專案 <strong>「${pName}」</strong> 嗎？這將會覆蓋當前編輯中的所有分鏡設定！`,
+                        confirmText: "確定覆蓋匯入",
+                        onConfirm: async () => {
+                            const res = await ApiService.loadProject(pName);
+                            if (res && res.success && res.scenes_data) {
+                                saveData(res.scenes_data, renderUI);
+                                alert(`✅ 專案「${pName}」已成功載入！`);
+                                closeModal();
+                            } else {
+                                alert("❌ 載入專案失敗！");
+                            }
+                        }
+                    });
+                };
+            };
+
+            els.btnExportProj.onclick = openExportProjectModal;
+            els.btnImportProj.onclick = openImportProjectModal;
+            
+            // 🎬 全分鏡連貫播放模式彈窗 (雙 Video 緩衝無閃爍)
+            const openSequencePlayerModal = (startSceneIdx = 0) => {
+                const data = getData();
+                syncActiveInputs(data);
+                const scenes = data.scenes || [];
+
+                const playableItems = [];
+                scenes.forEach((s, idx) => {
+                    s.videos = s.videos || (s.video ? [s.video] : []);
+                    s.selected_video_idx = s.selected_video_idx ?? 0;
+                    const activeVid = s.videos[s.selected_video_idx] || s.video;
+                    if (activeVid) {
+                        playableItems.push({
+                            sceneIdx: idx,
+                            videoObj: activeVid,
+                            duration: s.duration || 0,
+                            prompt: s.prompt || ""
+                        });
+                    }
+                });
+
+                if (playableItems.length === 0) {
+                    alert("⚠️ 目前沒有任何分鏡設定影片，無法啟動播放模式！");
+                    return;
+                }
+
+                let playIdx = playableItems.findIndex(p => p.sceneIdx >= startSceneIdx);
+                if (playIdx === -1) playIdx = 0;
+
+                const bodyHtml = `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex-shrink: 0;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-weight: bold; color: #28a745;" id="play_status_badge">▶️ 播放中</span>
+                                <span id="play_scene_info" style="color: #4db8ff; font-weight: bold;">分鏡 #0</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; font-size: 11px;">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: #ccc; user-select: none;">
+                                    <input type="checkbox" id="chk_auto_loop" checked> 全分鏡循環播放
+                                </label>
+                                <button id="btn_start_from_first" style="background: #2d5a88; color: #fff; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer;">⏮️ 第一鏡</button>
+                                <button id="btn_start_from_selected" style="background: #005f73; color: #fff; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer;">🎯 點選鏡</button>
+                            </div>
+                        </div>
+
+                        <!-- 雙層無縫影片播放區域 (固定高度，徹底防閃爍與晃動) -->
+                        <div style="position: relative; width: 100%; height: 320px; background: #000; border-radius: 6px; overflow: hidden; flex-shrink: 0; border: 1px solid #2a2a2a;">
+                            <video id="seq_video_a" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; opacity: 1; transition: opacity 0.2s ease;" playsinline></video>
+                            <video id="seq_video_b" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; opacity: 0; transition: opacity 0.2s ease;" playsinline></video>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex-shrink: 0;">
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="btn_seq_prev" style="background: #444; color: #fff; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer;">⏮️ 上一鏡</button>
+                                <button id="btn_seq_toggle" style="background: #28a745; color: #fff; border: none; padding: 4px 14px; border-radius: 3px; cursor: pointer; font-weight: bold;">⏸️ 暫停</button>
+                                <button id="btn_seq_next" style="background: #444; color: #fff; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer;">⏭️ 下一鏡</button>
+                            </div>
+                            <div id="seq_time_info" style="color: #aaa; font-size: 11px;">00:00 / 00:00</div>
+                        </div>
+
+                        <div style="background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 8px; flex-shrink: 0;">
+                            <div style="font-size: 11px; font-weight: bold; color: #aaa; margin-bottom: 6px;">🎬 可播放分鏡清單 (點擊切換)：</div>
+                            <div id="seq_playlist_strip" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin;"></div>
+                        </div>
+                    </div>
+                `;
+
+                const footerHtml = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span style="font-size: 11px; color: #888;">💡 提示：點擊上方膠卷縮圖可隨時跳轉至該分鏡播放</span>
+                        <button id="btn_close_seq_player" style="background: #444; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer;">關閉播放器</button>
+                    </div>
+                `;
+
+                const { dialog, closeModal } = createModal({
+                    title: `🎬 全分鏡連續播放模式`,
+                    width: "780px",
+                    bodyHtml,
+                    footerHtml,
+                    onClose: () => {
+                        videoA.pause();
+                        videoB.pause();
+                        videoA.src = "";
+                        videoB.src = "";
+                    }
+                });
+
+                const videoA = dialog.querySelector("#seq_video_a");
+                const videoB = dialog.querySelector("#seq_video_b");
+                let activeVidEl = videoA;
+                let hiddenVidEl = videoB;
+
+                const playStatusBadge = dialog.querySelector("#play_status_badge");
+                const playSceneInfo = dialog.querySelector("#play_scene_info");
+                const seqTimeInfo = dialog.querySelector("#seq_time_info");
+                const playlistStrip = dialog.querySelector("#seq_playlist_strip");
+                const btnToggle = dialog.querySelector("#btn_seq_toggle");
+                const chkAutoLoop = dialog.querySelector("#chk_auto_loop");
+
+                const renderPlaylistStrip = () => {
+                    playlistStrip.innerHTML = "";
+                    playableItems.forEach((item, pIdx) => {
+                        const isPlaying = pIdx === playIdx;
+                        const card = document.createElement("div");
+                        card.style.cssText = `
+                            flex: 0 0 auto; width: 80px; padding: 4px;
+                            border: 2px solid ${isPlaying ? "#28a745" : "#444"};
+                            background: ${isPlaying ? "#1b4324" : "#222"};
+                            border-radius: 4px; cursor: pointer; text-align: center;
+                        `;
+                        const vUrl = ApiService.getMediaUrl(item.videoObj);
+
+                        card.innerHTML = `
+                            <div style="position: relative; width: 100%; height: 45px; background: #000; border-radius: 2px; overflow: hidden;">
+                                <video src="${vUrl}" muted playsinline style="width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none;"></video>
+                                ${isPlaying ? `<div style="position: absolute; top:2px; right:2px; background:#28a745; color:#fff; font-size:8px; padding:1px 3px; border-radius:2px;">播放中</div>` : ""}
+                            </div>
+                            <div style="font-size: 9px; color: ${isPlaying ? "#fff" : "#ccc"}; font-weight: bold; margin-top: 3px;">#${item.sceneIdx} (${item.duration}s)</div>
+                        `;
+
+                        card.onclick = () => {
+                            playIdx = pIdx;
+                            loadAndPlayItem();
+                        };
+
+                        playlistStrip.appendChild(card);
+                    });
+                };
+
+                const loadAndPlayItem = () => {
+                    if (playIdx < 0 || playIdx >= playableItems.length) return;
+                    const current = playableItems[playIdx];
+                    const vUrl = ApiService.getMediaUrl(current.videoObj);
+
+                    playSceneInfo.innerText = `分鏡 #${current.sceneIdx} (進度 ${playIdx + 1}/${playableItems.length})`;
+
+                    // 雙 Video 緩衝無縫切換核心邏輯
+                    hiddenVidEl.src = vUrl;
+                    hiddenVidEl.currentTime = 0;
+                    hiddenVidEl.play().then(() => {
+                        hiddenVidEl.style.opacity = "1";
+                        activeVidEl.style.opacity = "0";
+                        activeVidEl.pause();
+
+                        // 交換當前與隱藏影片指標
+                        const temp = activeVidEl;
+                        activeVidEl = hiddenVidEl;
+                        hiddenVidEl = temp;
+
+                        btnToggle.innerText = "⏸️ 暫停";
+                        playStatusBadge.innerText = "▶️ 播放中";
+                        playStatusBadge.style.color = "#28a745";
+                    }).catch(err => {
+                        console.log("[LikeJVideoDirector] 自動播放回應:", err);
+                        hiddenVidEl.style.opacity = "1";
+                        activeVidEl.style.opacity = "0";
+                        activeVidEl.pause();
+                        const temp = activeVidEl;
+                        activeVidEl = hiddenVidEl;
+                        hiddenVidEl = temp;
+                    });
+
+                    renderPlaylistStrip();
+                };
+
+                const handleEnded = (e) => {
+                    if (e.target !== activeVidEl) return;
+                    const shouldLoop = chkAutoLoop.checked;
+                    if (playIdx + 1 < playableItems.length) {
+                        playIdx++;
+                        loadAndPlayItem();
+                    } else if (shouldLoop) {
+                        playIdx = 0;
+                        loadAndPlayItem();
+                    } else {
+                        btnToggle.innerText = "▶️ 播放";
+                        playStatusBadge.innerText = "⏹️ 播放完畢";
+                        playStatusBadge.style.color = "#ffca28";
+                    }
+                };
+
+                const handleTimeUpdate = (e) => {
+                    if (e.target === activeVidEl && activeVidEl.duration) {
+                        const cur = Math.floor(activeVidEl.currentTime);
+                        const tot = Math.floor(activeVidEl.duration);
+                        const fmt = s => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+                        seqTimeInfo.innerText = `${fmt(cur)} / ${fmt(tot)}`;
+                    }
+                };
+
+                videoA.onended = handleEnded;
+                videoB.onended = handleEnded;
+                videoA.ontimeupdate = handleTimeUpdate;
+                videoB.ontimeupdate = handleTimeUpdate;
+
+                btnToggle.onclick = () => {
+                    if (activeVidEl.paused) {
+                        activeVidEl.play();
+                        btnToggle.innerText = "⏸️ 暫停";
+                        playStatusBadge.innerText = "▶️ 播放中";
+                        playStatusBadge.style.color = "#28a745";
+                    } else {
+                        activeVidEl.pause();
+                        btnToggle.innerText = "▶️ 播放";
+                        playStatusBadge.innerText = "⏸️ 已暫停";
+                        playStatusBadge.style.color = "#ffca28";
+                    }
+                };
+
+                dialog.querySelector("#btn_seq_prev").onclick = () => {
+                    playIdx = (playIdx - 1 + playableItems.length) % playableItems.length;
+                    loadAndPlayItem();
+                };
+
+                dialog.querySelector("#btn_seq_next").onclick = () => {
+                    playIdx = (playIdx + 1) % playableItems.length;
+                    loadAndPlayItem();
+                };
+
+                dialog.querySelector("#btn_start_from_first").onclick = () => {
+                    playIdx = 0;
+                    loadAndPlayItem();
+                };
+
+                dialog.querySelector("#btn_start_from_selected").onclick = () => {
+                    const curSelectedIdx = data.scenes.findIndex(s => s.selected);
+                    let targetPIdx = playableItems.findIndex(p => p.sceneIdx >= (curSelectedIdx >= 0 ? curSelectedIdx : 0));
+                    if (targetPIdx === -1) targetPIdx = 0;
+                    playIdx = targetPIdx;
+                    loadAndPlayItem();
+                };
+
+                dialog.querySelector("#btn_close_seq_player").onclick = closeModal;
+
+                loadAndPlayItem();
+            };
 
             // 🎬 影片管理彈窗
             function openVideoManageModal(sceneIdx) {
@@ -452,7 +922,7 @@ app.registerExtension({
                                 <button id="btn_modal_del" style="background:#882d2d; color:#fff; border:none; border-radius:3px; padding:2px 8px; cursor:pointer;">🗑️ 刪除</button>
                             </div>
                         </div>
-                        <div id="modal_scene_videos_box" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 75px; align-items: center;"></div>
+                        <div id="modal_scene_videos_box" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; min-height: 75px; align-items: center; scrollbar-width: thin;"></div>
                     </div>
 
                     <div style="background: #1a1a1a; border: 1px solid #3d3d3d; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 10px;">
@@ -532,7 +1002,7 @@ app.registerExtension({
                         const vidEl = item.querySelector("video");
                         const zoomBtn = item.querySelector(".zoom-btn");
 
-                        vWrap.onmouseenter = () => vidEl.play().catch(() => {});
+                        vWrap.onmouseenter = () => vidEl.play().catch(() => { });
                         vWrap.onmouseleave = () => {
                             vidEl.pause();
                             vidEl.currentTime = 0;
@@ -556,10 +1026,16 @@ app.registerExtension({
                 dialog.querySelector("#btn_modal_del").onclick = () => {
                     if (scene.videos.length > 0) {
                         const idx = scene.selected_video_idx || 0;
-                        scene.videos.splice(idx, 1);
-                        scene.selected_video_idx = Math.max(0, idx - 1);
-                        scene.video = scene.videos[scene.selected_video_idx] || null;
-                        renderModalSceneVideos();
+                        showConfirmModal({
+                            title: "🗑️ 刪除影片確認",
+                            message: `確定要從此分鏡清單中移除 <strong>#${idx} ${scene.videos[idx].filename || ''}</strong> 嗎？`,
+                            onConfirm: () => {
+                                scene.videos.splice(idx, 1);
+                                scene.selected_video_idx = Math.max(0, idx - 1);
+                                scene.video = scene.videos[scene.selected_video_idx] || null;
+                                renderModalSceneVideos();
+                            }
+                        });
                     }
                 };
 
@@ -785,12 +1261,16 @@ app.registerExtension({
                     if (vidUrl) {
                         videoWrap.innerHTML = `
                             <video src="${vidUrl}" loop muted playsinline style="width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none;"></video>
-                            <div class="zoom-btn" style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.7); color: #fff; font-size: 9px; padding: 1px 3px; border-radius: 2px; cursor: pointer; z-index: 2;" title="點擊放大播放與查看詳細資訊">🔍</div>
+                            <div style="position: absolute; bottom: 2px; right: 2px; display: flex; gap: 2px; z-index: 2;">
+                                <div class="play-seq-btn" style="background: rgba(40,167,69,0.85); color: #fff; font-size: 9px; padding: 1px 3px; border-radius: 2px; cursor: pointer;" title="從此分鏡開啟播放模式">▶️</div>
+                                <div class="zoom-btn" style="background: rgba(0,0,0,0.7); color: #fff; font-size: 9px; padding: 1px 3px; border-radius: 2px; cursor: pointer;" title="點擊放大播放與查看詳細資訊">🔍</div>
+                            </div>
                         `;
                         const vidEl = videoWrap.querySelector("video");
                         const zoomBtn = videoWrap.querySelector(".zoom-btn");
+                        const playSeqBtn = videoWrap.querySelector(".play-seq-btn");
 
-                        videoWrap.onmouseenter = () => vidEl.play().catch(() => {});
+                        videoWrap.onmouseenter = () => vidEl.play().catch(() => { });
                         videoWrap.onmouseleave = () => {
                             vidEl.pause();
                             vidEl.currentTime = 0;
@@ -799,6 +1279,11 @@ app.registerExtension({
                         zoomBtn.onclick = (e) => {
                             e.stopPropagation();
                             openVideoPreviewModal(activeVid);
+                        };
+
+                        playSeqBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            openSequencePlayerModal(idx);
                         };
                     } else {
                         videoWrap.innerHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 10px; border: 1px dashed #444;">無影片</div>`;
@@ -810,7 +1295,7 @@ app.registerExtension({
 
                     const metaEl = document.createElement("div");
                     metaEl.style.cssText = "font-size: 9px; opacity: 0.85; color: #ddd; margin-top: 1px;";
-                    metaEl.innerText = `🎬${s.videos.length} 🖼️${(s.images || []).length} 🎵${(s.audios || []).length}`;
+                    metaEl.innerText = `🎬${s.videos.length} 🖼${(s.images || []).length} 🎵${(s.audios || []).length}`;
 
                     card.appendChild(titleEl);
                     card.appendChild(videoWrap);
@@ -933,7 +1418,7 @@ app.registerExtension({
                     const isSel = iIdx === (activeScene.selected_img_idx || 0);
                     const item = document.createElement("div");
                     item.style.cssText = `flex: 0 0 auto; padding: 2px; border: 2px solid ${isSel ? "#00a2ff" : "#444"}; border-radius: 4px; cursor: pointer; background: #151515; position: relative;`;
-                    
+
                     const imgUrl = ApiService.getMediaUrl(imgItem);
                     item.innerHTML = `
                         <div class="img-wrap" style="position: relative; width: 48px; height: 48px; border-radius: 2px; overflow: hidden;">
@@ -960,13 +1445,39 @@ app.registerExtension({
                     els.imgListBox.appendChild(item);
                 });
 
+                // 🎵 音訊列表與自動時間長度讀取
                 els.audioListBox.innerHTML = activeScene.audios.length === 0 ? `<span style="font-size:10px; color:#777; align-self:center;">暫無參考音訊</span>` : "";
                 activeScene.audios.forEach((audioItem, aIdx) => {
                     const isSel = aIdx === (activeScene.selected_audio_idx || 0);
                     const item = document.createElement("div");
                     item.style.cssText = `flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; padding: 4px; border: 1px solid ${isSel ? "#00a2ff" : "#444"}; background: ${isSel ? "#004477" : "#1f1f1f"}; border-radius: 4px; cursor: pointer;`;
-                    const fileNameStr = typeof audioItem === "object" ? audioItem.name : audioItem;
-                    item.innerHTML = `<div style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px;" title="${fileNameStr}">#${aIdx} ${fileNameStr}</div><audio src="${ApiService.getMediaUrl(audioItem)}" controls style="width: 140px; height: 26px;"></audio>`;
+
+                    const fileNameStr = typeof audioItem === "object" ? (audioItem.filename || audioItem.name || "audio") : audioItem;
+                    const audioUrl = ApiService.getMediaUrl(audioItem);
+
+                    item.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 140px; font-size: 10px;">
+                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;" title="${fileNameStr}">#${aIdx} ${fileNameStr}</span>
+                            <span class="audio-dur-tag" style="color: #ffca28; font-size: 9px; font-weight: bold; margin-left: 4px; flex-shrink: 0;">⏱ ...</span>
+                        </div>
+                        <audio src="${audioUrl}" controls style="width: 140px; height: 26px;"></audio>
+                    `;
+
+                    const audioEl = item.querySelector("audio");
+                    const durTag = item.querySelector(".audio-dur-tag");
+
+                    if (audioEl && durTag) {
+                        audioEl.onloadedmetadata = () => {
+                            if (audioEl.duration && !isNaN(audioEl.duration) && isFinite(audioEl.duration)) {
+                                durTag.innerText = `⏱️ ${audioEl.duration.toFixed(1)}s`;
+                            } else {
+                                durTag.innerText = "";
+                            }
+                        };
+                        audioEl.onerror = () => {
+                            durTag.innerText = "無法讀取";
+                        };
+                    }
 
                     item.onclick = (e) => {
                         if (e.target.tagName.toLowerCase() === "audio") return;
@@ -1001,6 +1512,13 @@ app.registerExtension({
                 }
             };
 
+            els.btnPlayMode.onclick = () => {
+                const data = getData();
+                const active = getActiveScene(data.scenes);
+                const activeIdx = data.scenes.findIndex(s => s === active);
+                openSequencePlayerModal(activeIdx >= 0 ? activeIdx : 0);
+            };
+
             els.btnManageVideos.onclick = () => {
                 const data = getData();
                 const active = getActiveScene(data.scenes);
@@ -1016,14 +1534,25 @@ app.registerExtension({
                 saveData(data, renderUI);
             };
 
+            // 🗑️ 刪除分鏡
             $("#btn_del_clip").onclick = () => {
                 const data = getData();
-                if (data.scenes.length <= 1) return;
-                syncActiveInputs(data);
+                if (data.scenes.length <= 1) {
+                    alert("⚠️ 至少需保留一個分鏡，無法刪除！");
+                    return;
+                }
                 const idx = data.scenes.findIndex(s => s.selected);
-                data.scenes.splice(idx, 1);
-                data.scenes[Math.min(idx, data.scenes.length - 1)].selected = true;
-                saveData(data, renderUI);
+                showConfirmModal({
+                    title: "🗑️ 刪除分鏡確認",
+                    message: `確定要刪除 <strong>分鏡 #${idx}</strong> 嗎？此操作無法撤銷。`,
+                    confirmText: "確定刪除",
+                    onConfirm: () => {
+                        syncActiveInputs(data);
+                        data.scenes.splice(idx, 1);
+                        data.scenes[Math.min(idx, data.scenes.length - 1)].selected = true;
+                        saveData(data, renderUI);
+                    }
+                });
             };
 
             $("#btn_left_clip").onclick = () => {
@@ -1104,9 +1633,16 @@ app.registerExtension({
                     const active = getActiveScene(data.scenes);
                     if (active && active[key].length > 0) {
                         const idx = active[selKey] || 0;
-                        active[key].splice(idx, 1);
-                        active[selKey] = Math.max(0, idx - 1);
-                        saveData(data, renderUI);
+                        const label = type === "img" ? "參考圖片" : "參考音訊";
+                        showConfirmModal({
+                            title: `🗑️ 刪除${label}確認`,
+                            message: `確定要移除當前選取的<strong>${label} #${idx}</strong> 嗎？`,
+                            onConfirm: () => {
+                                active[key].splice(idx, 1);
+                                active[selKey] = Math.max(0, idx - 1);
+                                saveData(data, renderUI);
+                            }
+                        });
                     }
                 };
 
