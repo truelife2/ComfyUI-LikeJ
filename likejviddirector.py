@@ -186,7 +186,7 @@ async def list_projects(request):
 
 
 # ==========================================
-# API 4：匯出專案 (僅清空素材相關子目錄，保留 exported_videos 等其他資料夾)
+# API 4：匯出專案 (採差量清理，安全相容匯入專案覆蓋並刪除廢棄檔案)
 # ==========================================
 @PromptServer.instance.routes.post("/likej/export_project")
 async def export_project(request):
@@ -204,22 +204,28 @@ async def export_project(request):
             return web.json_response({"success": False, "error": "專案名稱包含不合法字元"}, status=400)
 
         proj_dir = os.path.join(PROJECTS_BASE_DIR, clean_proj_name)
-        os.makedirs(proj_dir, exist_ok=True)
-
+        
         ref_img_dir = os.path.join(proj_dir, "ref_images")
         ref_audio_dir = os.path.join(proj_dir, "ref_audios")
         ref_video_dir = os.path.join(proj_dir, "ref_videos")
         video_dir = os.path.join(proj_dir, "videos")
 
-        media_dirs = [ref_img_dir, ref_audio_dir, ref_video_dir, video_dir]
-        for sub_dir in media_dirs:
-            os.makedirs(sub_dir, exist_ok=True)
+        os.makedirs(ref_img_dir, exist_ok=True)
+        os.makedirs(ref_audio_dir, exist_ok=True)
+        os.makedirs(ref_video_dir, exist_ok=True)
+        os.makedirs(video_dir, exist_ok=True)
 
         subfolder_rel = f"likej_projects/{clean_proj_name}"
 
+        # 追蹤目前專案實際有使用的檔名清單（HashSet）
+        active_ref_images = set()
+        active_ref_audios = set()
+        active_ref_videos = set()
+        active_videos = set()
+
         scenes = scenes_data.get("scenes", [])
         for scene in scenes:
-            # 1. 複製參考影像 (ref_images)
+            # 1. 處理參考影像 (ref_images)
             new_ref_images = []
             for img_item in scene.get("ref_images", []):
                 src_p = resolve_source_filepath(img_item, default_type="output")
@@ -227,13 +233,16 @@ async def export_project(request):
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(ref_img_dir, fname)
-                    shutil.copy2(src_p, dest_p)
+                    # 僅當來源與目標路徑不同時才複製（避免複製自己）
+                    if os.path.abspath(src_p) != os.path.abspath(dest_p):
+                        shutil.copy2(src_p, dest_p)
                 
                 if fname:
+                    active_ref_images.add(fname)
                     new_ref_images.append(make_item_dict(fname, f"{subfolder_rel}/ref_images", "output"))
             scene["ref_images"] = new_ref_images
 
-            # 2. 複製參考音訊 (ref_audios)
+            # 2. 處理參考音訊 (ref_audios)
             new_ref_audios = []
             for audio_item in scene.get("ref_audios", []):
                 src_p = resolve_source_filepath(audio_item, default_type="output")
@@ -241,13 +250,15 @@ async def export_project(request):
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(ref_audio_dir, fname)
-                    shutil.copy2(src_p, dest_p)
+                    if os.path.abspath(src_p) != os.path.abspath(dest_p):
+                        shutil.copy2(src_p, dest_p)
 
                 if fname:
+                    active_ref_audios.add(fname)
                     new_ref_audios.append(make_item_dict(fname, f"{subfolder_rel}/ref_audios", "output"))
             scene["ref_audios"] = new_ref_audios
 
-            # 3. 複製參考視訊 (ref_videos)
+            # 3. 處理參考視訊 (ref_videos)
             new_ref_videos = []
             for ref_vid in scene.get("ref_videos", []):
                 src_p = resolve_source_filepath(ref_vid, default_type="output")
@@ -255,13 +266,15 @@ async def export_project(request):
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(ref_video_dir, fname)
-                    shutil.copy2(src_p, dest_p)
+                    if os.path.abspath(src_p) != os.path.abspath(dest_p):
+                        shutil.copy2(src_p, dest_p)
 
                 if fname:
+                    active_ref_videos.add(fname)
                     new_ref_videos.append(make_item_dict(fname, f"{subfolder_rel}/ref_videos", "output"))
             scene["ref_videos"] = new_ref_videos
 
-            # 4. 複製分鏡選定影片 (videos)
+            # 4. 處理分鏡選定影片 (videos)
             new_videos = []
             for vid_item in scene.get("videos", []):
                 src_p = resolve_source_filepath(vid_item, default_type="output")
@@ -269,9 +282,11 @@ async def export_project(request):
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(video_dir, fname)
-                    shutil.copy2(src_p, dest_p)
+                    if os.path.abspath(src_p) != os.path.abspath(dest_p):
+                        shutil.copy2(src_p, dest_p)
 
                 if fname:
+                    active_videos.add(fname)
                     new_videos.append(make_item_dict(fname, f"{subfolder_rel}/videos", "output"))
             scene["videos"] = new_videos
 
@@ -283,6 +298,23 @@ async def export_project(request):
                     scene["video"] = scene["videos"][0]
                 else:
                     scene["video"] = None
+
+        # 💡 第二階段：清理孤立/廢棄檔案 (Garbage Clean)
+        # 掃描子目錄，將不在 active 清單中的舊檔案刪除
+        def clean_orphan_files(target_dir, active_set):
+            if os.path.exists(target_dir):
+                for f_name in os.listdir(target_dir):
+                    f_path = os.path.join(target_dir, f_name)
+                    if os.path.isfile(f_path) and f_name not in active_set:
+                        try:
+                            os.remove(f_path)
+                        except Exception as err:
+                            print(f"[LikeJVideoDirector] 刪除廢棄素材失敗 ({f_path}): {err}")
+
+        clean_orphan_files(ref_img_dir, active_ref_images)
+        clean_orphan_files(ref_audio_dir, active_ref_audios)
+        clean_orphan_files(ref_video_dir, active_ref_videos)
+        clean_orphan_files(video_dir, active_videos)
 
         # 寫入/覆蓋 project.json
         project_json_path = os.path.join(proj_dir, "project.json")
