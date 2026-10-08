@@ -349,8 +349,9 @@ app.registerExtension({
                         <button id="btn_open_modal" style="padding: 4px 8px; background: #2d5a88; color: #fff; border: 1px solid #4a82b8; border-radius: 4px; cursor: pointer; font-weight: bold;">⚙️ 設定全域 Dict</button>
                         <button id="btn_play_mode" style="padding: 4px 8px; background: #28a745; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">▶️ 播放模式</button>
                         <button id="btn_export_proj" style="padding: 4px 6px; background: #d97706; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📦 匯出專案</button>
-                        <button id="btn_import_proj" style="padding: 4px 6px; background: #0284c7; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📂 匯入專案</button>                   </div>
+                        <button id="btn_import_proj" style="padding: 4px 6px; background: #0284c7; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📂 匯入專案</button> 
                         <button id="btn_export_vids" style="padding: 4px 6px; background: #059669; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🎬 匯出影片</button>
+                    </div>
                     <div id="info_bar" style="color: #aaa;">Clips: 0 | Total: 0s</div>
                 </div>
 
@@ -676,8 +677,8 @@ app.registerExtension({
 
             els.btnExportProj.onclick = openExportProjectModal;
             els.btnImportProj.onclick = openImportProjectModal;
-            
-            // 🎬 匯出影片彈窗邏輯
+
+            // 🎬 匯出影片彈窗邏輯 (帶有已有目錄下拉選單)
             const openExportVideosModal = async () => {
                 const data = getData();
                 syncActiveInputs(data);
@@ -688,6 +689,9 @@ app.registerExtension({
                     return;
                 }
 
+                // 取得已有目錄/專案清單
+                const projectList = await ApiService.listProjects();
+
                 const bodyHtml = `
         <div style="display: flex; flex-direction: column; gap: 10px;">
             <div style="color: #ccc; font-size: 11px; line-height: 1.4;">
@@ -695,7 +699,15 @@ app.registerExtension({
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 4px;">
-                <label style="font-weight: bold; color: #059669;">請輸入匯出影片的目錄名稱：</label>
+                <label style="font-weight: bold; color: #ffca28;">下拉選擇已有目錄 (進行覆蓋)：</label>
+                <select id="select_existing_vid_dir" style="background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;">
+                    <option value="">-- 請選擇已有目錄，或直接在下方新建 --</option>
+                    ${projectList.map(p => `<option value="${p.name}">${p.name} (${new Date(p.mtime * 1000).toLocaleString()})</option>`).join("")}
+                </select>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-weight: bold; color: #059669;">匯出目錄名稱 (資料夾名稱)：</label>
                 <input id="input_export_vid_dir" type="text" placeholder="例如：my_movie_v1" style="background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;">
             </div>
 
@@ -712,20 +724,28 @@ app.registerExtension({
 
                 const { dialog, closeModal } = createModal({
                     title: "🎬 匯出分鏡影片 (依照分鏡編號輸出)",
-                    width: "500px",
+                    width: "520px",
                     bodyHtml,
                     footerHtml
                 });
 
+                const selectDir = dialog.querySelector("#select_existing_vid_dir");
                 const inputDir = dialog.querySelector("#input_export_vid_dir");
                 const statusTip = dialog.querySelector("#export_vids_status_tip");
+
+                // 切換下拉選單時自動帶入輸入框
+                selectDir.onchange = () => {
+                    if (selectDir.value) {
+                        inputDir.value = selectDir.value;
+                    }
+                };
 
                 dialog.querySelector("#modal_cancel_export_vid").onclick = closeModal;
 
                 dialog.querySelector("#modal_confirm_export_vid").onclick = async () => {
                     const dirName = inputDir.value.trim();
                     if (!dirName) {
-                        alert("⚠️ 請輸入匯出目錄名稱！");
+                        alert("⚠️ 請輸入或選擇匯出目錄名稱！");
                         return;
                     }
 
@@ -734,7 +754,7 @@ app.registerExtension({
 
                     const result = await ApiService.exportVideos(dirName, scenes);
                     if (result && result.success) {
-                        alert(`✅ 影片匯出成功！\n共匯出 ${result.exported_count} 個分鏡影片 (跳過無影片分鏡: ${result.skipped_count} 個)\n儲存路徑：\n${result.export_dir}`);
+                        alert(`✅ 影片匯出成功！\n共匯出 ${result.exported_count} 個分鏡影片 (跳過無影片分鏡: ${result.skipped_count} 個)\n\n儲存路徑：\n${result.export_dir}`);
                         closeModal();
                     } else {
                         statusTip.innerText = `❌ 匯出失敗: ${result?.error || "未知錯誤"}`;

@@ -311,6 +311,11 @@ async def export_videos(request):
 
         # 建立導出目標資料夾 (路徑: output/likej_projects/<dir_name>/exported_videos)
         target_dir = os.path.join(PROJECTS_BASE_DIR, clean_dir_name, "exported_videos")
+        
+        # 若已存在舊的匯出目錄，先整條清空刪除，避免舊分鏡殘留
+        if os.path.exists(target_dir):
+            shutil.rmtree(target_dir, ignore_errors=True)
+
         os.makedirs(target_dir, exist_ok=True)
 
         exported_files = []
