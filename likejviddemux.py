@@ -5,6 +5,15 @@ import numpy as np
 import folder_paths
 
 try:
+    from comfy_api.latest._input_impl.video_types import VideoFromFile
+except ImportError:
+    try:
+        from comfy_api.latest import InputImpl
+        VideoFromFile = InputImpl.VideoFromFile
+    except ImportError:
+        VideoFromFile = None
+
+try:
     import torchaudio
     HAS_TORCHAUDIO = True
 except ImportError:
@@ -31,23 +40,9 @@ class LikeJVideoDemuxing:
 
         video_path = None
 
-        # 針對標準 ComfyUI VIDEO 物件或字典進行屬性解析
-        if hasattr(video, "get_filepath") and callable(getattr(video, "get_filepath")):
-            video_path = video.get_filepath()
-        elif hasattr(video, "file_path"):
-            video_path = getattr(video, "file_path")
-        elif hasattr(video, "path"):
-            video_path = getattr(video, "path")
-        elif isinstance(video, dict):
-            video_path = video.get("full_path") or video.get("path") or video.get("filename")
-        elif isinstance(video, str):
-            video_path = video
-
-        # 如果抓到的路徑是相對路徑或不合法，直接強制轉換字串嘗試
-        if not video_path:
-            video_path = str(video)
-
-        if not os.path.exists(str(video_path)):
+        video_path = video.get_stream_source()
+        
+        if not video_path or not os.path.exists(str(video_path)):
             print(f"[LikeJVideoDemuxing] 找不到影片檔案路徑: {video_path}")
             return (None, None, 0.0)
 
