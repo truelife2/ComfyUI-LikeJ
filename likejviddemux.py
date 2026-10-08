@@ -1,5 +1,3 @@
-
-
 class LikeJVideoDemuxing:
     @classmethod
     def INPUT_TYPES(s):
@@ -18,7 +16,9 @@ class LikeJVideoDemuxing:
         if video is None:
             return (None, None, 0.0)
 
+        # https://github.com/Comfy-Org/ComfyUI/blob/master/comfy_api/latest/_input_impl/video_types.py
         video_components = video.get_components()
+        
         if video_components is None:
             print(f"[LikeJVideoDemuxing] 無法獲取影片元件: {video}")
             return (None, None, 0.0)
