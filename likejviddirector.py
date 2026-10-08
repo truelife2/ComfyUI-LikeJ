@@ -1,6 +1,9 @@
 import os
 import json
 import shutil
+import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import torch
 import numpy as np
 from PIL import Image, ImageOps
@@ -15,23 +18,44 @@ try:
 except ImportError:
     HAS_TORCHAUDIO = False
 
-# 專案儲存根目錄：ComfyUI/output/likej_projects
+# 設定記錄器與常數
 PROJECTS_BASE_DIR = os.path.join(folder_paths.get_output_directory(), "likej_projects")
+VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
 
-def resolve_source_filepath(file_item):
-    """ 解析檔案實體路徑 (支援字串或 Dict 格式，自動跨 input/output/temp 尋找) """
+
+# ==========================================
+# Item 路徑解析與格式化輔助函式
+# ==========================================
+def parse_item_info(file_item: Union[str, Dict[str, Any]], default_type: str = "input") -> Tuple[str, str, str]:
+    """統一解析 item (支援字串或 Dict 格式)，回傳 (filename, subfolder, folder_type)"""
     if not file_item:
-        return None
+        return "", "", default_type
     
     if isinstance(file_item, str):
-        filename = file_item
-        subfolder = ""
-        folder_type = "input"
-    else:
-        filename = file_item.get("filename") or file_item.get("name") or ""
-        subfolder = file_item.get("subfolder", "")
-        folder_type = file_item.get("type", "input")
+        return file_item, "", default_type
 
+    filename = file_item.get("filename") or file_item.get("name") or ""
+    subfolder = file_item.get("subfolder", "")
+    folder_type = file_item.get("type", default_type)
+    return filename, subfolder, folder_type
+
+
+def make_item_dict(filename: str, subfolder: str = "", folder_type: str = "output") -> Dict[str, str]:
+    """統一建立標準化 item 字典，同時包含 filename 與 name 以保證前後端相容"""
+    return {
+        "filename": filename,
+        "name": filename,
+        "subfolder": subfolder,
+        "type": folder_type
+    }
+
+
+def resolve_source_filepath(file_item: Union[str, Dict[str, Any]], default_type: str = "input") -> Optional[str]:
+    """解析檔案實體路徑 (支援字串或 Dict 格式，自動跨 input/output/temp 尋找)"""
+    if not file_item:
+        return None
+
+    filename, subfolder, folder_type = parse_item_info(file_item, default_type=default_type)
     if not filename:
         return None
 
@@ -66,24 +90,24 @@ async def list_videos(request):
     else:
         base_dir = folder_paths.get_output_directory()
 
-    video_extensions = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
     files_list = []
 
     if os.path.exists(base_dir):
         for root, _, files in os.walk(base_dir):
             for f in files:
-                if f.lower().endswith(video_extensions):
+                if f.lower().endswith(VIDEO_EXTENSIONS):
                     full_path = os.path.join(root, f)
                     rel_path = os.path.relpath(full_path, base_dir)
                     subfolder = os.path.dirname(rel_path)
                     filename = os.path.basename(rel_path)
                     mtime = os.path.getmtime(full_path)
-                    files_list.append({
-                        "filename": filename,
-                        "subfolder": "" if subfolder == "." else subfolder,
-                        "type": folder_type,
-                        "mtime": mtime
-                    })
+                    item_dict = make_item_dict(
+                        filename=filename,
+                        subfolder="" if subfolder == "." else subfolder,
+                        folder_type=folder_type
+                    )
+                    item_dict["mtime"] = mtime
+                    files_list.append(item_dict)
 
     files_list.sort(key=lambda x: x["mtime"], reverse=True)
     return web.json_response(files_list)
@@ -96,20 +120,13 @@ async def list_videos(request):
 async def extract_frame(request):
     try:
         data = await request.json()
-        filename = data.get("filename", "")
-        subfolder = data.get("subfolder", "")
-        folder_type = data.get("type", "output")
         position = data.get("position", "last")
+        filename, subfolder, folder_type = parse_item_info(data, default_type="output")
 
-        if folder_type == "input":
-            base_dir = folder_paths.get_input_directory()
-        else:
-            base_dir = folder_paths.get_output_directory()
+        video_path = resolve_source_filepath(data, default_type=folder_type)
 
-        video_path = os.path.join(base_dir, subfolder, filename) if subfolder else os.path.join(base_dir, filename)
-
-        if not os.path.exists(video_path):
-            return web.json_response({"success": False, "error": f"影片檔案不存在: {video_path}"}, status=400)
+        if not video_path or not os.path.exists(video_path):
+            return web.json_response({"success": False, "error": f"影片檔案不存在: {filename}"}, status=400)
 
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
@@ -139,11 +156,7 @@ async def extract_frame(request):
 
         return web.json_response({
             "success": True,
-            "image": {
-                "name": out_filename,
-                "subfolder": "",
-                "type": "input"
-            }
+            "image": make_item_dict(out_filename, subfolder="", folder_type="input")
         })
     except Exception as e:
         print(f"[LikeJVideoDirector] 抽幀 API 處理失敗: {e}")
@@ -206,8 +219,8 @@ async def export_project(request):
             # 1. 複製圖片
             new_images = []
             for img_item in scene.get("images", []):
-                src_p = resolve_source_filepath(img_item)
-                fname = (img_item.get("name") if isinstance(img_item, dict) else img_item) if img_item else None
+                src_p = resolve_source_filepath(img_item, default_type="output")
+                fname, _, _ = parse_item_info(img_item)
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(img_dir, fname)
@@ -215,18 +228,14 @@ async def export_project(request):
                         shutil.copy2(src_p, dest_p)
                 
                 if fname:
-                    new_images.append({
-                        "name": fname,
-                        "subfolder": f"{subfolder_rel}/images",
-                        "type": "output"
-                    })
+                    new_images.append(make_item_dict(fname, f"{subfolder_rel}/images", "output"))
             scene["images"] = new_images
 
             # 2. 複製音訊
             new_audios = []
             for audio_item in scene.get("audios", []):
-                src_p = resolve_source_filepath(audio_item)
-                fname = (audio_item.get("name") or audio_item.get("filename") if isinstance(audio_item, dict) else audio_item) if audio_item else None
+                src_p = resolve_source_filepath(audio_item, default_type="output")
+                fname, _, _ = parse_item_info(audio_item)
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(audio_dir, fname)
@@ -234,19 +243,14 @@ async def export_project(request):
                         shutil.copy2(src_p, dest_p)
 
                 if fname:
-                    new_audios.append({
-                        "filename": fname,
-                        "name": fname,
-                        "subfolder": f"{subfolder_rel}/audios",
-                        "type": "output"
-                    })
+                    new_audios.append(make_item_dict(fname, f"{subfolder_rel}/audios", "output"))
             scene["audios"] = new_audios
 
             # 3. 複製影片
             new_videos = []
             for vid_item in scene.get("videos", []):
-                src_p = resolve_source_filepath(vid_item)
-                fname = (vid_item.get("filename") or vid_item.get("name") if isinstance(vid_item, dict) else vid_item) if vid_item else None
+                src_p = resolve_source_filepath(vid_item, default_type="output")
+                fname, _, _ = parse_item_info(vid_item)
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(video_dir, fname)
@@ -254,11 +258,7 @@ async def export_project(request):
                         shutil.copy2(src_p, dest_p)
 
                 if fname:
-                    new_videos.append({
-                        "filename": fname,
-                        "subfolder": f"{subfolder_rel}/videos",
-                        "type": "output"
-                    })
+                    new_videos.append(make_item_dict(fname, f"{subfolder_rel}/videos", "output"))
             scene["videos"] = new_videos
 
             if scene.get("video"):
@@ -377,7 +377,7 @@ class LikeJVideoDirector:
                 return json.dumps(val_str, ensure_ascii=False)
             return str(val_str)
 
-    def _load_images_batch(self, image_list):
+    def _load_images_batch(self, image_list: List[Any]) -> List[torch.Tensor]:
         if not image_list or not isinstance(image_list, list) or len(image_list) == 0:
             return [None]
 
@@ -386,28 +386,23 @@ class LikeJVideoDirector:
             if not item:
                 continue
 
-            fname = item.get("name") if isinstance(item, dict) else item
-            subfolder = item.get("subfolder", "") if isinstance(item, dict) else ""
+            filepath = resolve_source_filepath(item, default_type="output")
 
-            if subfolder:
-                fname = os.path.join(subfolder, fname)
-
-            filepath = folder_paths.get_annotated_filepath(fname)
-
-            if not os.path.exists(filepath):
-                raise FileNotFoundError(f"[LikeJVideoDirector] Image file not found: {filepath}")
+            if not filepath or not os.path.exists(filepath):
+                fname, _, _ = parse_item_info(item)
+                raise FileNotFoundError(f"[LikeJVideoDirector] Image file not found: {fname or item}")
 
             try:
-                img = Image.open(filepath)
-                img = ImageOps.exif_transpose(img).convert("RGB")
-                img_arr = np.array(img).astype(np.float32) / 255.0
-                tensors.append(torch.from_numpy(img_arr)[None, ...])
+                with Image.open(filepath) as img:
+                    img = ImageOps.exif_transpose(img).convert("RGB")
+                    img_arr = np.array(img).astype(np.float32) / 255.0
+                    tensors.append(torch.from_numpy(img_arr)[None, ...])
             except Exception as e:
                 raise RuntimeError(f"[LikeJVideoDirector] Failed to load image file ({filepath}): {str(e)}")
 
         return tensors if len(tensors) > 0 else [None]
 
-    def _load_audio_data(self, audio_list):
+    def _load_audio_data(self, audio_list: List[Any]) -> List[Optional[Dict[str, Any]]]:
         if not audio_list or not isinstance(audio_list, list) or len(audio_list) == 0:
             return [None]
 
@@ -419,16 +414,11 @@ class LikeJVideoDirector:
             if not HAS_TORCHAUDIO:
                 raise RuntimeError("[LikeJVideoDirector] Audio configured, but torchaudio module is not installed!")
 
-            fname = item.get("name") if isinstance(item, dict) else item
-            subfolder = item.get("subfolder", "") if isinstance(item, dict) else ""
+            filepath = resolve_source_filepath(item, default_type="output")
 
-            if subfolder:
-                fname = os.path.join(subfolder, fname)
-
-            filepath = folder_paths.get_annotated_filepath(fname)
-
-            if not os.path.exists(filepath):
-                raise FileNotFoundError(f"[LikeJVideoDirector] Audio file not found: {filepath}")
+            if not filepath or not os.path.exists(filepath):
+                fname, _, _ = parse_item_info(item)
+                raise FileNotFoundError(f"[LikeJVideoDirector] Audio file not found: {fname or item}")
 
             try:
                 waveform, sample_rate = torchaudio.load(filepath)
