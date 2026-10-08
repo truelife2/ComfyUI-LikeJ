@@ -777,7 +777,7 @@ app.registerExtension({
             els.btnExportProj.onclick = openExportProjectModal;
             els.btnImportProj.onclick = openImportProjectModal;
 
-            // 🎬 獨立影片放大預覽彈窗與播放器...
+            // 🎬 獨立影片放大預覽彈窗與播放器
             const openSequencePlayerModal = (startSceneIdx = 0) => {
                 const data = getData();
                 syncActiveInputs(data);
@@ -1408,7 +1408,7 @@ app.registerExtension({
 
                     const metaEl = document.createElement("div");
                     metaEl.style.cssText = "font-size: 9px; opacity: 0.85; color: #ddd; margin-top: 1px;";
-                    metaEl.innerText = `🎬${s.videos.length} 🖼${(s.ref_images || s.images || []).length} 🎵${(s.ref_audios || s.audios || []).length} 📹${(s.ref_videos || []).length}`;
+                    metaEl.innerText = `🎬${s.videos.length} 🖼${(s.ref_images || []).length} 🎵${(s.ref_audios || []).length} 📹${(s.ref_videos || []).length}`;
 
                     card.appendChild(titleEl);
                     card.appendChild(videoWrap);
@@ -1430,8 +1430,8 @@ app.registerExtension({
 
                 activeScene.videos = activeScene.videos || (activeScene.video ? [activeScene.video] : []);
                 activeScene.selected_video_idx = activeScene.selected_video_idx ?? 0;
-                activeScene.ref_images = activeScene.ref_images || activeScene.images || [];
-                activeScene.ref_audios = activeScene.ref_audios || activeScene.audios || [];
+                activeScene.ref_images = activeScene.ref_images || [];
+                activeScene.ref_audios = activeScene.ref_audios || [];
                 activeScene.ref_videos = activeScene.ref_videos || [];
                 activeScene.dict_params = activeScene.dict_params || {};
 
@@ -1751,7 +1751,7 @@ app.registerExtension({
                 if (extractedImg) {
                     const active = getActiveScene(freshData.scenes);
                     if (active) {
-                        active.ref_images = active.ref_images || active.images || [];
+                        active.ref_images = active.ref_images || [];
                         active.ref_images.push(extractedImg);
                         active.selected_ref_img_idx = active.ref_images.length - 1;
                         saveData(freshData, renderUI);
