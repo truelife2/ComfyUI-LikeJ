@@ -99,8 +99,6 @@ app.registerExtension({
             let videoPath = "";
             if (pathWidget && pathWidget.value) {
                 videoPath = cleanPath(pathWidget.value);
-            } else if (selectWidget && selectWidget.value) {
-                videoPath = cleanPath(selectWidget.value);
             }
 
             if (!videoPath) {
@@ -138,10 +136,12 @@ app.registerExtension({
         }
 
         if (selectWidget) {
+            selectWidget.serialize = false;
+
             const origCallback = selectWidget.callback;
             selectWidget.callback = function (val) {
                 if (origCallback) origCallback.apply(this, arguments);
-                if (val && pathWidget && !pathWidget.value) {
+                if (val && pathWidget) {
                     pathWidget.value = val;
                 }
                 updateVideoSource();
@@ -156,7 +156,7 @@ app.registerExtension({
 
         videoEl.addEventListener("timeupdate", () => {
             if (!videoEl.paused && !videoEl.seeking) return;
-            
+
             const calculatedFrame = Math.round(videoEl.currentTime * currentFps);
             if (frameWidget && frameWidget.value !== calculatedFrame) {
                 frameWidget.value = calculatedFrame;
