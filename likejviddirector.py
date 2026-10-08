@@ -18,9 +18,38 @@ try:
 except ImportError:
     HAS_TORCHAUDIO = False
 
+# 嘗試動態匯入 ComfyUI 官方 VideoFromFile 類別
+try:
+    from comfy_api.latest._input_impl.video_types import VideoFromFile
+    HAS_VIDEO_FROM_FILE = True
+except ImportError:
+    try:
+        from comfy.inputs import VideoFromFile
+        HAS_VIDEO_FROM_FILE = True
+    except ImportError:
+        VideoFromFile = None
+        HAS_VIDEO_FROM_FILE = False
+
 # 設定記錄器與常數
 PROJECTS_BASE_DIR = os.path.join(folder_paths.get_output_directory(), "likej_projects")
 VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
+
+
+# ==========================================
+# 輔助函式：包裝 ComfyUI 官方 VIDEO 物件
+# ==========================================
+def to_video_object(filepath: str):
+    """將實體影片路徑轉為官方 VideoFromFile 物件 (若環境不支援則降級回傳路徑字串)"""
+    if not filepath or not os.path.exists(filepath):
+        return None
+    
+    if HAS_VIDEO_FROM_FILE and VideoFromFile is not None:
+        try:
+            return VideoFromFile(filepath)
+        except Exception as e:
+            print(f"[LikeJVideoDirector] 包裝 VideoFromFile 物件失敗: {e}")
+            return filepath
+    return filepath
 
 
 # ==========================================
@@ -233,7 +262,6 @@ async def export_project(request):
                 if src_p and os.path.exists(src_p):
                     fname = os.path.basename(src_p)
                     dest_p = os.path.join(ref_img_dir, fname)
-                    # 僅當來源與目標路徑不同時才複製（避免複製自己）
                     if os.path.abspath(src_p) != os.path.abspath(dest_p):
                         shutil.copy2(src_p, dest_p)
                 
@@ -299,8 +327,7 @@ async def export_project(request):
                 else:
                     scene["video"] = None
 
-        # 💡 第二階段：清理孤立/廢棄檔案 (Garbage Clean)
-        # 掃描子目錄，將不在 active 清單中的舊檔案刪除
+        # 第二階段：清理孤立/廢棄檔案 (Garbage Clean)
         def clean_orphan_files(target_dir, active_set):
             if os.path.exists(target_dir):
                 for f_name in os.listdir(target_dir):
@@ -330,7 +357,7 @@ async def export_project(request):
     except Exception as e:
         print(f"[LikeJVideoDirector] 匯出專案失敗: {e}")
         return web.json_response({"success": False, "error": str(e)}, status=500)
-    
+
 
 # ==========================================
 # API 5：載入指定專案 JSON
@@ -439,7 +466,8 @@ class LikeJVideoDirector:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "AUDIO", "STRING", "STRING", "DICT", "FLOAT")
+    # 指定腳位型別為 VIDEO
+    RETURN_TYPES = ("IMAGE", "AUDIO", "VIDEO", "STRING", "DICT", "FLOAT")
     RETURN_NAMES = ("ref_images", "ref_audios", "ref_videos", "prompt", "dict_params", "duration")
 
     OUTPUT_IS_LIST = (True, True, True, False, False, False)
@@ -626,19 +654,23 @@ class LikeJVideoDirector:
             if p and os.path.exists(p):
                 ref_audio_paths.append(p)
 
-        # 3. 參考視訊 (ref_videos) 實體路徑解析
+        # 3. 參考視訊 (ref_videos) 實體路徑解析與 VideoFromFile 物件包裝
         ref_videos_list = selected_scene.get("ref_videos", [])
         ref_video_paths = []
+        ref_video_objects = []
         for r_item in ref_videos_list:
             p = resolve_source_filepath(r_item, default_type="output")
             if p and os.path.exists(p):
                 ref_video_paths.append(p)
+                ref_video_objects.append(to_video_object(p))
 
+        # dict_params 保持傳遞實體路徑字串清單
         final_dict["ref_images"] = ref_image_paths
         final_dict["ref_audios"] = ref_audio_paths
         final_dict["ref_videos"] = ref_video_paths
 
-        ref_videos_output = ref_video_paths if len(ref_video_paths) > 0 else [""]
+        # VIDEO 腳位輸出標準 VideoFromFile 物件清單
+        ref_videos_output = ref_video_objects if len(ref_video_objects) > 0 else [None]
 
         print(f"[LikeJVideoDirector] Output -> ref_images: {len(ref_image_paths)}, ref_audios: {len(ref_audio_paths)}, ref_videos: {len(ref_video_paths)}, Duration: {duration}s")
 

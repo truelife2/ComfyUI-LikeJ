@@ -27,6 +27,7 @@ from . import likejswitch
 from . import likejdict
 from . import likejviddirector
 from . import likejunpacker
+from . import likejviddemux
 
 NODE_CLASS_MAPPINGS = {
     "LikeJ10Loras": likejloras.LikeJ10Loras,
@@ -66,6 +67,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJImageUnpacker": likejunpacker.LikeJImageUnpacker,
     "LikeJAudioUnpacker": likejunpacker.LikeJAudioUnpacker,
     "LikeJVideoUnpacker": likejunpacker.LikeJVideoUnpacker,
+    "LikeJVideoDemuxing": likejviddemux.LikeJVideoDemuxing,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -106,6 +108,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJImageUnpacker": "LikeJ Image Unpacker",
     "LikeJAudioUnpacker": "LikeJ Audio Unpacker",
     "LikeJVideoUnpacker": "LikeJ Video Unpacker",
+    "LikeJVideoDemuxing": "LikeJ Video Demuxing",
 }
 
 WEB_DIRECTORY = "./web"

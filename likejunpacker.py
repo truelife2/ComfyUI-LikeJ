@@ -1,4 +1,41 @@
+import os
 import torch
+
+# 嘗試動態匯入 ComfyUI 官方 VideoFromFile 類別
+try:
+    from comfy_api.latest._input_impl.video_types import VideoFromFile
+    HAS_VIDEO_FROM_FILE = True
+except ImportError:
+    try:
+        from comfy.inputs import VideoFromFile
+        HAS_VIDEO_FROM_FILE = True
+    except ImportError:
+        VideoFromFile = None
+        HAS_VIDEO_FROM_FILE = False
+
+
+def to_video_object(item):
+    """將輸入轉為標準 VideoFromFile 物件 (若本身已是物件/字典則直接保留，若為實體路徑則進行包裝)"""
+    if item is None or item == "":
+        return None
+
+    # 如果已經是 VideoFromFile 物件或 Dict 字典，直接回傳
+    if (HAS_VIDEO_FROM_FILE and VideoFromFile is not None and isinstance(item, VideoFromFile)) or isinstance(item, dict):
+        return item
+
+    # 如果是字串且實體檔案存在，包裝為 VideoFromFile 物件
+    filepath = str(item).strip()
+    if filepath and os.path.exists(filepath):
+        if HAS_VIDEO_FROM_FILE and VideoFromFile is not None:
+            try:
+                return VideoFromFile(filepath)
+            except Exception as e:
+                print(f"[LikeJVideoUnpacker] 包裝 VideoFromFile 物件失敗: {e}")
+                return filepath
+        return filepath
+
+    return item if item != "" else None
+
 
 class LikeJListUnpacker:
     MAX_OUTPUTS = 32
@@ -128,11 +165,12 @@ class LikeJVideoUnpacker:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "videos": ("STRING", {"forceInput": True, "tooltip": "Input video path list or single video path"}),
+                "videos": ("VIDEO", {"forceInput": True, "tooltip": "Input VIDEO object or list of VIDEO objects"}),
             },
         }
 
-    RETURN_TYPES = tuple(["STRING"] * MAX_OUTPUTS)
+    # 宣告腳位型別為 VIDEO
+    RETURN_TYPES = tuple(["VIDEO"] * MAX_OUTPUTS)
     RETURN_NAMES = tuple([f"video_{i}" for i in range(MAX_OUTPUTS)])
     FUNCTION = "unpack"
     CATEGORY = "LikeJ"
@@ -144,15 +182,19 @@ class LikeJVideoUnpacker:
                 continue
             elif isinstance(item, list):
                 for sub_item in item:
-                    if sub_item is not None and sub_item != "":
-                        video_list.append(str(sub_item))
+                    v_obj = to_video_object(sub_item)
+                    if v_obj is not None:
+                        video_list.append(v_obj)
             else:
-                video_list.append(str(item))
+                v_obj = to_video_object(item)
+                if v_obj is not None:
+                    video_list.append(v_obj)
 
         res = []
         for i in range(self.MAX_OUTPUTS):
             if i < len(video_list):
                 res.append(video_list[i])
             else:
-                res.append("")
+                res.append(None)
         return tuple(res)
+

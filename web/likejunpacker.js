@@ -4,7 +4,7 @@ const UNPACKER_CONFIGS = {
     "LikeJListUnpacker": { type: "*", prefix: "out_" },
     "LikeJImageUnpacker": { type: "IMAGE", prefix: "image_" },
     "LikeJAudioUnpacker": { type: "AUDIO", prefix: "audio_" },
-    "LikeJVideoUnpacker": { type: "STRING", prefix: "video_" }
+    "LikeJVideoUnpacker": { type: "VIDEO", prefix: "video_" }
 };
 
 app.registerExtension({
@@ -21,7 +21,7 @@ app.registerExtension({
 
             const node = this;
 
-            // ⚡ 關鍵修正：在節點建立的【同步】階段直接裁切，只保留 1 個預設腳位（無需 setTimeout）
+            // ⚡ 在節點建立的【同步】階段直接裁切，只保留 1 個預設腳位
             while (node.outputs && node.outputs.length > 1) {
                 node.removeOutput(node.outputs.length - 1);
             }
