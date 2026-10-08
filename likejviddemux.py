@@ -5,7 +5,7 @@ class LikeJVideoDemuxing:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "video": ("VIDEO", {"tooltip": "Input ComfyUI VIDEO object, dictionary, or file path"}),
+                "video": ("VIDEO"),
             }
         }
 
