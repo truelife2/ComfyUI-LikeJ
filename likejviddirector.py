@@ -14,13 +14,14 @@ import cv2
 
 try:
     import torchaudio
+
     HAS_TORCHAUDIO = True
 except ImportError:
     HAS_TORCHAUDIO = False
 
 # 設定記錄器與常數
 PROJECTS_BASE_DIR = os.path.join(folder_paths.get_output_directory(), "likej_projects")
-VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mkv', '.mov', '.avi')
+VIDEO_EXTENSIONS = (".mp4", ".webm", ".mkv", ".mov", ".avi")
 
 
 # ==========================================
@@ -30,7 +31,7 @@ def parse_item_info(file_item: Union[str, Dict[str, Any]], default_type: str = "
     """統一解析 item (支援字串或 Dict 格式)，回傳 (filename, subfolder, folder_type)"""
     if not file_item:
         return "", "", default_type
-    
+
     if isinstance(file_item, str):
         return file_item, "", default_type
 
@@ -42,12 +43,7 @@ def parse_item_info(file_item: Union[str, Dict[str, Any]], default_type: str = "
 
 def make_item_dict(filename: str, subfolder: str = "", folder_type: str = "output") -> Dict[str, str]:
     """統一建立標準化 item 字典，同時包含 filename 與 name 以保證前後端相容"""
-    return {
-        "filename": filename,
-        "name": filename,
-        "subfolder": subfolder,
-        "type": folder_type
-    }
+    return {"filename": filename, "name": filename, "subfolder": subfolder, "type": folder_type}
 
 
 def resolve_source_filepath(file_item: Union[str, Dict[str, Any]], default_type: str = "input") -> Optional[str]:
@@ -101,11 +97,7 @@ async def list_videos(request):
                     subfolder = os.path.dirname(rel_path)
                     filename = os.path.basename(rel_path)
                     mtime = os.path.getmtime(full_path)
-                    item_dict = make_item_dict(
-                        filename=filename,
-                        subfolder="" if subfolder == "." else subfolder,
-                        folder_type=folder_type
-                    )
+                    item_dict = make_item_dict(filename=filename, subfolder="" if subfolder == "." else subfolder, folder_type=folder_type)
                     item_dict["mtime"] = mtime
                     files_list.append(item_dict)
 
@@ -154,10 +146,7 @@ async def extract_frame(request):
         img = Image.fromarray(frame_rgb)
         img.save(out_filepath)
 
-        return web.json_response({
-            "success": True,
-            "image": make_item_dict(out_filename, subfolder="", folder_type="input")
-        })
+        return web.json_response({"success": True, "image": make_item_dict(out_filename, subfolder="", folder_type="input")})
     except Exception as e:
         print(f"[LikeJVideoDirector] 抽幀 API 處理失敗: {e}")
         return web.json_response({"success": False, "error": str(e)}, status=500)
@@ -170,16 +159,13 @@ async def extract_frame(request):
 async def list_projects(request):
     os.makedirs(PROJECTS_BASE_DIR, exist_ok=True)
     proj_list = []
-    
+
     for item in os.listdir(PROJECTS_BASE_DIR):
         item_path = os.path.join(PROJECTS_BASE_DIR, item)
         json_path = os.path.join(item_path, "project.json")
         if os.path.isdir(item_path) and os.path.exists(json_path):
             mtime = os.path.getmtime(json_path)
-            proj_list.append({
-                "name": item,
-                "mtime": mtime
-            })
+            proj_list.append({"name": item, "mtime": mtime})
 
     proj_list.sort(key=lambda x: x["mtime"], reverse=True)
     return web.json_response(proj_list)
@@ -199,7 +185,7 @@ async def export_project(request):
             return web.json_response({"success": False, "error": "專案名稱不可為空"}, status=400)
 
         # 清理不合法檔名字元
-        clean_proj_name = "".join(c for c in proj_name if c.isalnum() or c in ('_', '-', ' ')).strip()
+        clean_proj_name = "".join(c for c in proj_name if c.isalnum() or c in ("_", "-", " ")).strip()
         if not clean_proj_name:
             return web.json_response({"success": False, "error": "專案名稱包含不合法字元"}, status=400)
 
@@ -226,7 +212,7 @@ async def export_project(request):
                     dest_p = os.path.join(img_dir, fname)
                     if os.path.abspath(src_p) != os.path.abspath(dest_p):
                         shutil.copy2(src_p, dest_p)
-                
+
                 if fname:
                     new_images.append(make_item_dict(fname, f"{subfolder_rel}/images", "output"))
             scene["images"] = new_images
@@ -275,11 +261,7 @@ async def export_project(request):
         with open(project_json_path, "w", encoding="utf-8") as f:
             json.dump(scenes_data, f, ensure_ascii=False, indent=2)
 
-        return web.json_response({
-            "success": True,
-            "project_name": clean_proj_name,
-            "scenes_data": scenes_data
-        })
+        return web.json_response({"success": True, "project_name": clean_proj_name, "scenes_data": scenes_data})
 
     except Exception as e:
         print(f"[LikeJVideoDirector] 匯出專案失敗: {e}")
@@ -303,13 +285,68 @@ async def load_project(request):
         with open(project_json_path, "r", encoding="utf-8") as f:
             scenes_data = json.load(f)
 
-        return web.json_response({
-            "success": True,
-            "project_name": proj_name,
-            "scenes_data": scenes_data
-        })
+        return web.json_response({"success": True, "project_name": proj_name, "scenes_data": scenes_data})
     except Exception as e:
         print(f"[LikeJVideoDirector] 載入專案失敗: {e}")
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
+# ==========================================
+# API 6：匯出所有分鏡影片 (依照分鏡編號命名導出)
+# ==========================================
+@PromptServer.instance.routes.post("/likej/export_videos")
+async def export_videos(request):
+    try:
+        data = await request.json()
+        export_dir_name = data.get("export_dir_name", "").strip()
+        scenes = data.get("scenes", [])
+
+        if not export_dir_name:
+            return web.json_response({"success": False, "error": "匯出目錄名稱不可為空"}, status=400)
+
+        # 清理不合法檔名字元
+        clean_dir_name = "".join(c for c in export_dir_name if c.isalnum() or c in ("_", "-", " ")).strip()
+        if not clean_dir_name:
+            return web.json_response({"success": False, "error": "目錄名稱包含不合法字元"}, status=400)
+
+        # 建立導出目標資料夾 (路徑: output/likej_projects/<dir_name>/exported_videos)
+        target_dir = os.path.join(PROJECTS_BASE_DIR, clean_dir_name, "exported_videos")
+        os.makedirs(target_dir, exist_ok=True)
+
+        exported_files = []
+        skipped_count = 0
+
+        for idx, scene in enumerate(scenes):
+            videos = scene.get("videos", [])
+            sel_idx = scene.get("selected_video_idx", 0)
+
+            # 取得當前分鏡選中的影片
+            active_vid = None
+            if videos and 0 <= sel_idx < len(videos):
+                active_vid = videos[sel_idx]
+            elif scene.get("video"):
+                active_vid = scene.get("video")
+
+            if not active_vid:
+                skipped_count += 1
+                continue
+
+            src_path = resolve_source_filepath(active_vid, default_type="output")
+            if src_path and os.path.exists(src_path):
+                ext = os.path.splitext(src_path)[1] or ".mp4"
+                # 依照分鏡編號命名，例如：scene_000.mp4, scene_001.mp4
+                new_filename = f"scene_{idx:03d}{ext}"
+                dest_path = os.path.join(target_dir, new_filename)
+
+                shutil.copy2(src_path, dest_path)
+                exported_files.append({"scene_idx": idx, "filename": new_filename})
+            else:
+                skipped_count += 1
+
+        return web.json_response({"success": True, "export_dir": target_dir, "exported_count": len(exported_files), "skipped_count": skipped_count, "files": exported_files})
+
+    except Exception as e:
+        print(f"[LikeJVideoDirector] 匯出影片失敗: {e}")
         return web.json_response({"success": False, "error": str(e)}, status=500)
 
 
@@ -325,7 +362,7 @@ class LikeJVideoDirector:
             "hidden": {
                 "unique_id": "UNIQUE_ID",
                 "extra_pnginfo": "EXTRA_PNGINFO",
-            }
+            },
         }
 
     RETURN_TYPES = ("IMAGE", "AUDIO", "STRING", "DICT", "FLOAT")
@@ -425,10 +462,7 @@ class LikeJVideoDirector:
                 if waveform.ndim == 2:
                     waveform = waveform.unsqueeze(0)
 
-                audio_results.append({
-                    "waveform": waveform,
-                    "sample_rate": sample_rate
-                })
+                audio_results.append({"waveform": waveform, "sample_rate": sample_rate})
             except Exception as e:
                 raise RuntimeError(f"[LikeJVideoDirector] Failed to load audio file ({filepath}): {str(e)}")
 

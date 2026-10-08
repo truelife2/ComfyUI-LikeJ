@@ -100,6 +100,20 @@ const ApiService = {
         }
         return null;
     },
+
+    async exportVideos(exportDirName, scenes) {
+        try {
+            const resp = await api.fetchApi("/likej/export_videos", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ export_dir_name: exportDirName, scenes })
+            });
+            if (resp.ok) return await resp.json();
+        } catch (e) {
+            console.error("[LikeJVideoDirector] 匯出影片失敗:", e);
+        }
+        return { success: false, error: "網路或伺服器錯誤" };
+    },
 };
 
 // ==========================================
@@ -336,6 +350,7 @@ app.registerExtension({
                         <button id="btn_play_mode" style="padding: 4px 8px; background: #28a745; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">▶️ 播放模式</button>
                         <button id="btn_export_proj" style="padding: 4px 6px; background: #d97706; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📦 匯出專案</button>
                         <button id="btn_import_proj" style="padding: 4px 6px; background: #0284c7; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">📂 匯入專案</button>                   </div>
+                        <button id="btn_export_vids" style="padding: 4px 6px; background: #059669; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🎬 匯出影片</button>
                     <div id="info_bar" style="color: #aaa;">Clips: 0 | Total: 0s</div>
                 </div>
 
@@ -418,6 +433,7 @@ app.registerExtension({
                 btnPlayMode: $("#btn_play_mode"),
                 btnExportProj: $("#btn_export_proj"),
                 btnImportProj: $("#btn_import_proj"),
+                btnExportVids: $("#btn_export_vids"),
                 stripContainer: $("#strip_container"),
                 inputDuration: $("#input_duration"),
                 inputPrompt: $("#input_prompt"),
@@ -491,7 +507,7 @@ app.registerExtension({
                 if (renderCb) renderCb();
                 node.setDirtyCanvas(true, true);
             };
-// 📦 匯出專案彈窗邏輯
+            // 📦 匯出專案彈窗邏輯
             const openExportProjectModal = async () => {
                 const data = getData();
                 syncActiveInputs(data);
@@ -661,6 +677,74 @@ app.registerExtension({
             els.btnExportProj.onclick = openExportProjectModal;
             els.btnImportProj.onclick = openImportProjectModal;
             
+            // 🎬 匯出影片彈窗邏輯
+            const openExportVideosModal = async () => {
+                const data = getData();
+                syncActiveInputs(data);
+                const scenes = data.scenes || [];
+
+                if (scenes.length === 0) {
+                    alert("⚠️ 目前沒有任何分鏡資料可供匯出！");
+                    return;
+                }
+
+                const bodyHtml = `
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="color: #ccc; font-size: 11px; line-height: 1.4;">
+                系統將會抓取各分鏡所設定/選取的影片，依照<strong>分鏡順序編號命名</strong>（如 <code>scene_000.mp4</code>、<code>scene_001.mp4</code>）複製輸出至指定資料夾中。
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-weight: bold; color: #059669;">請輸入匯出影片的目錄名稱：</label>
+                <input id="input_export_vid_dir" type="text" placeholder="例如：my_movie_v1" style="background: #151515; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px; font-size: 12px;">
+            </div>
+
+            <div id="export_vids_status_tip" style="color: #888; font-size: 11px; min-height: 18px;"></div>
+        </div>
+    `;
+
+                const footerHtml = `
+        <div style="display: flex; justify-content: flex-end; gap: 8px; width: 100%;">
+            <button id="modal_cancel_export_vid" style="background: #444; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer;">取消</button>
+            <button id="modal_confirm_export_vid" style="background: #059669; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">🚀 開始匯出影片</button>
+        </div>
+    `;
+
+                const { dialog, closeModal } = createModal({
+                    title: "🎬 匯出分鏡影片 (依照分鏡編號輸出)",
+                    width: "500px",
+                    bodyHtml,
+                    footerHtml
+                });
+
+                const inputDir = dialog.querySelector("#input_export_vid_dir");
+                const statusTip = dialog.querySelector("#export_vids_status_tip");
+
+                dialog.querySelector("#modal_cancel_export_vid").onclick = closeModal;
+
+                dialog.querySelector("#modal_confirm_export_vid").onclick = async () => {
+                    const dirName = inputDir.value.trim();
+                    if (!dirName) {
+                        alert("⚠️ 請輸入匯出目錄名稱！");
+                        return;
+                    }
+
+                    statusTip.innerText = "⏳ 正在處理影片複製與命名，請稍候...";
+                    statusTip.style.color = "#ffca28";
+
+                    const result = await ApiService.exportVideos(dirName, scenes);
+                    if (result && result.success) {
+                        alert(`✅ 影片匯出成功！\n共匯出 ${result.exported_count} 個分鏡影片 (跳過無影片分鏡: ${result.skipped_count} 個)\n儲存路徑：\n${result.export_dir}`);
+                        closeModal();
+                    } else {
+                        statusTip.innerText = `❌ 匯出失敗: ${result?.error || "未知錯誤"}`;
+                        statusTip.style.color = "#ff4d4d";
+                    }
+                };
+            };
+
+            els.btnExportVids.onclick = openExportVideosModal;
+
             // 🎬 全分鏡連貫播放模式彈窗 (雙 Video 緩衝無閃爍)
             const openSequencePlayerModal = (startSceneIdx = 0) => {
                 const data = getData();
