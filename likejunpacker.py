@@ -97,7 +97,7 @@ class LikeJAudioUnpacker:
     RETURN_TYPES = tuple(["AUDIO"] * MAX_OUTPUTS)
     RETURN_NAMES = tuple([f"audio_{i}" for i in range(MAX_OUTPUTS)])
     FUNCTION = "unpack"
-    Category = "LikeJ"
+    CATEGORY = "LikeJ"
 
     def unpack(self, audios):
         audio_list = []
@@ -117,4 +117,42 @@ class LikeJAudioUnpacker:
                 res.append(audio_list[i])
             else:
                 res.append(None)
+        return tuple(res)
+
+
+class LikeJVideoUnpacker:
+    MAX_OUTPUTS = 32
+    INPUT_IS_LIST = True  # 宣告接收 List 輸入
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "videos": ("STRING", {"forceInput": True, "tooltip": "Input video path list or single video path"}),
+            },
+        }
+
+    RETURN_TYPES = tuple(["STRING"] * MAX_OUTPUTS)
+    RETURN_NAMES = tuple([f"video_{i}" for i in range(MAX_OUTPUTS)])
+    FUNCTION = "unpack"
+    CATEGORY = "LikeJ"
+
+    def unpack(self, videos):
+        video_list = []
+        for item in videos:
+            if item is None or item == "":
+                continue
+            elif isinstance(item, list):
+                for sub_item in item:
+                    if sub_item is not None and sub_item != "":
+                        video_list.append(str(sub_item))
+            else:
+                video_list.append(str(item))
+
+        res = []
+        for i in range(self.MAX_OUTPUTS):
+            if i < len(video_list):
+                res.append(video_list[i])
+            else:
+                res.append("")
         return tuple(res)

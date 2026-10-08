@@ -3,7 +3,8 @@ import { app } from "../../scripts/app.js";
 const UNPACKER_CONFIGS = {
     "LikeJListUnpacker": { type: "*", prefix: "out_" },
     "LikeJImageUnpacker": { type: "IMAGE", prefix: "image_" },
-    "LikeJAudioUnpacker": { type: "AUDIO", prefix: "audio_" }
+    "LikeJAudioUnpacker": { type: "AUDIO", prefix: "audio_" },
+    "LikeJVideoUnpacker": { type: "STRING", prefix: "video_" }
 };
 
 app.registerExtension({

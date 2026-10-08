@@ -65,6 +65,7 @@ NODE_CLASS_MAPPINGS = {
     "LikeJListUnpacker": likejunpacker.LikeJListUnpacker,
     "LikeJImageUnpacker": likejunpacker.LikeJImageUnpacker,
     "LikeJAudioUnpacker": likejunpacker.LikeJAudioUnpacker,
+    "LikeJVideoUnpacker": likejunpacker.LikeJVideoUnpacker,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -104,6 +105,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "LikeJListUnpacker": "LikeJ Any Unpacker",
     "LikeJImageUnpacker": "LikeJ Image Unpacker",
     "LikeJAudioUnpacker": "LikeJ Audio Unpacker",
+    "LikeJVideoUnpacker": "LikeJ Video Unpacker",
 }
 
 WEB_DIRECTORY = "./web"
