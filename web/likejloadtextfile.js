@@ -237,31 +237,30 @@ app.registerExtension({
 
         const updateDirFilesList = async () => {
             const dir = dirWidget?.value?.trim();
-            if (!dir) {
-                fileSelectWidget.options.values = ["None"];
-                fileSelectWidget.value = "None";
-                return [];
+
+            let newValues = ["None"];
+            if (dir) {
+                const files = await API.listDirFiles(dir);
+                if (files && files.length > 0) {
+                    newValues = ["None", ...files];
+                } else {
+                    newValues = ["None", "(No text files found)"];
+                }
             }
 
-            const files = await API.listDirFiles(dir);
-            if (files && files.length > 0) {
-                const newValues = ["None", ...files];
-                fileSelectWidget.options.values = newValues;
-                if (!newValues.includes(fileSelectWidget.value)) {
-                    fileSelectWidget.value = "None";
-                }
-            } else {
-                fileSelectWidget.options.values = ["None", "(No text files found)"];
-                if (fileSelectWidget.value !== "None") {
-                    fileSelectWidget.value = "None";
-                }
+            fileSelectWidget.options.values.length = 0;
+            fileSelectWidget.options.values.push(...newValues);
+
+            if (!fileSelectWidget.options.values.includes(fileSelectWidget.value)) {
+                fileSelectWidget.value = "None";
             }
+            
             return files || [];
         };
 
         fileSelectWidget.callback = function (val) {
             if (!val || val === "None" || val.startsWith("(")) return;
-            
+
             const dir = dirWidget?.value?.trim() || "";
             if (dir) {
                 const separator = dir.includes("/") ? "/" : "\\";
