@@ -117,6 +117,27 @@ function getFileNameFromPath(path) {
     return norm.split("/").pop();
 }
 
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function resolvePathFromDir(dir, fileName) {
+    if (!fileName) return dir || "";
+    if (!dir || fileName.includes(":") || fileName.startsWith("/") || fileName.startsWith("\\")) {
+        return fileName;
+    }
+
+    const separator = dir.includes("/") ? "/" : "\\";
+    return (dir.endsWith("/") || dir.endsWith("\\"))
+        ? `${dir}${fileName}`
+        : `${dir}${separator}${fileName}`;
+}
+
 // Helper function to show Save Modal Dialog
 function showSaveModal({ currentPath, existingFiles, onConfirm }) {
     const currentFileName = getFileNameFromPath(currentPath);
@@ -171,7 +192,7 @@ function showSaveModal({ currentPath, existingFiles, onConfirm }) {
 
     // Populate dropdown
     const selectOptions = ["-- Keep Custom Input --", ...(existingFiles || [])];
-    selectEl.innerHTML = selectOptions.map(f => `<option value="${f}">${f}</option>`).join("");
+    selectEl.innerHTML = selectOptions.map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join("");
 
     if (existingFiles && existingFiles.includes(currentFileName)) {
         selectEl.value = currentFileName;
@@ -226,21 +247,24 @@ app.registerExtension({
         fileInput.style.display = "none";
         document.body.appendChild(fileInput);
 
+        let lastPreviewToken = 0;
+
         const refreshPreview = async () => {
             const path = pathWidget?.value || "";
             const encoding = encodingWidget?.value || "auto";
+            const token = ++lastPreviewToken;
             const content = await API.readFile(path, encoding);
-            if (textWidget) {
-                textWidget.value = content;
-            }
+            if (token !== lastPreviewToken || !textWidget) return;
+            textWidget.value = content;
         };
 
         const updateDirFilesList = async () => {
-            const dir = dirWidget?.value?.trim();
-
+            const dir = dirWidget?.value?.trim() || "";
+            let files = [];
             let newValues = ["None"];
+
             if (dir) {
-                const files = await API.listDirFiles(dir);
+                files = await API.listDirFiles(dir);
                 if (files && files.length > 0) {
                     newValues = ["None", ...files];
                 } else {
@@ -251,26 +275,21 @@ app.registerExtension({
             fileSelectWidget.options.values.length = 0;
             fileSelectWidget.options.values.push(...newValues);
 
-            if (!fileSelectWidget.options.values.includes(fileSelectWidget.value)) {
+            if (!newValues.includes(fileSelectWidget.value)) {
                 fileSelectWidget.value = "None";
             }
-            
-            return files || [];
+
+            return files;
         };
 
         fileSelectWidget.callback = function (val) {
             if (!val || val === "None" || val.startsWith("(")) return;
 
             const dir = dirWidget?.value?.trim() || "";
-            if (dir) {
-                const separator = dir.includes("/") ? "/" : "\\";
-                const fullPath = dir.endsWith("/") || dir.endsWith("\\")
-                    ? `${dir}${val}`
-                    : `${dir}${separator}${val}`;
-                if (pathWidget) {
-                    pathWidget.value = fullPath;
-                    refreshPreview();
-                }
+            const fullPath = resolvePathFromDir(dir, val);
+            if (pathWidget) {
+                pathWidget.value = fullPath;
+                refreshPreview();
             }
         };
 
@@ -286,10 +305,7 @@ app.registerExtension({
 
             // If a directory is specified and target is relative, merge them
             if (dir && !targetPath.includes(":") && !targetPath.startsWith("/") && !targetPath.startsWith("\\")) {
-                const separator = dir.includes("/") ? "/" : "\\";
-                targetPath = dir.endsWith("/") || dir.endsWith("\\")
-                    ? `${dir}${result.fileName}`
-                    : `${dir}${separator}${result.fileName}`;
+                targetPath = resolvePathFromDir(dir, result.fileName);
             }
 
             const encoding = encodingWidget?.value || "auto";
@@ -301,6 +317,7 @@ app.registerExtension({
                     pathWidget.value = res.path || targetPath;
                 }
                 await updateDirFilesList();
+                app.graph.setDirtyCanvas(true, true);
                 alert("✅ File saved successfully!");
             } else {
                 alert(`❌ Failed to save file: ${res.error || "Unknown error"}`);
@@ -323,6 +340,7 @@ app.registerExtension({
                 if (pathWidget) pathWidget.value = "";
                 if (textWidget) textWidget.value = "";
                 await updateDirFilesList();
+                app.graph.setDirtyCanvas(true, true);
             } else {
                 alert(`❌ Failed to delete file: ${res.error || "Unknown error"}`);
             }
@@ -409,7 +427,8 @@ app.registerExtension({
                     pathWidget.value = data.name;
                     if (pathWidget.callback) pathWidget.callback(data.name);
                 }
-                refreshPreview();
+                await updateDirFilesList();
+                await refreshPreview();
                 app.graph.setDirtyCanvas(true, true);
             } catch (err) {
                 alert("File upload failed: " + err.message);
